@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>信貸投資評估試算器</title>
+<style>
+  * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { margin: 0; padding: 12px; background: #f5f7fa; color: #333; }
+  h2 { font-size: 18px; text-align: center; margin: 6px 0 10px; color: #1a202c; }
+  
+  /* 頂部固定區 */
+  .sticky-chart { position: sticky; top: 0; background: #fff; z-index: 100; border-radius: 12px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 12px; max-height: 45vh; overflow-y: auto; }
+  .chart-container { position: relative; height: 160px; width: 100%; }
+  canvas { width: 100%; height: 100%; display: block; }
+  
+  .legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; font-size: 11px; margin-top: 4px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot.blue { background: #2563eb; }
+  .dot.green-dash { background: transparent; border: 2px dashed #16a34a; }
+  .dot.gray-dash { background: transparent; border: 2px dashed #64748b; }
+  .dot.red { background: #ef4444; }
+
+  .summary-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .card { background: #f8fafc; border-radius: 8px; padding: 8px; text-align: center; border: 1px solid #e2e8f0; }
+  .card-title { font-size: 11px; color: #64748b; }
+  .card-value { font-size: 15px; font-weight: bold; margin-top: 2px; color: #1e293b; }
+  .card-value.warn { color: #ef4444; }
+
+  .alert-box { background: #fef2f2; color: #b91c1c; border: 1px solid #f87171; border-radius: 8px; padding: 8px; font-size: 12px; margin-top: 8px; display: none; }
+  .alert-box ul { margin: 4px 0 0 16px; padding: 0; }
+
+  /* 控制面板 */
+  .controls-panel { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 12px; }
+  .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .panel-btns { display: flex; gap: 6px; }
+  .btn { padding: 6px 10px; font-size: 12px; font-weight: 600; border-radius: 20px; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; cursor: pointer; outline: none; }
+  
+  .group-box { margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+  .group-header { background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: bold; color: #1e293b; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .group-content { padding: 12px; display: block; }
+  .group-content.collapsed { display: none; }
+
+  .control-row { margin-bottom: 12px; }
+  .control-row:last-child { margin-bottom: 0; }
+  .control-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 6px; font-weight: 600; color: #475569; }
+  .lock-btn { border: none; background: transparent; font-size: 14px; cursor: pointer; padding: 0; margin-right: 4px; }
+  
+  .input-area { display: flex; align-items: center; gap: 8px; }
+  input[type=range] { flex: 1; height: 6px; background: #cbd5e1; border-radius: 3px; -webkit-appearance: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #2563eb; cursor: pointer; }
+  input[type=range]:disabled::-webkit-slider-thumb { background: #94a3b8; }
+  input[type=number] { width: 60px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; text-align: center; }
+  select { width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; background: #fff; }
+
+  .chart-container-2 { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 12px; height: 180px; }
+
+  /* 數據表 */
+  .table-panel { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 12px; }
+  .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: right; white-space: nowrap; }
+  th, td { padding: 6px; border-bottom: 1px solid #f1f5f9; }
+  th { background: #f8fafc; font-weight: 600; color: #475569; }
+  th:first-child, td:first-child { text-align: center; }
+
+  /* 說明卡片 */
+  .info-panel { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); font-size: 11px; color: #475569; line-height: 1.5; }
+  .info-panel ul { padding-left: 16px; margin: 4px 0; }
+</style>
+</head>
+<body>
+
+  <h2>信貸投資評估試算器</h2>
+
+  <!-- 頂部固定區 -->
+  <div class="sticky-chart">
+    <div class="chart-container"><canvas id="chart1"></canvas></div>
+    <div class="legend">
+      <div class="legend-item"><span class="dot blue"></span> 借款淨資產</div>
+      <div class="legend-item"><span class="dot green-dash"></span> 投資總市值</div>
+      <div class="legend-item"><span class="dot gray-dash"></span> 剩餘本金</div>
+    </div>
+    
+    <div class="summary-cards">
+      <div class="card">
+        <div class="card-title">首月現金流結餘</div>
+        <div class="card-value" id="val_cflow">-- 元</div>
+      </div>
+      <div class="card">
+        <div class="card-title">安全墊可撐月數</div>
+        <div class="card-value" id="val_cushion">-- 個月</div>
+      </div>
+      <div class="card">
+        <div class="card-title">實際年化借款成本(APR)</div>
+        <div class="card-value" id="val_apr">-- %</div>
+      </div>
+      <div class="card">
+        <div class="card-title">損益兩平投資報酬率</div>
+        <div class="card-value" id="val_breakeven">-- %</div>
+      </div>
+    </div>
+
+    <div class="alert-box" id="alertBox">
+      <ul id="alertList"></ul>
+    </div>
+  </div>
+
+  <!-- 控制面板 -->
+  <div class="controls-panel">
+    <div class="panel-header">
+      <span style="font-size: 14px; font-weight: bold;">🎛️ 參數設定</span>
+      <div class="panel-btns">
+        <button class="btn" onclick="resetDefaults()">↺ 重置</button>
+        <button class="btn" id="lockAllBtn" onclick="toggleLockAll()">🔓 全局未鎖定</button>
+      </div>
+    </div>
+
+    <div id="controlsContainer"></div>
+  </div>
+
+  <div class="chart-container-2">
+    <div style="text-align:center; font-size:12px; font-weight:bold; margin-bottom:4px;">現金帳戶餘額走勢 (低於0元標紅)</div>
+    <div style="position:relative; height:140px; width:100%;"><canvas id="chart2"></canvas></div>
+  </div>
+
+  <div class="table-panel">
+    <div style="font-size: 13px; font-weight: bold; margin-bottom: 8px; text-align: center;">📊 年度明細表 (單位: 萬元)</div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>年份</th><th>剩餘本金</th><th>當年利息</th><th>當年還款</th><th>當年配息</th><th>投資市值</th><th>現金帳戶</th><th>淨資產</th></tr>
+        </thead>
+        <tbody id="detailTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="info-panel">
+    <b>計算假設與說明：</b>
+    <ul>
+      <li><b>逐月模擬：</b>內部以「月」為單位進行現金流計算，顯示時轉換為「萬元」。</li>
+      <li><b>增量資產：</b>僅評估本次「信貸資金」所帶來的資產變化，不計入原有資產。</li>
+      <li><b>現金帳戶：</b>未投入股市的資金與每月結餘以「月複利」計算活儲利息。若出現負值則不計息。</li>
+      <li><b>提前清償：</b>若發生於綁約期內將收取違約金。資金會先從現金扣除，不足則按比例賣出 ETF。</li>
+      <li><b>APR 與 損益兩平：</b>APR 依現金流推算(IRR)；損益兩平率為「借款投資」與「純存活儲」期末資產相等時的隱含報酬率。</li>
+    </ul>
+  </div>
+
+<script>
+// 定義所有控制項設定
+const config = [
+  { group: 'A', title: '信貸條件', items: [
+    { id: 'A1', label: '貸款金額 (萬)', min: 30, max: 500, step: 10, default: 200 },
+    { id: 'A2', label: '貸款年期 (年)', min: 1, max: 7, step: 1, default: 7 },
+    { id: 'A3', label: '開辦費 (元)', min: 0, max: 20000, step: 1000, default: 6000 },
+    { id: 'A4', label: '第一段利率 (%)', min: 1.5, max: 6, step: 0.01, default: 2.9 },
+    { id: 'A5', label: '第一段適用期間 (月)', min: 0, max: 84, step: 1, default: 12 },
+    { id: 'A6', label: '第二段利率 (%)', min: 1.5, max: 8, step: 0.01, default: 2.9 },
+    { id: 'A7', label: '綁約期 (月)', min: 0, max: 36, step: 1, default: 12 },
+    { id: 'A8', label: '違約金比例 (%)', min: 0, max: 3, step: 0.1, default: 2 },
+    { id: 'A9', label: '還款方式', type: 'select', options: [{v:'equal_pmt', t:'本息平均攤還'}, {v:'equal_prn', t:'本金平均攤還'}], default: 'equal_pmt' },
+    { id: 'A10', label: '提前清償月份 (0=不提前)', min: 0, max: 84, step: 1, default: 0 }
+  ]},
+  { group: 'B', title: '個人現金流', items: [
+    { id: 'B1', label: '月實領薪資 (元)', min: 30000, max: 300000, step: 1000, default: 80000 },
+    { id: 'B2', label: '年度額外收入 (元)', min: 0, max: 1000000, step: 10000, default: 200000 },
+    { id: 'B3', label: '房貸月付 (元)', min: 0, max: 100000, step: 1000, default: 30000 },
+    { id: 'B4', label: '日常開銷 (元)', min: 10000, max: 100000, step: 1000, default: 25000 },
+    { id: 'B5', label: '其他固定支出 (元)', min: 0, max: 50000, step: 500, default: 0 },
+    { id: 'B6', label: '薪資年成長率 (%)', min: 0, max: 5, step: 0.5, default: 0 },
+    { id: 'B7', label: '通膨率 (%)', min: 0, max: 4, step: 0.1, default: 2 }
+  ]},
+  { group: 'C', title: '資金分配', items: [
+    { id: 'C1', label: '安全墊金額 (萬)', min: 0, max: 100, step: 1, default: 35 },
+    { id: 'C2', label: '安全墊活儲年利率 (%)', min: 0, max: 3, step: 0.1, default: 1.5 },
+    { id: 'C3', label: '市值型 ETF 比例 (%)', min: 0, max: 100, step: 1, default: 50 },
+    { id: 'C4', label: '高股息 ETF 比例 (%)', min: 0, max: 100, step: 1, default: 35 },
+    { id: 'C5', label: '機動資金比例 (%)', min: 0, max: 100, step: 1, default: 15 },
+    { id: 'C6', label: '進場月數 (月)', min: 1, max: 24, step: 1, default: 6 }
+  ]},
+  { group: 'D', title: '市場假設', items: [
+    { id: 'D1', label: '市值型 ETF 總報酬 (%)', min: -10, max: 15, step: 0.1, default: 7 },
+    { id: 'D2', label: '高股息 ETF 殖利率 (%)', min: 0, max: 10, step: 0.1, default: 5.5 },
+    { id: 'D3', label: '高股息 ETF 價差 (%)', min: -10, max: 10, step: 0.1, default: 1 },
+    { id: 'D4', label: '配息用途', type: 'select', options: [{v:'cash', t:'存入現金帳戶(繳款)'}, {v:'reinvest', t:'再投入(買回高股息)'}], default: 'cash' }
+  ]},
+  { group: 'G', title: '評估設定', items: [
+    { id: 'G2', label: '評估年數 (年)', min: 1, max: 10, step: 1, default: 7 }
+  ]}
+];
+
+let isAllLocked = false;
+let autoCalcTimer = null;
+
+function initUI() {
+  const container = document.getElementById('controlsContainer');
+  let html = '';
+  config.forEach(g => {
+    html += `<div class="group-box">
+      <div class="group-header" onclick="toggleGroup('${g.group}')">
+        <span>${g.title}</span><span id="icon_${g.group}">▼</span>
+      </div>
+      <div class="group-content" id="content_${g.group}">`;
+    
+    g.items.forEach(item => {
+      html += `<div class="control-row">
+        <div class="control-header">
+          <div>
+            <button class="lock-btn" data-id="${item.id}" onclick="toggleSingleLock('${item.id}')">🔓</button>
+            <span>${item.id} ${item.label}</span>
+          </div>
+        </div>
+        <div class="input-area">`;
+      
+      if (item.type === 'select') {
+        html += `<select id="${item.id}" onchange="triggerCalc()">`;
+        item.options.forEach(opt => {
+          html += `<option value="${opt.v}">${opt.t}</option>`;
+        });
+        html += `</select>`;
+      } else {
+        html += `<input type="range" id="${item.id}_r" min="${item.min}" max="${item.max}" step="${item.step}" oninput="syncInput('${item.id}', 'r')">
+                 <input type="number" id="${item.id}_n" min="${item.min}" max="${item.max}" step="${item.step}" oninput="syncInput('${item.id}', 'n')">`;
+      }
+      html += `</div></div>`;
+    });
+    html += `</div></div>`;
+  });
+  container.innerHTML = html;
+}
+
+function toggleGroup(groupId) {
+  const content = document.getElementById(`content_${groupId}`);
+  const icon = document.getElementById(`icon_${groupId}`);
+  if (content.classList.contains('collapsed')) {
+    content.classList.remove('collapsed');
+    icon.innerText = '▼';
+  } else {
+    content.classList.add('collapsed');
+    icon.innerText = '◀';
+  }
+}
+
+function syncInput(id, source) {
+  const r = document.getElementById(`${id}_r`);
+  const n = document.getElementById(`${id}_n`);
+  if (source === 'r') n.value = r.value;
+  else if (source === 'n') r.value = n.value;
+  triggerCalc();
+}
+
+function getVal(id) {
+  const el = document.getElementById(id) || document.getElementById(`${id}_n`);
+  if (el.tagName === 'SELECT') return el.value;
+  return Number(el.value);
+}
+
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el && el.tagName === 'SELECT') { el.value = val; }
+  else {
+    const r = document.getElementById(`${id}_r`);
+    const n = document.getElementById(`${id}_n`);
+    if(r) r.value = val;
+    if(n) n.value = val;
+  }
+}
+
+function toggleSingleLock(id) {
+  const btn = document.querySelector(`button[data-id="${id}"]`);
+  const isLocked = btn.innerText === '🔒';
+  btn.innerText = isLocked ? '🔓' : '🔒';
+  
+  const el = document.getElementById(id);
+  if (el && el.tagName === 'SELECT') el.disabled = !isLocked;
+  else {
+    document.getElementById(`${id}_r`).disabled = !isLocked;
+    document.getElementById(`${id}_n`).disabled = !isLocked;
+  }
+}
+
+function toggleLockAll() {
+  isAllLocked = !isAllLocked;
+  const btn = document.getElementById('lockAllBtn');
+  btn.innerText = isAllLocked ? '🔒 全局已鎖定' : '🔓 全局未鎖定';
+  btn.style.color = isAllLocked ? '#fff' : '#475569';
+  btn.style.background = isAllLocked ? '#ef4444' : '#f8fafc';
+  
+  config.forEach(g => {
+    g.items.forEach(item => {
+      const lockBtn = document.querySelector(`button[data-id="${item.id}"]`);
+      lockBtn.innerText = isAllLocked ? '🔒' : '🔓';
+      
+      const el = document.getElementById(item.id);
+      if (el && el.tagName === 'SELECT') el.disabled = isAllLocked;
+      else {
+        document.getElementById(`${item.id}_r`).disabled = isAllLocked;
+        document.getElementById(`${item.id}_n`).disabled = isAllLocked;
+      }
+    });
+  });
+}
+
+function saveSettings() {
+  const settings = {};
+  config.forEach(g => g.items.forEach(item => settings[item.id] = getVal(item.id)));
+  localStorage.setItem('loan_calc_user_settings', JSON.stringify(settings));
+}
+
+function loadSettings() {
+  const saved = localStorage.getItem('loan_calc_user_settings');
+  let settings = {};
+  if (saved) {
+    try { settings = JSON.parse(saved); } catch(e){}
+  }
+  config.forEach(g => {
+    g.items.forEach(item => {
+      setVal(item.id, settings[item.id] !== undefined ? settings[item.id] : item.default);
+    });
+  });
+}
+
+function resetDefaults() {
+  localStorage.removeItem('loan_calc_user_settings');
+  loadSettings();
+  triggerCalc();
+}
+
+function triggerCalc() {
+  clearTimeout(autoCalcTimer);
+  autoCalcTimer = setTimeout(() => {
+    calculate();
+    saveSettings();
+  }, 100);
+}
+
+// IRR 算法 (二分法)
+function calculateIRR(cashflows) {
+  let min = -0.99, max = 10.0, guess;
+  for(let i=0; i<50; i++) {
+    guess = (min + max) / 2;
+    let npv = 0;
+    for(let t=0; t<cashflows.length; t++) npv += cashflows[t] / Math.pow(1 + guess, t);
+    if(Math.abs(npv) < 0.001) break;
+    if(npv > 0) min = guess; else max = guess;
+  }
+  return guess;
+}
+
+// 核心模擬引擎
+function runSimulation(params, overrideRate = null) {
+  const alerts = [];
+  const P = {...params};
+  
+  if (overrideRate !== null) {
+    P.D1 = overrideRate * 100;
+    P.D2 = 0;
+    P.D3 = overrideRate * 100; 
+  }
+
+  // 檢查分配比例
+  let totalAlloc = P.C3 + P.C4 + P.C5;
+  if (totalAlloc !== 100) {
+    alerts.push(`⚠️ 資金分配比例合計為 ${totalAlloc}%，必須等於 100%`);
+    return { error: true, alerts };
+  }
+
+  // 初始化
+  let L0 = P.A1 * 10000;
+  let C1_val = P.C1 * 10000;
+  if (C1_val > L0 - P.A3) {
+    C1_val = L0 - P.A3;
+    alerts.push(`⚠️ 安全墊已超過可支配金額，自動限制為 ${(C1_val/10000).toFixed(1)} 萬`);
+  }
+  
+  let investBase = L0 - P.A3 - C1_val;
+  let targetM = investBase * (P.C3/100);
+  let targetD = investBase * (P.C4/100);
+  let targetF = investBase * (P.C5/100);
+  
+  let cash = C1_val + targetF + targetM + targetD; 
+  let VM = 0, VD = 0;
+  let loanRem = L0;
+  
+  let N_loan = P.A2 * 12;
+  let totalMonths = P.G2 * 12;
+  let evalMonths = Math.max(N_loan, totalMonths);
+  
+  let rate_month_M = Math.pow(1 + P.D1/100, 1/12) - 1;
+  let rate_month_D_price = Math.pow(1 + P.D3/100, 1/12) - 1;
+  let cash_rate_month = (P.C2/100) / 12;
+
+  let records = [];
+  let cashflowsForAPR = [L0 - P.A3]; // 第0期淨流入
+  let firstMonthFlow = 0;
+  let firstMonthPayment = 0;
+  
+  // 無借款基準(供損益兩平比較)
+  let baseCash = 0;
+
+  for (let t = 1; t <= evalMonths; t++) {
+    let year = Math.floor((t-1)/12);
+    let S = P.B1 * Math.pow(1 + P.B6/100, year);
+    let B = P.B2 * Math.pow(1 + P.B6/100, year);
+    let L = P.B4 * Math.pow(1 + P.B7/100, year);
+    let O = P.B5 * Math.pow(1 + P.B7/100, year);
+    let M = P.B3;
+    
+    // 基準情境：將結餘存入活儲
+    if (baseCash > 0) baseCash += baseCash * cash_rate_month;
+    baseCash += (S - L - O - M);
+    if (t % 12 === 0) baseCash += B;
+
+    // 借款情境
+    // 1. ETF成長
+    VM += VM * rate_month_M;
+    VD += VD * rate_month_D_price;
+    
+    // 2. 買入
+    if (t <= P.C6) {
+      let buyM = targetM / P.C6;
+      let buyD = targetD / P.C6;
+      VM += buyM; VD += buyD; cash -= (buyM + buyD);
+    }
+
+    // 3. 季配息
+    let div = 0;
+    if (t % 3 === 0) {
+      div = VD * (P.D2/100) / 4;
+      if (P.D4 === 'cash') cash += div;
+      else VD += div;
+    }
+
+    // 4. 信貸月付
+    let payment = 0, interest = 0, principal = 0;
+    let loanCleared = false;
+    let penalty = 0;
+    let A10 = P.A10;
+
+    if (loanRem > 0) {
+      if (A10 > 0 && t === A10) {
+        // 提前清償
+        if (t <= P.A7) penalty = loanRem * (P.A8/100);
+        let needed = loanRem + penalty;
+        cash -= needed;
+        payment = needed;
+        
+        if (cash < 0) {
+          let deficit = -cash;
+          let totalETF = VM + VD;
+          if (totalETF > deficit) {
+            let ratio = deficit / totalETF;
+            VM -= VM * ratio; VD -= VD * ratio;
+            cash = 0;
+            alerts.push(`⚠️ 第 ${t} 個月提前清償資金不足，按比例賣出ETF變現 ${(deficit/10000).toFixed(1)} 萬`);
+          } else {
+            VM = 0; VD = 0;
+            cash += totalETF;
+            alerts.push(`⚠️ 第 ${t} 個月提前清償，賣光ETF仍不足，現金帳戶轉負`);
+          }
+        } else {
+          alerts.push(`ℹ️ 第 ${t} 個月使用現金順利提前清償`);
+        }
+        if (penalty > 0) alerts.push(`⚠️ 於綁約期內清償，收取違約金 ${(penalty/10000).toFixed(1)} 萬`);
+        loanRem = 0; loanCleared = true;
+      } else {
+        // 正常還款
+        let r_annual = (P.A5 === 0 || t > P.A5) ? P.A6/100 : P.A4/100;
+        let r_m = r_annual / 12;
+        let rem_months = N_loan - t + 1;
+        
+        interest = loanRem * r_m;
+        
+        if (P.A9 === 'equal_pmt') {
+          // 本息平均
+          if (r_m > 0) {
+            payment = loanRem * (r_m * Math.pow(1+r_m, rem_months)) / (Math.pow(1+r_m, rem_months) - 1);
+          } else {
+            payment = loanRem / rem_months;
+          }
+          principal = payment - interest;
+        } else {
+          // 本金平均
+          // 這裡簡化: 月本金 = 原始貸款額/總月數
+          principal = L0 / N_loan;
+          payment = principal + interest;
+        }
+        loanRem -= principal;
+        if(loanRem < 1) loanRem = 0; // 消除浮點數微小餘數
+      }
+    }
+
+    if (t === 1) firstMonthPayment = payment;
+
+    // 5. 更新現金帳戶
+    if (cash > 0) cash += cash * cash_rate_month; // 活儲計息
+    
+    let netFlow = S - L - O - M - (loanCleared ? 0 : (payment - penalty - loanRem)); // 確保清償月現金流計算正確
+    if (!loanCleared && t !== A10) {
+       netFlow = S - L - O - M - payment;
+       cash += netFlow;
+    }
+    
+    if (t % 12 === 0) cash += B;
+    
+    if (t === 1) firstMonthFlow = netFlow;
+
+    // 紀錄現金流供 APR 計算
+    if (t <= N_loan && (A10 === 0 || t <= A10)) {
+        cashflowsForAPR.push(-payment);
+    } else if (t <= N_loan) {
+        cashflowsForAPR.push(0);
+    }
+
+    records.push({
+      month: t,
+      loanRem,
+      interest,
+      payment,
+      div,
+      investVal: VM + VD,
+      cash,
+      netWorth: VM + VD + cash - loanRem,
+      baseCash
+    });
+  }
+
+  return { error: false, alerts, records, firstMonthFlow, firstMonthPayment, cashflowsForAPR, P };
+}
+
+function findBreakEven(params) {
+  let min = -0.5, max = 5.0, guess = 0;
+  let targetMonth = params.G2 * 12;
+  
+  // 獲取基準淨值
+  let baseSim = runSimulation(params);
+  if(baseSim.error) return 0;
+  let targetBaseNetWorth = baseSim.records[targetMonth-1].baseCash;
+
+  for(let i=0; i<30; i++) {
+    guess = (min + max) / 2;
+    let sim = runSimulation(params, guess);
+    let val = sim.records[targetMonth-1].netWorth;
+    
+    if (Math.abs(val - targetBaseNetWorth) < 10) break;
+    if (val > targetBaseNetWorth) max = guess; else min = guess;
+  }
+  return guess * 100;
+}
+
+function formatW(val) {
+  return (val / 10000).toFixed(1);
+}
+
+function calculate() {
+  const P = {};
+  config.forEach(g => g.items.forEach(item => P[item.id] = getVal(item.id)));
+  
+  const alertBox = document.getElementById('alertBox');
+  const alertList = document.getElementById('alertList');
+  
+  const sim = runSimulation(P);
+  
+  if (sim.error) {
+    alertList.innerHTML = sim.alerts.map(a => `<li>${a}</li>`).join('');
+    alertBox.style.display = 'block';
+    return;
+  }
+  
+  // 更新 Summary Cards
+  const val_cflow = document.getElementById('val_cflow');
+  val_cflow.innerText = Math.round(sim.firstMonthFlow).toLocaleString() + ' 元';
+  if (sim.firstMonthFlow < 5000) val_cflow.classList.add('warn');
+  else val_cflow.classList.remove('warn');
+
+  const val_cushion = document.getElementById('val_cushion');
+  let cushionMonths = (P.C1 * 10000) / sim.firstMonthPayment;
+  val_cushion.innerText = cushionMonths.toFixed(1) + ' 個月';
+  if (sim.firstMonthFlow < 0 && cushionMonths < 6) val_cushion.classList.add('warn');
+  else val_cushion.classList.remove('warn');
+
+  let apr = calculateIRR(sim.cashflowsForAPR) * 12 * 100;
+  document.getElementById('val_apr').innerText = apr.toFixed(2) + ' %';
+
+  let be = findBreakEven(P);
+  document.getElementById('val_breakeven').innerText = be.toFixed(2) + ' %';
+
+  // Warnings
+  let finalAlerts = [...sim.alerts];
+  let negCashMonths = sim.records.filter(r => r.cash < 0).length;
+  if (negCashMonths > 0) finalAlerts.push(`⚠️ 現金帳戶於期間內有 ${negCashMonths} 個月轉為負數，請注意現金流斷鏈風險！`);
+  
+  if (finalAlerts.length > 0) {
+    alertList.innerHTML = finalAlerts.map(a => `<li>${a}</li>`).join('');
+    alertBox.style.display = 'block';
+  } else {
+    alertBox.style.display = 'none';
+  }
+
+  drawCharts(sim.records, P.G2);
+  buildTable(sim.records, P.G2);
+}
+
+function drawCharts(records, years) {
+  const dpr = window.devicePixelRatio || 1;
+  
+  // Chart 1: Net Worth
+  const c1 = document.getElementById('chart1');
+  const rect1 = c1.parentElement.getBoundingClientRect();
+  c1.width = rect1.width * dpr; c1.height = rect1.height * dpr;
+  const ctx1 = c1.getContext('2d');
+  ctx1.scale(dpr, dpr);
+  ctx1.clearRect(0,0, rect1.width, rect1.height);
+  
+  // Chart 2: Cash Account
+  const c2 = document.getElementById('chart2');
+  const rect2 = c2.parentElement.getBoundingClientRect();
+  c2.width = rect2.width * dpr; c2.height = rect2.height * dpr;
+  const ctx2 = c2.getContext('2d');
+  ctx2.scale(dpr, dpr);
+  ctx2.clearRect(0,0, rect2.width, rect2.height);
+
+  let targetMonths = years * 12;
+  let plotData = records.slice(0, targetMonths);
+  
+  let w1 = rect1.width, h1 = rect1.height;
+  let pad = {t:10, r:10, b:20, l:35};
+  
+  // Max/Min for Chart 1
+  let allVals1 = [];
+  plotData.forEach(r => { allVals1.push(r.netWorth, r.investVal, r.loanRem); });
+  let max1 = Math.max(...allVals1, 0) * 1.1;
+  let min1 = Math.min(...allVals1, 0);
+  
+  function getX(i, w) { return pad.l + i * ((w - pad.l - pad.r) / Math.max(1, plotData.length-1)); }
+  function getY1(val) { return pad.t + (h1 - pad.t - pad.b) * (1 - (val - min1) / (max1 - min1 || 1)); }
+
+  // Draw Grid 1
+  ctx1.strokeStyle = '#e2e8f0'; ctx1.fillStyle = '#94a3b8'; ctx1.font = '10px sans-serif';
+  for(let i=0; i<=3; i++) {
+    let yV = min1 + (max1-min1)*i/3; let yP = getY1(yV);
+    ctx1.beginPath(); ctx1.moveTo(pad.l, yP); ctx1.lineTo(w1-pad.r, yP); ctx1.stroke();
+    ctx1.fillText(formatW(yV), 0, yP+3);
+  }
+  
+  // Draw Lines 1
+  const drawLine = (ctx, key, color, isDash=false) => {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2;
+    if(isDash) ctx.setLineDash([4,4]); else ctx.setLineDash([]);
+    plotData.forEach((r, i) => {
+      let x = getX(i, w1), y = getY1(r[key]);
+      if(i===0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+  };
+  drawLine(ctx1, 'investVal', '#16a34a', true);
+  drawLine(ctx1, 'loanRem', '#64748b', true);
+  drawLine(ctx1, 'netWorth', '#2563eb', false);
+
+  // X Axis labels 1
+  for(let i=0; i<plotData.length; i+=12) ctx1.fillText('第'+(i/12+1)+'年', getX(i, w1)-10, h1-2);
+
+  // Chart 2: Cash
+  let w2 = rect2.width, h2 = rect2.height;
+  let max2 = Math.max(...plotData.map(r=>r.cash), 10000) * 1.1;
+  let min2 = Math.min(...plotData.map(r=>r.cash), 0) * 1.1;
+  function getY2(val) { return pad.t + (h2 - pad.t - pad.b) * (1 - (val - min2) / (max2 - min2 || 1)); }
+
+  ctx2.strokeStyle = '#e2e8f0'; ctx2.fillStyle = '#94a3b8'; ctx2.font = '10px sans-serif';
+  let zeroY = getY2(0);
+  ctx2.beginPath(); ctx2.moveTo(pad.l, zeroY); ctx2.lineTo(w2-pad.r, zeroY); ctx2.stroke();
+  ctx2.fillText(0, 5, zeroY+3);
+  ctx2.fillText(formatW(max2), 5, getY2(max2)+3);
+  if(min2 < 0) ctx2.fillText(formatW(min2), 0, getY2(min2)+3);
+
+  // Draw Cash Line Segment by Segment to color red if < 0
+  ctx2.lineWidth = 2;
+  for(let i=1; i<plotData.length; i++) {
+    let r0 = plotData[i-1].cash, r1 = plotData[i].cash;
+    ctx2.beginPath();
+    ctx2.moveTo(getX(i-1, w2), getY2(r0));
+    ctx2.lineTo(getX(i, w2), getY2(r1));
+    ctx2.strokeStyle = (r0 < 0 || r1 < 0) ? '#ef4444' : '#0ea5e9';
+    ctx2.stroke();
+  }
+}
+
+function buildTable(records, years) {
+  let html = '';
+  for (let y = 1; y <= years; y++) {
+    let yearData = records.slice((y-1)*12, y*12);
+    if(yearData.length === 0) break;
+    
+    let lastM = yearData[yearData.length-1];
+    let sumInt = yearData.reduce((s, r) => s + r.interest, 0);
+    let sumPay = yearData.reduce((s, r) => s + r.payment, 0);
+    let sumDiv = yearData.reduce((s, r) => s + r.div, 0);
+    
+    html += `<tr>
+      <td>${y}</td>
+      <td>${formatW(lastM.loanRem)}</td>
+      <td>${formatW(sumInt)}</td>
+      <td>${formatW(sumPay)}</td>
+      <td>${formatW(sumDiv)}</td>
+      <td style="color:#16a34a">${formatW(lastM.investVal)}</td>
+      <td style="color:${lastM.cash<0?'#ef4444':'#0ea5e9'}">${formatW(lastM.cash)}</td>
+      <td style="font-weight:bold; color:#2563eb">${formatW(lastM.netWorth)}</td>
+    </tr>`;
+  }
+  document.getElementById('detailTableBody').innerHTML = html;
+}
+
+window.onload = function() {
+  initUI();
+  loadSettings();
+  triggerCalc();
+};
+</script>
+</body>
+</html>
