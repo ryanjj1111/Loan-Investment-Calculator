@@ -10,16 +10,21 @@
   h2 { font-size: 18px; text-align: center; margin: 6px 0 10px; color: #1a202c; }
   
   /* 頂部固定區 */
-  .sticky-chart { position: sticky; top: 0; background: #fff; z-index: 100; border-radius: 12px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 12px; max-height: 48vh; overflow-y: auto; }
+  .sticky-chart { position: sticky; top: 0; background: #fff; z-index: 100; border-radius: 12px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 12px; max-height: 52vh; overflow-y: auto; }
   .chart-container { position: relative; height: 160px; width: 100%; }
   canvas { width: 100%; height: 100%; display: block; }
   
-  .legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; font-size: 11px; margin-top: 4px; }
+  /* 圖表曲線開關控制列 */
+  .chart-toggles { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; font-size: 11px; margin-top: 8px; padding-bottom: 4px; border-bottom: 1px solid #f1f5f9; }
+  .chart-toggle-item { display: flex; align-items: center; gap: 3px; cursor: pointer; user-select: none; }
+  
+  .legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; font-size: 11px; margin-top: 6px; }
   .legend-item { display: flex; align-items: center; gap: 4px; }
   .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
   .dot.blue { background: #2563eb; }
   .dot.green-dash { background: transparent; border: 2px dashed #16a34a; }
   .dot.gray-dash { background: transparent; border: 2px dashed #64748b; }
+  .dot.orange-dash { background: transparent; border: 2px dashed #f97316; }
 
   .summary-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
   .card { background: #f8fafc; border-radius: 8px; padding: 8px; text-align: center; border: 1px solid #e2e8f0; }
@@ -50,7 +55,7 @@
   input[type=range] { flex: 1; height: 6px; background: #cbd5e1; border-radius: 3px; -webkit-appearance: none; }
   input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #2563eb; cursor: pointer; }
   input[type=range]:disabled::-webkit-slider-thumb { background: #94a3b8; }
-  input[type=number] { width: 70px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; text-align: center; }
+  input[type=number] { width: 75px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; text-align: center; }
   select { width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; background: #fff; }
 
   .allocation-status { font-size: 11px; padding: 6px 8px; border-radius: 6px; margin-bottom: 10px; background: #f1f5f9; color: #475569; display: flex; justify-content: space-between; align-items: center; }
@@ -78,28 +83,38 @@
   <!-- 頂部固定區 -->
   <div class="sticky-chart">
     <div class="chart-container"><canvas id="chart1"></canvas></div>
+    
+    <!-- 圖表曲線開關控制列 -->
+    <div class="chart-toggles">
+      <label class="chart-toggle-item"><input type="checkbox" id="chk_net" checked onchange="triggerCalc()"> 借款淨資產</label>
+      <label class="chart-toggle-item"><input type="checkbox" id="chk_inv" checked onchange="triggerCalc()"> 投資市值</label>
+      <label class="chart-toggle-item"><input type="checkbox" id="chk_loan" checked onchange="triggerCalc()"> 剩餘本金</label>
+      <label class="chart-toggle-item"><input type="checkbox" id="chk_base" checked onchange="triggerCalc()"> 純現金對比</label>
+    </div>
+
     <div class="legend">
       <div class="legend-item"><span class="dot blue"></span> 借款淨資產</div>
       <div class="legend-item"><span class="dot green-dash"></span> 投資總市值</div>
       <div class="legend-item"><span class="dot gray-dash"></span> 剩餘本金</div>
+      <div class="legend-item"><span class="dot orange-dash"></span> 純現金儲蓄</div>
     </div>
     
     <div class="summary-cards">
       <div class="card">
-        <div class="card-title">每月信貸月付金 (首月)</div>
+        <div class="card-title">每月信貸月付金</div>
         <div class="card-value" id="val_monthly_pay">-- 元</div>
+      </div>
+      <div class="card">
+        <div class="card-title">每月薪資現金流結餘</div>
+        <div class="card-value" id="val_salary_flow">-- 元</div>
       </div>
       <div class="card">
         <div class="card-title">預備金可撐月數</div>
         <div class="card-value" id="val_cushion">-- 個月</div>
       </div>
       <div class="card">
-        <div class="card-title">實際年化借款成本(APR)</div>
-        <div class="card-value" id="val_apr">-- %</div>
-      </div>
-      <div class="card">
-        <div class="card-title">損益兩平投資報酬率</div>
-        <div class="card-value" id="val_breakeven">-- %</div>
+        <div class="card-title">實際 APR vs 損益兩平報酬率</div>
+        <div class="card-value" id="val_apr_be" style="font-size:13px;">-- % / -- %</div>
       </div>
     </div>
 
@@ -141,11 +156,10 @@
   <div class="info-panel">
     <b>計算假設與說明：</b>
     <ul>
-      <li><b>逐月模擬：</b>內部以「月」為單位進行現金流計算，顯示時轉換為「萬元」。</li>
-      <li><b>增量資產：</b>僅評估本次「信貸資金」所帶來的資產變化，不計入原有資產。</li>
+      <li><b>逐月模擬：</b>內部以「月」為單位進行現金流計算，顯示時轉換為「萬元」（支援小數點 1 位）。</li>
+      <li><b>兩段式利率與期數互斥：</b>總年期由 A2 決定，第一段適用期間為 A5 個月，第二段適用期間自動為總期數減去 A5。</li>
       <li><b>現金帳戶：</b>未投入股市的資金與每月結餘以「月複利」計算活儲利息。若出現負值則不計息。</li>
       <li><b>年度額外收入(B2)：</b>於每年 <b>6 月與 12 月各入帳 50%</b>。</li>
-      <li><b>提前清償：</b>若發生於綁約期內將收取違約金。資金會先從現金扣除，不足則按比例賣出 ETF。</li>
       <li><b>APR 與 損益兩平：</b>APR 依現金流推算(IRR)；損益兩平率為「借款投資」與「純存活儲」期末資產相等時的隱含報酬率。</li>
     </ul>
   </div>
@@ -153,9 +167,9 @@
 <script>
 const config = [
   { group: 'A', title: '信貸條件', items: [
-    { id: 'A1', label: '貸款金額 (萬)', min: 30, max: 500, step: 10, default: 250 },
+    { id: 'A1', label: '貸款金額 (萬)', min: 30, max: 500, step: 0.1, default: 250 },
     { id: 'A2', label: '貸款年期 (年)', min: 1, max: 7, step: 1, default: 7 },
-    { id: 'A3', label: '開辦費 (元)', min: 0, max: 20000, step: 1000, default: 6000 },
+    { id: 'A3', label: '開辦費 (元)', min: 0, max: 20000, step: 100, default: 6000 },
     { id: 'A4', label: '第一段利率 (%)', min: 1.5, max: 6, step: 0.01, default: 2.9 },
     { id: 'A5', label: '第一段適用期間 (月)', min: 0, max: 84, step: 1, default: 12 },
     { id: 'A6', label: '第二段利率 (%)', min: 1.5, max: 8, step: 0.01, default: 2.9 },
@@ -174,11 +188,11 @@ const config = [
     { id: 'B7', label: '通膨率 (%)', min: 0, max: 4, step: 0.1, default: 2 }
   ]},
   { group: 'C', title: '資金分配 (互斥金額設定)', items: [
-    { id: 'C1', label: '保留現金 (萬元)', min: 0, max: 500, step: 1, default: 50 },
+    { id: 'C1', label: '保留現金 (萬元)', min: 0, max: 500, step: 0.1, default: 50 },
     { id: 'C2', label: '保留現金活儲年利率 (%)', min: 0, max: 3, step: 0.1, default: 1.5 },
-    { id: 'C3', label: '被動型 ETF 金額 (萬元)', min: 0, max: 500, step: 1, default: 150 },
-    { id: 'C4', label: '主動選股金額 (萬元)', min: 0, max: 500, step: 1, default: 50 },
-    { id: 'C5', label: '個人現有緊急預備金 (萬元)', min: 0, max: 200, step: 1, default: 20 },
+    { id: 'C3', label: '被動型 ETF 金額 (萬元)', min: 0, max: 500, step: 0.1, default: 150 },
+    { id: 'C4', label: '主動選股金額 (萬元)', min: 0, max: 500, step: 0.1, default: 50 },
+    { id: 'C5', label: '個人現有緊急預備金 (萬元)', min: 0, max: 200, step: 0.1, default: 20 },
     { id: 'C6', label: '分批進場月份 (月)', min: 1, max: 24, step: 1, default: 6 }
   ]},
   { group: 'D', title: '市場假設', items: [
@@ -194,7 +208,6 @@ const config = [
 
 let isAllLocked = false;
 let autoCalcTimer = null;
-let lastChangedField = 'C3'; // 記錄最後一個被動調整的互斥欄位
 
 function initUI() {
   const container = document.getElementById('controlsContainer');
@@ -256,17 +269,13 @@ function handleInput(id, source) {
   if (source === 'r') n.value = r.value;
   else if (source === 'n') r.value = n.value;
 
-  // 如果動到 C 區的互斥金額 (C1, C3, C4)
   if (['C1', 'C3', 'C4'].includes(id)) {
-    lastChangedField = id;
     adjustMutualAllocation(id);
   }
 
   triggerCalc();
 }
 
-// 互斥調整邏輯：總可運用資金 = 貸款金額(A1) - 開辦費(A3換算萬元)
-// C1 + C3 + C4 = 總可運用資金
 function adjustMutualAllocation(changedId) {
   const A1 = Number(document.getElementById('A1_n').value) || 0;
   const A3 = Number(document.getElementById('A3_n').value) || 0;
@@ -279,7 +288,6 @@ function adjustMutualAllocation(changedId) {
   if (changedId === 'C1') {
     let rem = pool - c1;
     if (rem < 0) { c1 = pool; rem = 0; }
-    // 將剩餘的分配給 C3 與 C4 (維持原本兩者比例或均分)
     let sum34 = c3 + c4;
     if (sum34 > 0) {
       c3 = rem * (c3 / sum34);
@@ -309,10 +317,9 @@ function adjustMutualAllocation(changedId) {
     }
   }
 
-  // 更新 UI
-  setValWithoutEvent('C1', Math.round(c1));
-  setValWithoutEvent('C3', Math.round(c3));
-  setValWithoutEvent('C4', Math.round(c4));
+  setValWithoutEvent('C1', Number(c1.toFixed(1)));
+  setValWithoutEvent('C3', Number(c3.toFixed(1)));
+  setValWithoutEvent('C4', Number(c4.toFixed(1)));
 }
 
 function setValWithoutEvent(id, val) {
@@ -375,11 +382,11 @@ function toggleLockAll() {
 function saveSettings() {
   const settings = {};
   config.forEach(g => g.items.forEach(item => settings[item.id] = getVal(item.id)));
-  localStorage.setItem('loan_calc_user_settings_v2', JSON.stringify(settings));
+  localStorage.setItem('loan_calc_user_settings_v3', JSON.stringify(settings));
 }
 
 function loadSettings() {
-  const saved = localStorage.getItem('loan_calc_user_settings_v2');
+  const saved = localStorage.getItem('loan_calc_user_settings_v3');
   let settings = {};
   if (saved) {
     try { settings = JSON.parse(saved); } catch(e){}
@@ -392,7 +399,7 @@ function loadSettings() {
 }
 
 function resetDefaults() {
-  localStorage.removeItem('loan_calc_user_settings_v2');
+  localStorage.removeItem('loan_calc_user_settings_v3');
   loadSettings();
   triggerCalc();
 }
@@ -405,7 +412,7 @@ function triggerCalc() {
   }, 100);
 }
 
-// 嚴謹的 IRR / APR 計算
+// 嚴謹的 APR (IRR) 計算
 function calculateAPR(cashflows) {
   let min = -0.99, max = 5.0, guess;
   for(let i=0; i<60; i++) {
@@ -421,22 +428,22 @@ function calculateAPR(cashflows) {
 }
 
 // 核心模擬引擎
-function runSimulation(params, overridePassiveRate = null, overrideActiveRate = null) {
+function runSimulation(params, overrideRate = null) {
   const alerts = [];
   const P = {...params};
   
-  if (overridePassiveRate !== null) {
-    P.D1 = overridePassiveRate * 100;
-    P.D3 = overridePassiveRate * 100;
+  if (overrideRate !== null) {
+    P.D1 = overrideRate * 100;
+    P.D3 = overrideRate * 100;
   }
 
   let L0 = P.A1 * 10000;
   let openFee = P.A3;
   let pool = L0 - openFee;
   
-  let C1 = P.C1 * 10000; // 保留現金
-  let C3 = P.C3 * 10000; // 被動ETF
-  let C4 = P.C4 * 10000; // 主動選股
+  let C1 = P.C1 * 10000;
+  let C3 = P.C3 * 10000;
+  let C4 = P.C4 * 10000;
   
   let allocatedSum = C1 + C3 + C4;
   let statusEl = document.getElementById('allocStatus');
@@ -454,7 +461,7 @@ function runSimulation(params, overridePassiveRate = null, overrideActiveRate = 
   }
 
   let cash = C1;
-  let VP = 0, VA = 0; // VP: 被動ETF市值, VA: 主動選股市值
+  let VP = 0, VA = 0;
   let loanRem = L0;
   
   let N_loan = P.A2 * 12;
@@ -466,38 +473,36 @@ function runSimulation(params, overridePassiveRate = null, overrideActiveRate = 
   let cash_rate_month = (P.C2/100) / 12;
 
   let records = [];
-  let cashflowsForAPR = [L0 - openFee]; // 第0期實拿現金
+  let cashflowsForAPR = [L0 - openFee];
   let firstMonthPayment = 0;
   let baseCash = 0;
 
   for (let t = 1; t <= evalMonths; t++) {
     let year = Math.floor((t-1)/12);
     let S = P.B1 * Math.pow(1 + P.B6/100, year);
-    let B = P.B2; // 年度額外收入
+    let B = P.B2;
     let L = P.B4 * Math.pow(1 + P.B7/100, year);
     let O = P.B5 * Math.pow(1 + P.B7/100, year);
     let M = P.B3;
     
     // 基準情境：不借款純存活儲
     if (baseCash > 0) baseCash += baseCash * cash_rate_month;
-    baseCash += (S - L - O - M);
+    let monthlySalaryFlow = S - L - O - M;
+    baseCash += monthlySalaryFlow;
     if (t === 6 || t === 18 || t === 30 || t === 42 || t === 54 || t === 66 || t === 78 || t === 90 || t === 102 || t === 114) {
       baseCash += (B / 2);
     }
 
     // 借款投資情境
-    // 1. 資產成長
     VP += VP * rate_month_P;
     VA += VA * rate_month_A;
     
-    // 2. 分批進場
     if (t <= P.C6) {
       let buyP = C3 / P.C6;
       let buyA = C4 / P.C6;
       VP += buyP; VA += buyA;
     }
 
-    // 3. 季配息 (被動ETF)
     let div = 0;
     if (t % 3 === 0) {
       div = VP * (P.D2/100) / 4;
@@ -505,7 +510,6 @@ function runSimulation(params, overridePassiveRate = null, overrideActiveRate = 
       else VP += div;
     }
 
-    // 4. 信貸月付與還款
     let payment = 0, interest = 0, principal = 0;
     let loanCleared = false;
     let penalty = 0;
@@ -534,7 +538,9 @@ function runSimulation(params, overridePassiveRate = null, overrideActiveRate = 
         }
         loanRem = 0; loanCleared = true;
       } else {
-        let r_annual = (P.A5 === 0 || t > P.A5) ? P.A6/100 : P.A4/100;
+        // 兩段式利率互斥：A5 為第一段月數，第二段月數自動為 N_loan - A5
+        let firstSeg = P.A5;
+        let r_annual = (t <= firstSeg) ? P.A4/100 : P.A6/100;
         let r_m = r_annual / 12;
         let rem_months = N_loan - t + 1;
         
@@ -553,15 +559,13 @@ function runSimulation(params, overridePassiveRate = null, overrideActiveRate = 
 
     if (t === 1) firstMonthPayment = payment;
 
-    // 5. 現金帳戶利息與收支結餘
     if (cash > 0) cash += cash * cash_rate_month;
     
-    let netFlow = S - L - O - M - (loanCleared ? 0 : payment);
+    let netFlow = monthlySalaryFlow - (loanCleared ? 0 : payment);
     if (!loanCleared && t !== A10) {
        cash += netFlow;
     }
     
-    // 每年 6 月與 12 月額外收入入帳各半
     if (t === 6 || t === 18 || t === 30 || t === 42 || t === 54 || t === 66 || t === 78 || t === 90 || t === 102 || t === 114) {
       cash += (B / 2);
     }
@@ -581,7 +585,8 @@ function runSimulation(params, overridePassiveRate = null, overrideActiveRate = 
       investVal: VP + VA,
       cash,
       netWorth: VP + VA + cash - loanRem,
-      baseCash
+      baseCash,
+      monthlySalaryFlow
     });
   }
 
@@ -599,7 +604,7 @@ function findBreakEven(params) {
 
   for(let i=0; i<35; i++) {
     guess = (min + max) / 2;
-    let sim = runSimulation(params, guess, guess);
+    let sim = runSimulation(params, guess);
     let val = sim.records[targetMonth-1].netWorth;
     
     if (Math.abs(val - targetBaseNetWorth) < 10) break;
@@ -629,16 +634,15 @@ function calculate() {
   
   // 更新 Summary Cards
   document.getElementById('val_monthly_pay').innerText = Math.round(sim.firstMonthPayment).toLocaleString() + ' 元';
+  document.getElementById('val_salary_flow').innerText = Math.round(sim.records[0].monthlySalaryFlow).toLocaleString() + ' 元';
 
   const val_cushion = document.getElementById('val_cushion');
   let totalReserve = (P.C1 * 10000) + (P.C5 * 10000);
   let cushionMonths = totalReserve / sim.firstMonthPayment;
   val_cushion.innerText = cushionMonths.toFixed(1) + ' 個月';
 
-  document.getElementById('val_apr').innerText = sim.apr.toFixed(2) + ' %';
-
   let be = findBreakEven(P);
-  document.getElementById('val_breakeven').innerText = be.toFixed(2) + ' %';
+  document.getElementById('val_apr_be').innerText = sim.apr.toFixed(2) + ' % / ' + be.toFixed(2) + ' %';
 
   let finalAlerts = [...sim.alerts];
   let negCashMonths = sim.records.filter(r => r.cash < 0).length;
@@ -679,7 +683,13 @@ function drawCharts(records, years) {
   let pad = {t:10, r:10, b:20, l:35};
   
   let allVals1 = [];
-  plotData.forEach(r => { allVals1.push(r.netWorth, r.investVal, r.loanRem); });
+  plotData.forEach(r => { 
+    if(document.getElementById('chk_net').checked) allVals1.push(r.netWorth);
+    if(document.getElementById('chk_inv').checked) allVals1.push(r.investVal);
+    if(document.getElementById('chk_loan').checked) allVals1.push(r.loanRem);
+    if(document.getElementById('chk_base').checked) allVals1.push(r.baseCash);
+  });
+  if(allVals1.length === 0) allVals1 = [0];
   let max1 = Math.max(...allVals1, 0) * 1.1;
   let min1 = Math.min(...allVals1, 0);
   
@@ -702,9 +712,11 @@ function drawCharts(records, years) {
     });
     ctx.stroke(); ctx.setLineDash([]);
   };
-  drawLine(ctx1, 'investVal', '#16a34a', true);
-  drawLine(ctx1, 'loanRem', '#64748b', true);
-  drawLine(ctx1, 'netWorth', '#2563eb', false);
+
+  if(document.getElementById('chk_inv').checked) drawLine(ctx1, 'investVal', '#16a34a', true);
+  if(document.getElementById('chk_loan').checked) drawLine(ctx1, 'loanRem', '#64748b', true);
+  if(document.getElementById('chk_base').checked) drawLine(ctx1, 'baseCash', '#f97316', true);
+  if(document.getElementById('chk_net').checked) drawLine(ctx1, 'netWorth', '#2563eb', false);
 
   for(let i=0; i<plotData.length; i+=12) ctx1.fillText('第'+(i/12+1)+'年', getX(i, w1)-10, h1-2);
 
