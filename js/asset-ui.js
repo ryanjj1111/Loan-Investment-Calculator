@@ -16,8 +16,9 @@ window.asShowClosed=v=>{asCl=!!v;ls('lcac',v?'1':'0');asCalc()};
 
 // ---------- 首頁
 function asBmTxt(v){const bm=esc(bmC(S));if(v.bmDiff!=null)return`<b class="${asC(v.bmDiff)}">${v.bmDiff>=0?'多賺':'少賺'} ${W2(Math.abs(v.bmDiff))} 萬</b>`;if(!v.inv)return'—';if(v.miss.length)return'<span class=h>需要全部現價</span>';if(v.bmMiss)return`<span class=wn>缺 ${v.bmMiss} 筆交易當天的 ${bm} 價格</span>`;return`<span class=wn>需要 ${bm} 現價</span>`}
-// 信貸重點卡片收合時的一行摘要
-function asCardsSum(){const d=$('cardsD'),s=$('cardsS');if(!d||!s)return;if(isS()){d.open=true;return}const L=[...document.querySelectorAll('#cards > .c')].slice(0,3).map(c=>{const t=c.querySelector('small'),b=c.querySelector('b');return((t?t.firstChild&&t.firstChild.textContent||'':'')+' '+(b?b.innerText.split('\n')[0]:'')).trim()}).filter(Boolean);s.innerHTML=`📋 信貸重點卡片${d.open?' <span class=h>（點這裡收合）</span>':` <span class=h>｜${esc(L.join('｜'))}｜點這裡展開</span>`}`}
+// 信貸重點卡片收合時的一行摘要（每張卡片取標題與第一行數字）
+const asFirstTxt=el=>{let t='';for(const n of el.childNodes){if(n.nodeType==3)t+=n.textContent;else if(/^(BR|SMALL|DIV)$/.test(n.nodeName))break;else t+=n.textContent}return t.trim()};
+function asCardsSum(){const d=$('cardsD'),s=$('cardsS');if(!d||!s)return;if(isS()){d.open=true;return}const L=[...document.querySelectorAll('#cards > .c')].slice(0,3).map(c=>{const t=c.querySelector('small'),b=c.querySelector('b');return((t?t.firstChild&&t.firstChild.textContent||'':'')+' '+(b?asFirstTxt(b):'')).trim()}).filter(Boolean);s.innerHTML=`📋 信貸重點卡片${d.open?' <span class=h>（點這裡收合）</span>':` <span class=h>｜${esc(L.join('｜'))}｜點這裡展開</span>`}`}
 function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)sp.innerHTML='現價：'+(typeof pxStatus=='function'?pxStatus():'')+` <button class=lk onclick="setWs('as')">到資產頁看持股 ›</button>`;
  if(stWs()!='as')return;
  const z=asSum(S),all=asVsBm(S),act=asVsBm(S,'a'),bm=esc(bmC(S));let loan='💰 信貸：結算填了現金後顯示 A／C';
