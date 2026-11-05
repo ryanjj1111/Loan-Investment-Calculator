@@ -1,5 +1,5 @@
 // 策略日誌：畫面（只在專業版顯示）
-// 信貸資產管理試算器｜https://ryanjj1111.github.io/Loan-Investment-Calculator/
+// 投資帳本｜資產・策略・信貸｜https://ryanjj1111.github.io/Loan-Investment-Calculator/
 // 依賴 ui.js 的 $、esc、inp、dIn、nameOf、W、W2、R、P1、upd、save、build、renderTrades、trEd、toast
 
 let stTab=ls('lcst')||'perf',stFilter='all';const stOpen=new Set(),stLibOpen=new Set();
@@ -19,7 +19,9 @@ const stCls=v=>v==null?'':v<0?'bad':'ok';
 // ---------- 交易紀錄的連動（結算頁）
 function stChip(i){const x=S.trades[i];if(!x)return'';const T=x.thesisId?stThesis(S,x.thesisId):null;if(x.ac!='a'&&!T)return stRsChip(x);return stRsChip(x)+`<span class="thc ${T?'on':''}" onclick="edTr(${i})" title="投資論點（點 ✎ 修改）">${T?esc(T.id):'未分類'}</span><span id="ths${i}"></span>`}
 function stTradeEd(i){const x=S.trades[i],c=cU(x.n),L=(S.theses||[]).slice().sort((a,b)=>(cU(b.code)==c)-(cU(a.code)==c));
- return`<div class=tre style="margin-top:2px"><label>投資論點${stSel('trades.'+i+'.thesisId',x.thesisId||'',[['','未分類']].concat(L.map(T=>[T.id,T.id+' '+cU(T.code)+' '+nameOf(T.code)+'｜'+stStatusN(T.status)])))}</label>${x.k=='buy'||x.k=='sell'?`<label>當天 ${esc(bmC(S))} 價格（選填，算超額報酬）${inp('trades.'+i+'.bmPx',x.bmPx,'o','data-tb="'+i+'"')}</label>`:''}</div>`}
+ return`<div class=tre style="margin-top:2px"><label>投資論點${stSel('trades.'+i+'.thesisId',x.thesisId||'',[['','未分類']].concat(L.map(T=>[T.id,T.id+' '+cU(T.code)+' '+nameOf(T.code)+'｜'+stStatusN(T.status)])))}</label>${x.k=='buy'||x.k=='sell'?stBmField(x,'trades.'+i+'.bmPx'):''}</div>`}
+// 交易當天的基準 ETF 價格：自動帶得到就只顯示，帶不到（或手動填過）才給輸入欄
+function stBmField(x,p){const a=stBmPx(S,x.dt,null);return num(x.bmPx)==null&&a!=null?`<label>當天 ${esc(bmC(S))} 價格<span class=h>自動 ${a}</span></label>`:`<label>當天 ${esc(bmC(S))} 價格${a==null?'（自動帶不到，可手填）':''}${inp(p,x.bmPx,'o',`placeholder="${a!=null?'自動 '+a:'需補'}"`)}</label>`}
 window.stAssign=(i,id)=>{S.trades[i].thesisId=id;renderTrades();upd()};
 
 // ---------- 輸入事件：結構性欄位改變時重畫
@@ -36,7 +38,7 @@ window.stAddPlan=id=>{const T=stThesis(S,id);T.plan=T.plan||[];T.plan.push({n:T.
 window.stDelPlan=(id,j)=>{const T=stThesis(S,id);T.plan.splice(j,1);T.plan.forEach((r,k)=>r.n=k+1);stBuild();upd()};
 window.stAddRev=(id,kind)=>{const T=stThesis(S,id);T.reviews=T.reviews||[];T.reviews.unshift({date:TODAY,kind:kind||'營收',ok:1,note:''});stOpen.add(id);if(stTab!='th')stTab='th';stBuild();upd();setTimeout(()=>{const el=document.querySelector(`details[data-th="${id}"]`);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})},50)};
 window.stDelRev=(id,j)=>{const T=stThesis(S,id);T.reviews.splice(j,1);stBuild();upd()};
-window.stAddTr=id=>{const T=stThesis(S,id);if(!cU(T.code)){toast('請先填論點的股票代號',0);return}const n=NEW.trades();Object.assign(n,{ac:'a',n:cU(T.code),thesisId:id,dt:TODAY});S.trades.push(n);if(T.status=='plan')T.status='build';stBuild();renderTrades();upd()};
+window.stAddTr=id=>{const T=stThesis(S,id);if(!cU(T.code)){toast('請先填論點的股票代號',0);return}const n=NEW.trades();Object.assign(n,{ac:'a',n:cU(T.code),thesisId:id,dt:TODAY});S.trades.push(n);if(T.status=='plan')T.status='hold';stBuild();renderTrades();upd()};
 window.stExit=id=>{const T=stThesis(S,id);T.status='exit';T.exit=T.exit||{};if(!T.exit.date)T.exit.date=TODAY;stOpen.add(id);stBuild();upd()};
 window.stOpenTh=id=>{stOpen.add(id);stTab='th';stFilter='all';stBuild();stCalc();setTimeout(()=>{const el=document.querySelector(`details[data-th="${id}"]`);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})},50)};
 window.stUpVer=id=>{const T=stThesis(S,id),st=stStrat(S,T.sid);if(!st)return;if(!confirm(`把 ${T.id} 改為跟隨 ${st.id} v${st.ver}？會在檢查紀錄留下一筆。`))return;T.reviews=T.reviews||[];T.reviews.unshift({date:TODAY,kind:'其他',ok:1,note:`改用策略 ${st.id} v${st.ver}（原 v${T.sver}）`});T.sver=st.ver;stBuild();upd()};
@@ -53,19 +55,20 @@ function stThCard(T){const i=stTi(T.id),c=cU(T.code),st=stStrat(S,T.sid),sopt=[[
   <label>股票代號${inp(`theses.${i}.code`,T.code,'s','autocomplete=off placeholder="例如 2301"')}<span class=h id="stn_${T.id}">${esc(nameOf(c))}</span></label>
   <label>族群標籤（套用到這檔股票，用「、」分隔）<input data-tag="${esc(c)}" value="${esc(((S.tags||{})[c]||[]).join('、'))}" placeholder="例如 AI 硬體" ${c?'':'disabled'}></label>
   <label>所屬策略${stSel(`theses.${i}.sid`,T.sid,sopt)}<span class=h>跟隨 v${T.sver||1}${st&&st.ver>(T.sver||1)?` <button onclick="stUpVer('${T.id}')">改用 v${st.ver}</button>`:''}</span></label>
-  <label>狀態${stSel(`theses.${i}.status`,T.status,ST_STATUS)}</label>
-  <label>建立日${dIn(`theses.${i}.created`,T.created,'建立日')}</label>
-  <label>預計幾個月會反映${inp(`theses.${i}.expectM`,T.expectM,'o',`placeholder="${st&&st.holdMax?'策略預設 '+st.holdMax:''}"`)}</label>
+  <label>狀態<span style="padding:5px 0">${stStatusN(T.status)}${stPlanProg(T)?'｜'+stPlanProg(T):''} <span class=h>（依股數自動）</span></span></label>
   <label>停損價(元)${inp(`theses.${i}.stop`,T.stop,'o')}</label>
   <label>目標價(元，選填)${inp(`theses.${i}.tgtPx`,T.tgtPx,'o')}</label>
-  <label>現價(元，與結算持股表共用)<input type=number step=any data-px="${esc(c)}" value="${esc((S.px||{})[c]??'')}" ${c?'':'disabled'}></label>
+  <label>現價(元，與資產頁共用)<input type=number step=any data-px="${esc(c)}" value="${esc((S.px||{})[c]??'')}" ${c?'':'disabled'}></label>
  </div>
- <label>買進理由${stTxt(`theses.${i}.why`,T.why,'為什麼現在買這檔？符合策略的哪些條件？',3)}</label>
- <label>什麼情況代表我錯了${stTxt(`theses.${i}.wrongIf`,T.wrongIf,'例如：連續兩個月營收年減、法人下修 EPS')}</label>
+ ${stCondBox(T,st)}
+ <label>補充一句為什麼買（選填）${stTxt(`theses.${i}.why`,T.why,'勾選的條件之外，還想補充的理由',2)}</label>
+ <label>什麼情況代表我錯了${stTxt(`theses.${i}.wrongIf`,T.wrongIf,st?'預設帶入策略的「理由失效」規則':'例如：連續兩個月營收年減、法人下修 EPS')}</label>
+ <details class=more><summary class=h>更多欄位（建立日、預計期間、目標估值、分批計畫${hasIni?'、期初持股':''}）</summary>
+ <div class=g><label>建立日${dIn(`theses.${i}.created`,T.created,'建立日')}</label><label>預計幾個月會反映${inp(`theses.${i}.expectM`,T.expectM,'o',`placeholder="${st&&st.holdMax?'策略預設 '+st.holdMax:''}"`)}</label></div>
  <label>目標估值或出場條件${stTxt(`theses.${i}.target`,T.target,'例如：本益比回到 5 年中位數')}</label>
  ${hasIni?`<label class=ck><input type=checkbox data-p="theses.${i}.useInit" data-t="b" ${+T.useInit?'checked':''}>納入撥款前的期初持股（成本用撥款日收盤價，持有天數從撥款日起算）</label>`:''}
- <div class=sub>分批計畫</div>${(T.plan||[]).map((r,j)=>`<div class=r-pl><span class=h>第 ${r.n} 批</span>${inp(`theses.${i}.plan.${j}.cond`,r.cond,'s','placeholder="價位或條件"')}${inp(`theses.${i}.plan.${j}.pct`,r.pct,'o','placeholder="比例%"')}${stSel(`theses.${i}.plan.${j}.tid`,r.tid||'',trOpt)}<button onclick="stDelPlan('${T.id}',${j})">✕</button></div>`).join('')}<button onclick="stAddPlan('${T.id}')">＋新增一批</button>
- <div class=sub>交易（與結算頁的交易紀錄是同一份）</div>${tr.length?tr.map(({x,j})=>x.k=='buy'||x.k=='sell'?`<div class=r-tr><label>日期${dIn('trades.'+j+'.dt',x.dt,'日期')}</label><label>類型${stSel('trades.'+j+'.k',x.k,[['buy','買進'],['sell','賣出']])}</label><label>股數${inp('trades.'+j+'.q',x.q,'o','placeholder="股數"')}</label><label>成交價${inp('trades.'+j+'.px',x.px,'o','placeholder="成交價"')}</label><label>當天 ${esc(bmC(S))} 價格${inp('trades.'+j+'.bmPx',x.bmPx,'o',`placeholder="${(()=>{const b=stBmPx(S,x.dt,null);return b!=null?'自動 '+b:'需補'})()}"`)}</label></div>`:`<div class="r-tr h">${esc(x.dt||'')}　${esc((TK.find(z=>z[0]==x.k)||['',''])[1])}　${x.k=='div'?R(tradeAmt(S,x).cash)+' 元':R(num(x.q)||0)+' 股'}</div>`).join(''):'<div class=h>還沒有交易。</div>'}
+ <div class=sub>分批計畫</div>${(T.plan||[]).map((r,j)=>`<div class=r-pl><span class=h>第 ${r.n} 批</span>${inp(`theses.${i}.plan.${j}.cond`,r.cond,'s','placeholder="價位或條件"')}${inp(`theses.${i}.plan.${j}.pct`,r.pct,'o','placeholder="比例%"')}${stSel(`theses.${i}.plan.${j}.tid`,r.tid||'',trOpt)}<button onclick="stDelPlan('${T.id}',${j})">✕</button></div>`).join('')}<button onclick="stAddPlan('${T.id}')">＋新增一批</button><div class=h>買進時會依序自動對應到還沒執行的批次。</div></details>
+ <div class=sub>交易（與結算頁的交易紀錄是同一份）</div>${tr.length?tr.map(({x,j})=>x.k=='buy'||x.k=='sell'?`<div class=r-tr><label>日期${dIn('trades.'+j+'.dt',x.dt,'日期')}</label><label>類型${stSel('trades.'+j+'.k',x.k,[['buy','買進'],['sell','賣出']])}</label><label>股數${inp('trades.'+j+'.q',x.q,'o','placeholder="股數"')}</label><label>成交價${inp('trades.'+j+'.px',x.px,'o','placeholder="成交價"')}</label>${stBmField(x,'trades.'+j+'.bmPx')}</div>`:`<div class="r-tr h">${esc(x.dt||'')}　${esc((TK.find(z=>z[0]==x.k)||['',''])[1])}　${x.k=='div'?R(tradeAmt(S,x).cash)+' 元':R(num(x.q)||0)+' 股'}</div>`).join(''):'<div class=h>還沒有交易。</div>'}
  <button onclick="stAddTr('${T.id}')">＋記一筆這個論點的交易</button> <span class=h>（其他欄位與手續費可在結算頁的交易紀錄修改）</span>
  <div class=sub>檢查紀錄</div><div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px"><button onclick="stAddRev('${T.id}','營收')">＋營收檢查</button><button onclick="stAddRev('${T.id}','財報')">＋財報檢查</button><button onclick="stAddRev('${T.id}','其他')">＋其他</button></div>
  ${(T.reviews||[]).map((r,j)=>`<div class=r-rv>${dIn(`theses.${i}.reviews.${j}.date`,r.date,'日期')}${stSel(`theses.${i}.reviews.${j}.kind`,r.kind,[['營收','營收'],['財報','財報'],['其他','其他']])}${stSel(`theses.${i}.reviews.${j}.ok`,String(r.ok),[['1','論點仍成立'],['0','有疑慮']])}${inp(`theses.${i}.reviews.${j}.note`,r.note,'s','placeholder="說明"')}<button onclick="stDelRev('${T.id}',${j})">✕</button></div>`).join('')}
@@ -78,8 +81,8 @@ function stLibCard(st){const i=stSi(st.id),n=(S.theses||[]).filter(t=>t.sid==st.
   <label>預計持有期間下限(月)${inp(`strategies.${i}.holdMin`,st.holdMin,'o')}</label><label>預計持有期間上限(月)${inp(`strategies.${i}.holdMax`,st.holdMax,'o')}</label>
   <label>單一個股占主動部位上限(%)${inp(`strategies.${i}.capStock`,st.capStock,'o')}</label><label>單一族群占主動部位上限(%)${inp(`strategies.${i}.capGroup`,st.capGroup,'o')}</label>
   <label>預設停損(%)${inp(`strategies.${i}.stopPct`,st.stopPct,'o','placeholder="例如 20"')}<span class=h>買進時自動算停損價＝成交價 ×（1 − 這個 %）</span></label><label>每筆風險(%)${inp(`strategies.${i}.riskPct`,st.riskPct,'o','placeholder="例如 2"')}<span class=h>每筆最多虧主動部位的幾 %，用來建議股數</span></label></div>
- <label>邏輯說明${stTxt(`strategies.${i}.logic`,st.logic,'這個策略賺的是什麼錢？',3)}</label><label>篩選條件${stTxt(`strategies.${i}.screen`,st.screen,'一條一條列出')}</label>
- <label>進場規則${stTxt(`strategies.${i}.entry`,st.entry,'例如：分幾批、什麼價位或條件')}</label><label>出場規則${stTxt(`strategies.${i}.exit`,st.exit,'例如：達到估值、理由失效、停損、超過期限')}</label>
+ <label>邏輯說明${stTxt(`strategies.${i}.logic`,st.logic,'這個策略賺的是什麼錢？',3)}</label><label>選什麼（篩選條件）${stTxt(`strategies.${i}.screen`,st.screen,'【選什麼：全部符合】\n1. 條件一\n2. 條件二',4)}<span class=h>一行一個條件（1. 2. 3.）；第一行寫【選什麼：全部符合】或【何時買：至少 2 項】設定門檻。買進時就能直接勾選，之後自動檢核卡也會用到。</span></label>
+ <label>何時買＋買多少（進場規則）${stTxt(`strategies.${i}.entry`,st.entry,'【何時買：至少 2 項】\n1. 條件一\n2. 條件二\n【買多少】分 3 批、每批 1/3',4)}<span class=h>寫「分 N 批」會自動建立分批計畫。</span></label><label>出場規則${stTxt(`strategies.${i}.exit`,st.exit,'例如：達到估值、理由失效、停損、超過期限')}</label>
  <div class=stv><button onclick="stMinor('${st.id}')">儲存為小修正（不升版）</button><input id="str_${st.id}" placeholder="改版原因（建立新版本時必填）"><button onclick="stNewVer('${st.id}')">建立新版本 v${st.ver+1}</button></div>
  <details style="margin-top:6px"><summary>版本紀錄（${h.length}）</summary>${h.slice().reverse().map((v,k,a)=>{const prev=a[k+1],d=prev?diff(prev.snap,v.snap):[];return`<div class=hb style="margin-top:4px"><b>v${v.ver}</b>　${esc(v.date)}　${esc(v.reason)}${v.minor?`<span class=h>（小修正 ${v.minor} 次，最後 ${esc(v.mdate||'')}）</span>`:''}${prev?`<div class=h>變更：${d.length?d.map(k=>LB[k]).join('、'):'無'}</div>`:''}<details><summary class=h>這一版的內容</summary><div class=h style="white-space:pre-wrap">${ST_FIELDS.map(k=>LB[k]+'：'+esc(String(v.snap[k]??''))).join('\n')}</div></details></div>`}).join('')}</details>
  <div style="margin-top:8px;text-align:right"><button onclick="stDelSt('${st.id}')" ${n?'disabled title="還有論點屬於這個策略"':''}>刪除策略</button></div></details>`}
@@ -94,7 +97,7 @@ function stBuild(){if(!$('pgST'))return;
 function stMet(p){if(!p||!p.first)return'<span class=h>尚未買進</span>';const t=xirrT0(p);
  return`投入 ${W2(p.inv)} 萬｜損益 ${p.pl==null?'<span class=wn>需填現價</span>':`<span class="${stCls(p.pl)}">${p.pl>=0?'+':''}${R(p.pl)}（${stPct(p.ret)}）</span>`}｜持有 ${Math.round(p.days)} 天｜${t}<br>vs ${esc(bmC(S))}：${p.ex!=null?`<span class="${stCls(p.ex)}">${stPp(p.ex)}</span>`:p.miss.length?`<span class=wn>需補 ${p.miss.length} 筆交易當天的 ${esc(bmC(S))} 價格</span>`:p.bmNowMiss?`<span class=wn>需填 ${esc(bmC(S))} 現價</span>`:'—'}${p.open?`｜現價 ${p.px??'—'}`:''}`}
 const xirrT0=p=>p.days<182.6?`期間報酬 ${stPct(p.ret)}（未年化）`:`年化報酬 ${p.xr!=null?stPct(p.xr):'—'}`;
-function stCalc(){if(!$('pgST'))return;const A=stAlerts(S),bd=$('stBadge');if(bd)bd.innerHTML=A.length?`<span class=stbd>${A.length}</span>`:'';
+function stCalc(){if(!$('pgST'))return;if(stSync(S))save();const A=stAlerts(S),bd=$('stBadge');if(bd)bd.innerHTML=A.length?`<span class=stbd>${A.length}</span>`:'';
  (S.trades||[]).forEach((x,i)=>{const s=$('ths'+i);if(s){const o=!x.thesisId&&x.ac=='a'&&(S.theses||[]).find(T=>T.status!='exit'&&cU(T.code)==cU(x.n)&&cU(x.n));s.innerHTML=o?`<button class=ths onclick="stAssign(${i},'${o.id}')">歸入 ${o.id}？</button>`:''}
   const q=$('tq'+i);if(q){let t='';if(x.ac=='a'&&x.k=='buy'&&x.dt==TODAY&&cU(x.n)){const E=stExposure(S),c=cU(x.n),p=E.tot>0?(E.by[c]||0)/E.tot*100:0,cap=stCapStock(S,c);t=`買進後 ${c} ${nameOf(c)} 占主動部位 ${p.toFixed(1)}%（個股上限 ${cap}%）`+(p>cap?' ⚠️ 超過上限':'');for(const g of(S.tags||{})[c]||[]){const gp=(E.grp[g]||0)/E.tot*100,gc=stCapGroup(S,g);t+=`｜族群「${g}」${gp.toFixed(1)}%（上限 ${gc}%）${gp>gc?' ⚠️':''}`}}q.innerText=t;q.className='h'+(t.includes('⚠️')?' wn':'')}});
  if(stWs()!='st')return;
@@ -118,3 +121,8 @@ function stPerfRender(){if($('stPerfTop')&&typeof asVsBm=='function'){const v=as
  $('stPerfT').innerHTML=`<thead><tr><th>策略／類別</th><th>進行／出場</th><th>勝率</th><th>賺賠比</th><th>投入(萬)</th><th>損益(萬)</th><th>報酬率</th><th>超額(百分點)</th><th>最大回撤(百分點)</th><th>照規則</th></tr></thead><tbody>${rows.join('')}</tbody>`;
  const L=(S.theses||[]).filter(T=>T.status!='plan').map(T=>({T,p:stPerf(S,T)})).sort((a,b)=>(b.p.ret??-1e9)-(a.p.ret??-1e9));
  $('stThT').innerHTML=L.length?`<thead><tr><th>論點</th><th>代號</th><th>策略</th><th>狀態</th><th>持有天數</th><th>投入(萬)</th><th>損益(萬)</th><th>報酬率</th><th>年化／期間</th><th>vs ${esc(bmC(S))}</th><th>照規則</th></tr></thead><tbody>${L.map(({T,p})=>{const st=stStrat(S,T.sid);return`<tr onclick="stOpenTh('${T.id}')" style="cursor:pointer"><td>${esc(T.id)}</td><td>${esc(cU(T.code))} <small>${esc(nameOf(T.code))}</small></td><td>${st?esc(st.id)+' v'+(T.sver||1):'—'}</td><td>${stStatusN(T.status)}</td><td>${Math.round(p.days)}</td><td>${W2(p.inv)}</td><td class="${stCls(p.pl)}">${p.pl==null?'—':(p.pl>=0?'+':'')+W2(p.pl)}</td><td class="${stCls(p.ret)}">${stPct(p.ret)}</td><td>${p.days<182.6?'期間 '+stPct(p.ret):p.xr!=null?'年化 '+stPct(p.xr):'—'}</td><td class="${stCls(p.ex)}">${p.ex!=null?stPp(p.ex).replace(' 個百分點',''):'—'}</td><td>${T.status=='exit'?(T.exit&&T.exit.followed!==''&&T.exit.followed!=null?(+T.exit.followed?'是':'否'):'未填'):''}</td></tr>`}).join('')}</tbody>`:'<tbody><tr><td class=h>還沒有已建倉的論點。</td></tr></tbody>'}
+
+// 論點的策略條件勾選（＝買進理由）
+function stCondBox(T,st){if(!st)return'';const E=stCondEval(st,T.met);if(!E.length)return'';const M=new Set(T.met||[]),cur=new Set(E.flatMap(g=>g.items)),old=(T.met||[]).filter(t=>!cur.has(t));
+ return`<div class=sub>當初符合的策略條件 <span class=h>${T.metAt?'（'+esc(T.metAt)+' 勾選）':''}</span></div><div class=asck>${E.map(g=>`<div style="margin-top:3px"><b>${esc(g.sec)}</b> <span class="${g.ok?'ok':'wn'}">${g.n}／${g.tot}${g.need?'（需要 '+(g.need>=g.tot?'全部':g.need+' 項')+'）':''}</span>${g.items.map(t=>`<label class=ck><input type=checkbox data-ct="${esc(t)}" onchange="stMetT('${T.id}',this.dataset.ct,this.checked)" ${M.has(t)?'checked':''}>${esc(t)}</label>`).join('')}</div>`).join('')}${old.length?`<div class=h>其他版本的條件：${old.map(esc).join('；')}</div>`:''}</div>`}
+window.stMetT=(id,t,on)=>{const T=stThesis(S,id);if(!T)return;T.met=(T.met||[]).filter(x=>x!=t);if(on)T.met.push(t);if(!T.metAt)T.metAt=TODAY;stBuild();upd()};

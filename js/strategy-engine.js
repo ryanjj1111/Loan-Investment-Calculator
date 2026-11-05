@@ -1,19 +1,19 @@
 // 策略日誌：計算（純函式，不碰畫面；可用 node 測試）
-// 信貸資產管理試算器｜https://ryanjj1111.github.io/Loan-Investment-Calculator/
+// 投資帳本｜資產・策略・信貸｜https://ryanjj1111.github.io/Loan-Investment-Calculator/
 // 依賴 engine.js：num、cU、bmC、hasInit、tradeAmt、holdings、sDate、TODAY
 // 這裡的計算只讀交易紀錄與現價，不會改變任何信貸的計算結果。
 
 const ST_CAP={stock:20,group:40};
-const ST_STATUS=[['plan','規劃中'],['build','建倉中'],['hold','持有中'],['exit','已出場']];
+const ST_STATUS=[['plan','規劃中'],['hold','持有中'],['exit','已出場']];
 const ST_EXIT=[['invalid','理由失效'],['target','達到估值目標'],['stop','停損'],['timeout','超過持有期限'],['other','其他']];
 const ST_FIELDS=['name','logic','screen','entry','exit','holdMin','holdMax','capStock','capGroup','stopPct','riskPct'];
 const ST_TPL=[
- {name:'範例：價值回歸',logic:'基本面穩定的公司，股價因短期因素跌到估值區間下緣時分批買進，等估值回到區間中位數。（範例，請依自己的方法修改）',screen:'近 5 年獲利穩定；本益比或股價淨值比位於近 5 年區間下緣；負債比率不高',entry:'符合篩選條件時分 2～3 批買進',exit:'估值回到區間中位數以上；或基本面轉差（例如獲利連續衰退）',holdMin:3,holdMax:12,capStock:20,capGroup:40,stopPct:20,riskPct:2},
- {name:'範例：趨勢追蹤',logic:'順著中期趨勢操作：股價站上長期均線且營收成長時進場，跌破均線或營收轉弱時出場。（範例，請依自己的方法修改）',screen:'股價位於 60 日與 120 日均線之上；月營收年增率連續 3 個月為正',entry:'突破整理區間，或回測均線不破時買進',exit:'收盤跌破 60 日均線；或月營收年增率轉負',holdMin:1,holdMax:6,capStock:15,capGroup:35,stopPct:10,riskPct:1}];
+ {name:'範例：價值回歸',logic:'基本面穩定的公司，股價因短期因素跌到估值區間下緣時分批買進，等估值回到區間中位數。（範例，請依自己的方法修改）',screen:'【選什麼：全部符合】\n1. 近 5 年獲利穩定\n2. 本益比或股價淨值比位於近 5 年區間下緣\n3. 負債比率不高',entry:'【何時買：至少 1 項】\n1. 股價止跌、站回月線\n2. 月營收年增率轉正\n【買多少】分 3 批、每批 1/3',exit:'1. 估值回到區間中位數以上：分批賣出\n2. 理由失效：獲利連 2 季衰退，全部賣出\n3. 停損：跌破均價 −20%\n4. 持有超過 12 個月仍未反映：重新評估',holdMin:3,holdMax:12,capStock:20,capGroup:40,stopPct:20,riskPct:2},
+ {name:'範例：趨勢追蹤',logic:'順著中期趨勢操作：股價站上長期均線且營收成長時進場，跌破均線或營收轉弱時出場。（範例，請依自己的方法修改）',screen:'【選什麼：全部符合】\n1. 月營收年增率連 3 個月為正',entry:'【何時買：至少 2 項】\n1. 股價位於季線與半年線之上\n2. 突破整理區間\n3. 回測季線不破\n【買多少】分 2 批、每批 1/2',exit:'1. 收盤跌破季線：全部賣出\n2. 理由失效：月營收年增率轉負，全部賣出\n3. 停損：跌破均價 −10%',holdMin:1,holdMax:6,capStock:15,capGroup:35,stopPct:10,riskPct:1}];
 
 const stStrat=(S,id)=>(S.strategies||[]).find(s=>s.id==id)||null;
 const stThesis=(S,id)=>(S.theses||[]).find(t=>t.id==id)||null;
-const stStatusN=k=>(ST_STATUS.find(x=>x[0]==k)||['',''])[1];
+const stStatusN=k=>k=='build'?'持有中':(ST_STATUS.find(x=>x[0]==k)||['',''])[1];
 function stNextId(list,pfx,w){let n=0;for(const x of list||[]){const m=new RegExp('^'+pfx+'(\\d+)$').exec(x.id||'');if(m)n=Math.max(n,+m[1])}return pfx+String(n+1).padStart(w,'0')}
 function stSnapOf(st){const o={};ST_FIELDS.forEach(k=>o[k]=st[k]??'');return o}
 // 目前內容和最新一個版本的內容不同＝有尚未存成版本的修改
@@ -117,7 +117,30 @@ function stAlerts(S){const A=[],E=stExposure(S),nm=c=>c+(typeof nameOf=='functio
   const mo=num(T.expectM)??(st?num(st.holdMax):null);if(p.first&&mo){const due=addMon(p.first,mo);if(TODAY>due)A.push({k:'due',lv:'wn',th:T.id,t:`${T.id} ${nm(c)} 已持有 ${(dDays(p.first,TODAY)/30.44).toFixed(1)} 個月，超過預計 ${mo} 個月`})}
   if(p.px!=null&&num(T.stop)!=null&&p.px<=num(T.stop))A.push({k:'stop',lv:'bad',th:T.id,t:`${T.id} ${nm(c)} 現價 ${p.px} 已跌破停損價 ${T.stop}`});
   if(p.px!=null&&num(T.tgtPx)!=null&&p.px>=num(T.tgtPx))A.push({k:'tgt',lv:'ok',th:T.id,t:`${T.id} ${nm(c)} 現價 ${p.px} 已達目標價 ${T.tgtPx}`});
-  if(p.first&&!p.open)A.push({k:'exit',lv:'wn',th:T.id,t:`${T.id} ${nm(c)} 股數已歸零，要標記為已出場並填原因嗎？`});
+
   if(since<=rd&&!(T.reviews||[]).some(r=>r.kind=='營收'&&r.date>=rd))A.push({k:'rev',lv:'wn',th:T.id,t:`${T.id} ${nm(c)}：請檢查上月營收是否仍支持論點`});
   if(fd&&since<=fd.d&&!(T.reviews||[]).some(r=>r.kind=='財報'&&r.date>fd.d))A.push({k:'fin',lv:'wn',th:T.id,t:`${T.id} ${nm(c)}：${fd.n}財報已公布（${fd.d} 前），請檢查論點是否仍成立`})}
+ for(const T of S.theses||[])if(T.status=='exit'&&!(T.exit&&T.exit.reason))A.push({k:'exr',lv:'wn',th:T.id,t:`${T.id} ${nm(cU(T.code))} 已出場，還沒選出場原因與有沒有照規則做`});
  return A}
+
+// ---------- 減少手填：策略條件、預設值、狀態自動
+// 策略規則：第一行可寫【標題：全部符合／至少 N 項】，下面一行一個條件「1. …」
+function stConds(st){const out=[];if(!st)return out;for(const f of['screen','entry']){let cur=null;
+ for(const ln of String(st[f]||'').split(/\n/)){const s=ln.trim();if(!s)continue;const h=s.match(/^【([^】：:]+)[：:]?([^】]*)】/);
+  if(h){const r=(h[2]||'').trim(),n=r.match(/至少\s*(\d+)/);cur={sec:h[1].trim(),rule:r,need:/全部/.test(r)?'all':n?+n[1]:0,items:[]};out.push(cur);continue}
+  const m=s.match(/^(\d+)[.、．)]\s*(.+)$/);if(m){if(!cur){cur={sec:f=='screen'?'選什麼':'何時買',rule:'',need:0,items:[]};out.push(cur)}cur.items.push(m[2].trim())}}}
+ return out.filter(g=>g.items.length)}
+function stCondEval(st,met){const M=new Set(met||[]);return stConds(st).map(g=>{const n=g.items.filter(t=>M.has(t)).length,need=g.need=='all'?g.items.length:g.need;return{sec:g.sec,rule:g.rule,items:g.items,n,tot:g.items.length,need,ok:!need||n>=need}})}
+// 「什麼情況代表我錯了」預設＝策略出場規則裡的「理由失效」那一條
+const stWrongDef=st=>{if(!st)return'';const l=String(st.exit||'').split(/\n/).find(s=>/理由失效/.test(s));return l?l.replace(/^\s*\d+[.、．)]\s*/,'').replace(/^理由失效[：:]\s*/,'').replace(/[，,]\s*全部賣出\s*$/,'').trim():''};
+// 分批計畫預設＝策略進場規則裡的「分 N 批」
+const stPlanN=st=>{const m=String(st&&st.entry||'').match(/分\s*(\d+)\s*(?:[～~\-]\s*\d+\s*)?批/);return m?+m[1]:0};
+function stPlanDef(st){const n=stPlanN(st);if(n<2)return[];const p=Math.round(100/n);return Array.from({length:n},(_,k)=>({n:k+1,cond:'',pct:k<n-1?p:100-p*(n-1),tid:''}))}
+// 買進依序對應到下一個還沒執行的批次
+function stLinkPlan(T,x){if(!T||!x||x.k!='buy'||!(T.plan&&T.plan.length)||T.plan.some(r=>r.tid==x.id))return;const r=T.plan.find(r=>!r.tid);if(r)r.tid=x.id}
+const stPlanProg=T=>{const n=(T.plan||[]).length;return n?`第 ${(T.plan||[]).filter(r=>r.tid).length}／${n} 批`:''};
+// 新論點的預設值：停損價、什麼情況代表錯了、分批計畫
+function stThDefaults(S,T,px){const st=stStrat(S,T.sid);if(!st)return T;if(!T.wrongIf)T.wrongIf=stWrongDef(st);if(!(T.plan&&T.plan.length))T.plan=stPlanDef(st);const sp=num(st.stopPct);if(num(T.stop)==null&&sp&&num(px))T.stop=+(num(px)*(1-sp/100)).toFixed(2);return T}
+// 狀態自動：沒買過＝規劃中、有股數＝持有中、股數歸零＝已出場（手動標記的已出場不會改回）
+function stSync(S){let ch=0;for(const T of S.theses||[]){if(T.status=='exit')continue;const p=stPerf(S,T),s=!p.first?'plan':p.open?'hold':'exit';
+ if(s!=T.status){T.status=s;if(s=='exit'){T.exit=T.exit||{};if(!T.exit.date)T.exit.date=p.end||TODAY}ch++}}return ch}
