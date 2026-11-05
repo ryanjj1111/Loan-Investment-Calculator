@@ -47,4 +47,7 @@ const P=fs.existsSync('data/prices.json')?JSON.parse(fs.readFileSync('data/price
 for(const [k,f1,f2,nm] of [['tse',tseLatest,tseDay,'上市'],['otc',otcLatest,otcDay,'上櫃']]){let r=await f1();if(!r||r.date<today){const r2=await f2(today);if(r2&&(!r||r2.date>r.date))r=r2}
  if(!r){say(`${nm}：抓不到`);continue}arcPut(r);const old=P[k]&&P[k].date||'';if(r.date>=old){P[k]={date:r.date,n:Object.keys(r.px).length,px:r.px};ch=1}say(`${nm}：${r.date}，${Object.keys(r.px).length} 檔（原本 ${old||'無'}）`)}
 if(ch){P.upd=new Date().toISOString();P.src='證交所 www.twse.com.tw、櫃買中心 www.tpex.org.tw 公開資料';fs.writeFileSync('data/prices.json',JSON.stringify(P))}
+// 產業別（月營收公開資料的「產業別」），網頁用來自動帶入族群標籤
+{const ind={};for(const u of['https://openapi.twse.com.tw/v1/opendata/t187ap05_L','https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O']){const j=await get(u);if(Array.isArray(j))for(const o of j){const c=String(o['公司代號']||'').trim(),g=String(o['產業別']||'').trim();if(keep(c)&&g)ind[c]=g}}
+ const n=Object.keys(ind).length;if(n>500){const old=fs.existsSync('data/industry.json')?fs.readFileSync('data/industry.json','utf8'):'',nw=JSON.stringify({src:'證交所 t187ap05_L、櫃買中心 mopsfin_t187ap05_O（月營收公開資料的產業別）',ind},null,0);if(old.replace(/"upd":"[^"]*",?/,'')!=nw){fs.writeFileSync('data/industry.json',nw);say(`寫入 data/industry.json（${n} 檔）`)}}else say(`產業別：只抓到 ${n} 檔，不更新`)}
 arcSave();if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,log.map(s=>'- '+s).join('\n')+'\n');

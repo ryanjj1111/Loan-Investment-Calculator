@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>信貸資產管理試算器</title>
+<title>投資帳本｜資產・策略・信貸</title>
 <style>
 :root{--bg:#f5f7fa;--card:#fff;--soft:#f8fafc;--line:#e2e8f0;--tx:#1e293b;--mut:#64748b;--pri:#7c3aed;--ok:#16a34a;--bad:#dc2626;--warn:#d97706;--acc:#2563eb}
 *{box-sizing:border-box;font-family:-apple-system,"Segoe UI","Noto Sans TC",sans-serif}
@@ -45,7 +45,7 @@ body.simple .pro{display:none!important}body:not(.simple) .simp{display:none!imp
 .lg span{cursor:pointer;white-space:nowrap;display:inline-block;user-select:none}.lg span.off{opacity:.35;text-decoration:line-through}
 .verdict{background:#eef2ff;border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.7;margin-top:6px}
 .gs{font-size:12px;color:#64748b;background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:6px;padding:6px;cursor:pointer;align-self:end}
-.r-in{display:grid;grid-template-columns:88px 84px 1fr 84px 96px 30px;gap:3px;align-items:center;margin-bottom:3px}.r-in select,.r-in input{padding:4px;font-size:12.5px;width:100%}.r-in .w-n{font-size:12px;color:#334155}.r-in button{justify-self:end}
+.r-in{display:grid;grid-template-columns:88px 80px 1fr 76px 84px 100px 30px;gap:3px;align-items:center;margin-bottom:3px}.r-in select,.r-in input{padding:4px;font-size:12.5px;width:100%}.r-in .w-n{font-size:12px;color:#334155}.r-in button{justify-self:end}
 @media(min-width:561px){.mob{display:none}}
 @media(max-width:560px){.r-in{grid-template-columns:1fr 1fr 1fr;padding-bottom:4px;border-bottom:1px dashed var(--line)}.r-in.h{display:none}}
 .gg{position:relative;height:52px;margin:20px 8px 2px;font-size:11px}.gl{position:absolute;left:0;right:0;top:9px;height:4px;background:#e2e8f0;border-radius:2px}.gm{position:absolute;top:5px;width:12px;height:12px;border-radius:50%;transform:translateX(-50%)}.gm.ga{width:0;height:0;border-radius:0;background:none!important;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:12px solid #16a34a;top:-1px}.gt{position:absolute;font-size:11px!important;font-weight:400;white-space:nowrap;color:#475569;line-height:1.2}
@@ -107,8 +107,14 @@ button.lk{border:0;background:none;color:var(--pri);padding:0 2px;font-size:12px
 .asth textarea{width:100%;padding:5px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;background:#fff}
 .astl{display:grid;grid-template-columns:88px 1fr auto;gap:6px;align-items:center;font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line)}.astl button{padding:1px 7px}
 .rsc{font-size:11px;padding:0 5px;border-radius:6px;background:#fef3c7;color:#92400e;white-space:nowrap;margin-right:2px}
+.ash2{font-weight:700;font-size:13.5px}.ash2 .h{font-weight:400}
+.asck{border:1px dashed #c7d2fe;border-radius:8px;padding:5px 8px;margin:6px 0;font-size:12.5px;background:#fff}.asck .ck{display:flex;gap:6px;align-items:flex-start;margin:3px 0;font-size:12.5px;line-height:1.45}.asck .ck input{margin-top:2px;width:auto}
+details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
+.cdd>summary{font-size:13px;font-weight:700;margin:6px 0 0;cursor:pointer}body.simple .cdd>summary{display:none}
+.r-in .w-c0{width:100%}
+@media(max-width:560px){.r-in{grid-template-columns:1fr 1fr 1fr}}
 </style></head><body>
-<div class="hdr"><h2>信貸資產管理試算器</h2><div class="seg"><button id="uiS" onclick="setUi('simple')">簡易</button><button id="uiP" onclick="setUi('pro')">專業</button></div></div>
+<div class="hdr"><h2>投資帳本 <small style="font-size:12px;font-weight:600;color:var(--mut)">資產・策略・信貸</small></h2><div class="seg"><button id="uiS" onclick="setUi('simple')">簡易</button><button id="uiP" onclick="setUi('pro')">專業</button></div></div>
 <div class="seg pro wsw"><button id="wsAS" onclick="setWs('as')">📊 資產</button><button id="wsST" onclick="setWs('st')">🧭 策略<span id="stBadge"></span></button><button id="wsLN" onclick="setWs('loan')">💰 信貸</button></div>
 
 <div class="p lw" id="chp">
@@ -122,7 +128,7 @@ button.lk{border:0;background:none;color:var(--pri);padding:0 2px;font-size:12px
  <div class="h" style="text-align:center" id="cvh"></div>
  <div id="health"></div>
  <div class="verdict simp" id="verdict"></div>
- <div class="cd" id="cards"></div>
+ <details id="cardsD" class="cdd" open><summary id="cardsS">📋 信貸重點卡片</summary><div class="cd" id="cards"></div></details>
  <div class="h simp" id="proNote" style="margin-top:6px"></div>
  <div id="warn" class="bad" style="margin-top:6px;font-size:12px"></div>
 </div>
@@ -219,7 +225,7 @@ button.lk{border:0;background:none;color:var(--pri);padding:0 2px;font-size:12px
 <div id="toast"><span id="toastT"></span><button onclick="undo()">復原</button></div>
 
 <div class="md" id="chz"><div style="max-width:520px">
-<h2 style="margin:0">信貸資產管理試算器</h2><div style="text-align:center;font-weight:700;margin-top:4px">你想怎麼使用？</div>
+<h2 style="margin:0">投資帳本｜資產・策略・信貸</h2><div style="text-align:center;font-weight:700;margin-top:4px">你想怎麼使用？</div>
 <div class="chz"><button class="chc" onclick="pickUi('simple')"><b>🟢 簡易版</b><span>借錢投資划算嗎？3 分鐘試算</span><small>・填貸款與投入金額<br>・看到期時比定期定額多賺多少<br>・設定最多能虧多少</small></button>
 <button class="chc" onclick="pickUi('pro')"><b>🔵 專業版</b><span>追蹤績效、壓力測試、停損</span><small>・每月結算實際績效<br>・壓力情境與停損規則<br>・ETF 歷史參考、稅費細節</small></button></div>
 <label style="flex-direction:row;align-items:center;justify-content:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:6px 8px;background:#f1f5f9;cursor:pointer">⬆️ 已有設定檔？匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label>
@@ -329,16 +335,17 @@ button.lk{border:0;background:none;color:var(--pri);padding:0 2px;font-size:12px
 <li>稅費只用在試算頁推估未來。結算頁用你填的實際數字，實際繳的股利稅記為「外部費用」。<b>債券 ETF（如 00720B）的配息稅務屬性和股票股利不同</b>，工具以簡化方式估算，建議每年用扣繳憑單校正。</li></ul>
 <h3>📊 資產（專業版首頁）</h3>
 <ul><li>畫面最上方切換「📊 資產｜🧭 策略｜💰 信貸」。資產與策略只讀交易紀錄與現價，<b>不會改變任何信貸的計算結果</b>；簡易版不顯示。</li>
-<li><b>總覽</b>：總市值、未實現損益、已實現＋股利、總損益（未滿 6 個月顯示期間報酬，之後顯示年化）；「vs 0050」＝同樣的錢在同樣的時間點改買基準 ETF，現在會多賺或少賺多少；另有一行信貸 A／C。</li>
+<li><b>總覽分兩層</b>：「📦 我的庫存」跟券商 App 一樣——撥款前的持股用「原始成本」（在信貸頁「撥款前狀態」填券商 App 上的付出成本），預估損益已扣賣出手續費（0.1425% 不打折）與證交稅；「📅 撥款後績效」從撥款日起算、撥款前持股用撥款日收盤價，和信貸頁的 A／B／C 一致，另有「vs 0050」＝同樣的錢在同樣的時間點改買基準 ETF，現在會多賺或少賺多少。</li>
 <li><b>庫存</b>：可依部位、策略、族群分組；每一檔顯示股數、均價、現價（「收盤 11/05」＝自動帶入，「手填」＝自己改過）、市值、占比、損益與論點標籤，跌破停損、達到目標價、超過上限會標示。</li>
 <li><b>點一檔股票</b>：最上方是當初為什麼買、什麼情況代表我錯了、停損與目標價（可以直接修改），一鍵記「✅ 論點仍成立／⚠️ 有疑慮」；下面是損益拆解與每一筆交易的時間軸（含依據），可以直接買進、賣出、記配息或修改交易。沒有論點的主動持股，選一個策略就會建立，原本的交易（和撥款前的期初持股）會一起歸入。</li>
-<li><b>＋記交易</b>：第一次買主動股票時點一個策略，就會自動建立論點，停損價依策略的「預設停損 %」自動算，並建議最多買幾股（每筆最多虧主動部位 × 策略的「每筆風險 %」）與買進後占比；加碼自動歸到原論點；賣出時畫面會顯示當初的理由與目前損益，點選賣出依據，股數歸零自動標記「已出場」。</li>
+<li><b>手續費每月退回</b>：在信貸頁「稅費與手續費」選「交易時收全額、每月退回」。資產頁的成本用全額手續費（和 App 一樣），信貸與策略用折讓後的實際成本，結算時還沒退回的折讓自動算成應收退款加回現金，不用另外記錄。</li>
+<li><b>＋記交易</b>：第一次買主動股票時點一個策略，勾選現在符合的策略條件（＝買進理由，條件不夠時會提醒），就會自動建立論點；「什麼情況代表我錯了」帶入策略的理由失效規則、分批計畫依策略的「分 N 批」建立、族群依產業別帶入；停損價依策略的「預設停損 %」自動算，並建議最多買幾股（每筆最多虧主動部位 × 策略的「每筆風險 %」）與買進後占比；加碼自動歸到原論點；賣出時畫面會顯示當初的理由與目前損益，點選賣出依據，股數歸零自動標記「已出場」。</li>
 <li><b>自動現價</b>：每個交易日收盤後（約 14:47、16:17、18:47、21:17），網站會自動抓證交所、櫃買中心的全市場收盤價（公開資料，不含任何個人持股）；打開網頁就帶入，也可以按「🔄 更新」。盤中價格的來源不允許網頁直接讀取，所以盤中會顯示前一個交易日的收盤價，需要時可以手動修改。每筆交易當天的 0050 價格也會自動帶入，用來算「vs 0050」。</li>
 <li>「📒 交易紀錄」與「📋 持股明細表」也移到資產頁；結算時現價直接用資產頁的，結算頁只要填日期、現金與修正。</li></ul>
 <h3>🧭 策略（專業版）</h3>
 <ul><li><b>📈 績效</b>：最上方是「主動部位有沒有贏 0050」；下面依策略列出論點數、勝率、平均賺賠比、超額報酬、最大回撤與照規則出場的比例，「未分類（主動）」「期初持股」「被動（依配置）」分開列。勝率要累積 20 筆以上已出場的論點才有參考價值。</li>
 <li><b>📚 策略庫</b>：每個策略分成「選什麼／何時買／買多少／何時賣」，另有預計持有期間、單一個股與族群上限、預設停損 %、每筆風險 %。小地方改「儲存為小修正」；邏輯或規則改變「建立新版本」並寫原因，舊版本保留。</li>
-<li><b>📌 論點</b>：所有論點的完整表單（分批計畫、檢查紀錄、出場原因與是否照規則）。</li>
+<li><b>📌 論點</b>：所有論點的完整表單。狀態依股數自動（沒買過＝規劃中、有股數＝持有中、歸零＝已出場）；當初符合的策略條件可以補勾；分批計畫、預計期間、目標估值收在「更多」。股數歸零後如果還沒選出場原因，會出現提醒。交易當天的基準 ETF 價格自動帶入，帶不到才需要手填。</li>
 <li><b>提醒</b>（切換按鈕上的紅色數字）：個股或族群超過上限、持有超過預計期間、跌破停損價、達到目標價、股數歸零、每月 11 日起檢查上月營收（月營收於次月 10 日前公告）、財報公布後檢查（一般產業：第一季 5/15、第二季 8/14、第三季 11/14、年報 3/31 前）。營收與財報提醒可以一鍵記「✅ 仍成立／⚠️ 有疑慮」。</li></ul>
 <h3>其他</h3>
 <ul><li><b>備份</b>：資料只存在這個瀏覽器。頁面下方會顯示「有變更尚未備份」或「已備份」；超過 7 天沒備份會提醒一次。換裝置時用「⬆️ 匯入」還原。</li>
@@ -351,14 +358,14 @@ button.lk{border:0;background:none;color:var(--pri);padding:0 2px;font-size:12px
 <button style="margin-top:8px" onclick="closeGd()">我知道了</button></div></div>
 
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261105d"></script>
-<script src="data/stocks.js?v=20261105d"></script>
-<script src="js/engine.js?v=20261105d"></script>
-<script src="js/ui.js?v=20261105d"></script>
-<script src="js/strategy-engine.js?v=20261105d"></script>
-<script src="js/asset-engine.js?v=20261105d"></script>
-<script src="js/prices.js?v=20261105d"></script>
-<script src="js/strategy-ui.js?v=20261105d"></script>
-<script src="js/asset-ui.js?v=20261105d"></script>
-<script src="js/main.js?v=20261105d"></script>
+<script src="data/etf-ref.js?v=20261105e"></script>
+<script src="data/stocks.js?v=20261105e"></script>
+<script src="js/engine.js?v=20261105e"></script>
+<script src="js/ui.js?v=20261105e"></script>
+<script src="js/strategy-engine.js?v=20261105e"></script>
+<script src="js/asset-engine.js?v=20261105e"></script>
+<script src="js/prices.js?v=20261105e"></script>
+<script src="js/strategy-ui.js?v=20261105e"></script>
+<script src="js/asset-ui.js?v=20261105e"></script>
+<script src="js/main.js?v=20261105e"></script>
 </body></html>

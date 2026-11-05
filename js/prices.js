@@ -1,10 +1,13 @@
 // 自動現價：每個交易日收盤後，GitHub Actions 抓證交所、櫃買中心的全市場收盤價存到 data/
 // 網頁打開時讀取並帶入持股的現價；證交所收盤價也可以直接從瀏覽器抓（盤中價格的來源不允許網頁直接讀取，所以不提供）
-// 信貸資產管理試算器｜https://ryanjj1111.github.io/Loan-Investment-Calculator/
+// 投資帳本｜資產・策略・信貸｜https://ryanjj1111.github.io/Loan-Investment-Calculator/
 
 const PX_BASE=['https://raw.githubusercontent.com/ryanjj1111/Loan-Investment-Calculator/main/data/','data/'];
 const PX_TWSE='https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY_ALL?response=json';
-let PXL={},PXU='',pxBusy=0,pxErr='';const PXH={},pxMon=new Set();
+let PXL={},PXU='',pxBusy=0,pxErr='',IND={};
+// 產業別（證交所、櫃買中心月營收公開資料裡的「產業別」），新論點沒有族群標籤時自動帶入
+const indOf=c=>IND[cU(c)]||'';
+function asTagDef(c){c=cU(c);if(!c||((S.tags||{})[c]||[]).length||!indOf(c))return;S.tags=S.tags||{};S.tags[c]=[indOf(c)]}const PXH={},pxMon=new Set();
 const pxTw=()=>new Date(Date.now()+8*36e5);
 const pxRoc=s=>{s=String(s).replace(/\D/g,'');if(s.length<7)return'';return(+s.slice(0,s.length-4)+1911)+'-'+s.slice(-4,-2)+'-'+s.slice(-2)};
 async function pxGet(path){for(const b of PX_BASE){if(!b.startsWith('http')&&location.protocol=='file:')continue;try{const r=await fetch(b+path+(b.startsWith('http')?'?t='+Math.floor(Date.now()/3e5):''),{cache:'no-cache'});if(r.ok)return await r.json()}catch(e){}}return null}
@@ -26,6 +29,7 @@ async function pxTwse(){try{const r=await fetch(PX_TWSE,{cache:'no-cache'});if(!
   else for(const ln of t.split(/\r?\n/).slice(1)){const a=ln.split('","').map(s=>s.replace(/^"|"$/g,''));if(a.length<9)continue;if(!d)d=pxRoc(a[0]);px[a[1].trim()]=a[8].replace(/,/g,'')}
   return d?pxPut(px,d,'證交所'):0}catch(e){return 0}}
 async function pxLoad(force){if(pxBusy)return;pxBusy=1;pxErr='';try{
+ if(!Object.keys(IND).length){const ind=await pxGet('industry.json');if(ind)IND=ind.ind||{}}
  const j=await pxGet('prices.json');if(j){PXU=j.upd||'';for(const k of['tse','otc'])if(j[k]&&j[k].date)pxPut(j[k].px||{},j[k].date,k=='tse'?'證交所':'櫃買中心')}else pxErr='讀不到自動價格（離線，或網站還沒有價格資料）';
  // 收盤後（台灣時間 14:00 起的平日）如果還沒有今天的上市收盤價，直接向證交所抓一次（30 分鐘內不重複）
  const tw=pxTw(),today=tw.toISOString().slice(0,10),wd=tw.getUTCDay(),late=tw.getUTCHours()>=14,o=PXL[bmC(S)];

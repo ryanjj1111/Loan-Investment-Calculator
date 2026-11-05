@@ -1,8 +1,8 @@
 // 計算核心（純函式，不碰畫面；可用 node 測試）
-// 信貸資產管理試算器｜https://ryanjj1111.github.io/Loan-Investment-Calculator/
+// 投資帳本｜資產・策略・信貸｜https://ryanjj1111.github.io/Loan-Investment-Calculator/
 // ================= 計算核心（純函式，無 DOM）=================
 const TODAY=(()=>{const d=new Date(),z=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())})();
-const DEF={v:10,pxa:{},strategies:[],theses:[],tags:{},ui:'',rng:'all',ptLast:0,trades:[],names:{},px:{},trOpen:1,trG:{},init:[],initMode:'none',pxd:{},feeSame:1,bm:'0050',hi50:'',trMore:0,fees:{p:{d:6,mn:20},a:{d:6,mn:20}},
+const DEF={v:10,pxa:{},feeMode:'now',feeDay:10,strategies:[],theses:[],tags:{},ui:'',rng:'all',ptLast:0,trades:[],names:{},px:{},trOpen:1,trG:{},init:[],initMode:'none',pxd:{},feeSame:1,bm:'0050',hi50:'',trMore:0,fees:{p:{d:6,mn:20},a:{d:6,mn:20}},
  L:100,Y:7,rates:[{k:1,r:2.9}],fee:6000,feeDed:1,dd:TODAY,lock:12,pen:3,early:0,E:0,
  sals:[{m:TODAY.slice(0,7),v:80000}],livs:[{m:TODAY.slice(0,7),v:45000}],
  Wc:0,Wp:50,Wa:49.4,lk:{Wc:1},K:3,Ra:10,cr:1.5,
@@ -75,10 +75,14 @@ function marketVals(S,px,dt){const Q=sharesAt(S,dt);let p=0,a=0;const miss=[];fo
 // 不借錢估計（股票部分）：期初股數 × 現價＋期初股數的配息
 function nleAt(S,px,dt){let v=0;const miss=[];for(const r of S.init||[]){const c=cU(r.n),q=+r.q||0;if(!q||!c)continue;const x=num(px[c]);if(x==null){miss.push(c);continue}v+=q*x+q*divPS(S,c,S.dd,dt)}return{v,miss}}
 // 結算日尚未交割（T+2）的買賣，與已除息未發放的股利
-function pendAt(S,dt){let pay=0,rcv=0,n=0,dv=0,dn=0;for(const x of S.trades||[]){if(!x.dt||!dt)continue;
-  if(x.k=='buy'||x.k=='sell'){if(x.dt<=dt&&dt<addBD(x.dt,2)){const m=tradeAmt(S,x);if(m.cash<0)pay-=m.cash;else rcv+=m.cash;n++}}
+function pendAt(S,dt){let pay=0,rcv=0,n=0,dv=0,dn=0,rb=0,rn=0;for(const x of S.trades||[]){if(!x.dt||!dt)continue;
+  if(x.k=='buy'||x.k=='sell'){if(x.dt<=dt&&dt<addBD(x.dt,2)){const m=tradeAmt(S,x);if(m.cash<0)pay-=m.cash;else rcv+=m.cash;n++}
+   else if(S.feeMode=='month'&&x.dt<=dt&&dt<rebDate(S,x.dt)&&num(x.fee)==null){const r=fullFee(x)-tradeAmt(S,x).fee;if(r>0){rb+=r;rn++}}}
   else if(x.k=='div'){const pd=x.pdt||x.dt;if(x.dt<=dt&&dt<pd){dv+=tradeAmt(S,x).cash;dn++}}}
- return{pay,rcv,n,dv,dn,adj:rcv-pay+dv}}
+ return{pay,rcv,n,dv,dn,rb,rn,adj:rcv-pay+dv+rb}}
+// 手續費每月退回：交易時券商先收全額（牌告 0.1425%，最低 20 元），折讓在次月退款日退回
+const fullFee=x=>{const g=(num(x.q)||0)*(num(x.px)||0);return g>0?Math.max(20,Math.floor(g*0.001425)):0};
+function rebDate(S,d){const a=String(d).split('-').map(Number);let y=a[0],m=a[1]+1;if(m>12){m=1;y++}const dd=Math.min(28,Math.max(1,Math.round(num(S.feeDay)||10)));return y+'-'+String(m).padStart(2,'0')+'-'+String(dd).padStart(2,'0')}
 // 由交易紀錄算持股（移動平均成本）
 function holdings(S){const H={};if(hasInit(S))for(const r of S.init){const q=+r.q||0;if(!q||!cU(r.n))continue;const ac=r.ac=='a'?'a':'p',k=ac+'|'+cU(r.n),o=H[k]||(H[k]={ac,n:cU(r.n),q:0,cost:0,real:0,div:0,divs:[],last:'',iq:0,ln:0});o.q+=q;o.iq+=q;o.cost+=q*(+r.px||0)}
  const L=(S.trades||[]).map((x,i)=>({x,i})).filter(o=>o.x.dt&&String(o.x.n||'').trim()).sort((a,b)=>a.x.dt==b.x.dt?a.i-b.i:(a.x.dt>b.x.dt?1:-1));
@@ -217,6 +221,7 @@ function migrate(j){j=j||{};const v=+j.v||0,m=migrate0(v>=7?Object.assign({},j,{
 const newTid=()=>'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 function up9(o){o.strategies=o.strategies||[];o.theses=o.theses||[];o.tags=o.tags||{};o.pxa=o.pxa||{};(o.trades||[]).forEach(x=>{if(x.thesisId==null)x.thesisId='';if(!x.id)x.id=newTid();if(x.rs==null)x.rs=''});
  // v10：策略加「預設停損 %」「每筆風險 %」；舊版本快照補空白欄位，避免被誤判成有未存的修改
+ if(o.feeMode==null)o.feeMode='now';if(o.feeDay==null)o.feeDay=10;(o.theses||[]).forEach(T=>{if(T.status=='build')T.status='hold';if(!T.met)T.met=[]});
  o.strategies.forEach(st=>{['stopPct','riskPct'].forEach(k=>{if(st[k]==null)st[k]='';(st.hist||[]).forEach(h=>{if(h.snap&&h.snap[k]==null)h.snap[k]=''})})});return o}
 function up8(o){o.trades=o.trades||[];o.smode='acct';o.fees=Object.assign(clone(DEF.fees),o.fees||{});
  (o.snaps||[]).forEach(s=>{if(!s.dt&&s.m)s.dt=s.m+'-15'});if(o.cur&&!o.cur.dt&&o.cur.m)o.cur.dt=o.cur.m+'-15';(o.ledger||[]).forEach(e=>{if(!e.dt&&e.m)e.dt=e.m+'-01'});return o}
