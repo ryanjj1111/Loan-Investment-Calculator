@@ -7,7 +7,7 @@ const PX_TWSE='https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY_ALL?respons
 let PXL={},PXU='',pxBusy=0,pxErr='';const PXH={},pxMon=new Set();
 const pxTw=()=>new Date(Date.now()+8*36e5);
 const pxRoc=s=>{s=String(s).replace(/\D/g,'');if(s.length<7)return'';return(+s.slice(0,s.length-4)+1911)+'-'+s.slice(-4,-2)+'-'+s.slice(-2)};
-async function pxGet(path){for(const b of PX_BASE){try{const r=await fetch(b+path+(b.startsWith('http')?'?t='+Math.floor(Date.now()/3e5):''),{cache:'no-cache'});if(r.ok)return await r.json()}catch(e){}}return null}
+async function pxGet(path){for(const b of PX_BASE){if(!b.startsWith('http')&&location.protocol=='file:')continue;try{const r=await fetch(b+path+(b.startsWith('http')?'?t='+Math.floor(Date.now()/3e5):''),{cache:'no-cache'});if(r.ok)return await r.json()}catch(e){}}return null}
 function pxPut(px,d,src){let n=0;for(const c in px){const v=num(px[c]);if(v==null||v<=0)continue;const o=PXL[c];if(!o||d>=o.d){PXL[c]={v,d,src};n++}}return n}
 // 需要價格的代號：持股、論點、基準 ETF
 function pxCodes(){const s=new Set([bmC(S)]);for(const o of holdings(S))if(o.q>0)s.add(cU(o.n));for(const T of S.theses||[])if(cU(T.code))s.add(cU(T.code));return s}

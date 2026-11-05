@@ -98,7 +98,7 @@ function asStockHtml(c,ac){const r=asRows(S).find(o=>o.c==c&&o.ac==ac)||{c,ac,q:
 
 // ---------- 快速記交易（買進點策略自動建論點；賣出顯示當初理由；股數歸零自動出場）
 window.asTradeOpen=o=>{o=o||{};if(o.i!=null){const x=S.trades[o.i];AT={i:o.i,k:x.k,dt:x.dt||TODAY,c:cU(x.n),ac:x.ac=='a'?'a':'p',q:x.q??'',px:x.px??'',dps:x.dps??'',pdt:x.pdt??'',rs:x.rs||'',note:x.note||'',sid:'',why:'',stop:'',stopEd:0,fol:'1',from:asCur}}
- else{const c=cU(o.c||''),h=c?holdings(S).find(z=>cU(z.n)==c&&(!o.ac||z.ac==o.ac)):null;AT={i:null,k:o.k||'buy',dt:TODAY,c,ac:o.ac||(h?h.ac:(c?(/^00/.test(c)?'p':'a'):'a')),q:'',px:c&&num((S.px||{})[c])!=null?String(S.px[c]):'',dps:'',pdt:'',rs:'',note:'',sid:'',why:'',stop:'',stopEd:0,fol:'1',from:asCur}}
+ else{const c=cU(o.c||''),h=c?holdings(S).find(z=>cU(z.n)==c&&(!o.ac||z.ac==o.ac)):null;AT={i:null,k:o.k||'buy',dt:TODAY,c,ac:o.ac||(h?h.ac:(c?(/^00/.test(c)?'p':'a'):'a')),q:'',px:c?String(num((S.px||{})[c])??(typeof PXL!='undefined'&&PXL[c]?PXL[c].v:'')):'',dps:'',pdt:'',rs:'',note:'',sid:'',why:'',stop:'',stopEd:0,fol:'1',from:asCur}}
  asOvOpen(asTradeHtml());asTh();asPrev()};
 const asAtIn=(f,t,ph,x)=>`<input ${t?'type='+t:''} ${t=='number'?'step=any':''} data-at="${f}" value="${esc(AT[f]??'')}" placeholder="${esc(ph||'')}" ${x||''}>`;
 const asSeg=(f,opts)=>`<div class="seg sm">${opts.map(([k,l])=>`<button class="${AT[f]==k?'on':''}" onclick="asAtSet('${f}','${k}',1)">${l}</button>`).join('')}</div>`;
@@ -114,7 +114,7 @@ function asTradeHtml(){const a=AT;return`<div class=ovh><button onclick="asBack(
  <div class=h>手續費與證交稅依信貸頁「稅費與手續費」自動計算；要改成成交回報的實際金額，到下方「📒 交易紀錄」按 ✎。</div>`}
 window.asBack=()=>{const f=AT&&AT.from;AT=null;if(f)asStock(f.c,f.ac);else asClose()};
 window.asAtSet=(f,v,re)=>{AT[f]=v;if(f=='k'){AT.rs=''}if(f=='sid'&&!AT.stopEd)AT.stop='';if(re&&(f=='k'||f=='ac')){const h=$('asOvB').scrollTop;$('asOvB').innerHTML=asTradeHtml();$('asOvB').scrollTop=h}asTh();asPrev()};
-window.asAtPick=c=>{AT.c=c;const h=holdings(S).find(z=>cU(z.n)==c);AT.ac=h?h.ac:(/^00/.test(c)?'p':'a');if(!AT.px&&num((S.px||{})[c])!=null)AT.px=String(S.px[c]);$('asOvB').innerHTML=asTradeHtml();asTh();asPrev()};
+window.asAtPick=c=>{AT.c=c;const h=holdings(S).find(z=>cU(z.n)==c);AT.ac=h?h.ac:(/^00/.test(c)?'p':'a');if(!AT.px){const v=num((S.px||{})[c])??(typeof PXL!='undefined'&&PXL[c]?PXL[c].v:null);if(v!=null)AT.px=String(v)}$('asOvB').innerHTML=asTradeHtml();asTh();asPrev()};
 document.addEventListener('input',e=>{const f=e.target.dataset&&e.target.dataset.at;if(!f||!AT)return;AT[f]=e.target.value;
  if(f=='c'){const v=e.target.value.trim(),V=v.toUpperCase();AT.c=V;$('atNm').innerText=nameOf(V);const el=$('atSug');if(el){const hits=[];if(v&&!STK[V]){const asc=/^[0-9A-Z]+$/.test(V);for(const c in STK){if(asc?c.startsWith(V):STK[c].includes(v)){hits.push(c);if(hits.length>=6)break}}}el.innerHTML=hits.map(c=>`<button onclick="asAtPick('${c}')">${c} ${esc(STK[c])}</button>`).join('')}asTh()}
  if(f=='stop')AT.stopEd=1;asPrev()});
@@ -152,5 +152,5 @@ window.asTradeSave=()=>{const a=AT,c=cU(a.c);if(!c){toast('請填代號',0);retu
   if(T){x.thesisId=T.id;if(T.status=='plan')T.status='build';
    if(a.k=='sell'){const h=holdings(S).find(z=>z.ac=='a'&&cU(z.n)==c);if(!h||h.q<=0){T.status='exit';T.exit=Object.assign(T.exit||{},{date:x.dt,reason:AS_RS2EXIT[x.rs]||'other',followed:a.fol});msg+=`，${T.id} 已標記為已出場`}}}}
  else if(a.ac!='a')x.thesisId='';
- stBuild();renderTrades();upd();toast(msg,0);asStock(c,a.ac)};
+ stBuild();renderTrades();upd();if(typeof pxApply=='function')pxApply();toast(msg,0);asStock(c,a.ac)};
 window.asTradeDel=()=>{if(!confirm('刪除這筆交易？'))return;const x=S.trades[AT.i];S.trades.splice(AT.i,1);if(typeof trEd!='undefined')trEd.clear();renderTrades();upd();toast('已刪除',0);asStock(cU(x.n),x.ac=='a'?'a':'p')};

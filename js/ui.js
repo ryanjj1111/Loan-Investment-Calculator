@@ -321,7 +321,7 @@ function calc(){
     return`<tr class=x data-sec="${ac}" style="cursor:pointer"><td colspan=${COLS.length}>${op?'▾':'▸'} ${ac=='p'?'被動部位':'主動部位'}（${L.length} 檔）</td></tr>`+(op?L.map(one).join(''):'')+srow('小計','hs_'+ac,sub(ac,L))}).join('')}${srow('合計','hs_t',all)}</tbody>`:'';
    if($('trMoreB'))$('trMoreB').innerHTML=any?`<button onclick="tgMore()">${MORE?'只顯示主要欄位':'顯示更多欄位（均價、已實現、配息、殖利率、目標、還差）'}</button>`:''}
   put();
-  const nb=netBuy(S,null,'9999-12-31');if($('trSum2'))$('trSum2').innerText=T.length?'撥款後累計：被動淨投入 '+nb.p.toFixed(2)+' 萬、主動淨投入 '+nb.a.toFixed(2)+' 萬、配息 '+R(nb.d*1e4)+' 元。持股與現價在下方「結算」區。':'';if($('trSum'))$('trSum').innerText=(T.length||hasInit(S))?'成本：期初持股以撥款日收盤價計，撥款後依交易紀錄（移動平均）。「還差」＝目標－撥款後淨投入；目標＝資金配置的被動計畫金額 × 試算頁設定的 ETF 比例；主動只比較帳戶合計與計畫金額。小計與合計的「目標」欄為計畫金額。撥款後累計：被動淨投入 '+nb.p.toFixed(2)+' 萬、主動淨投入 '+nb.a.toFixed(2)+' 萬、配息 '+R(nb.d*1e4)+' 元。':''}
+  const nb=netBuy(S,null,'9999-12-31');if($('trSum2'))$('trSum2').innerText=T.length?'撥款後累計：被動淨投入 '+nb.p.toFixed(2)+' 萬、主動淨投入 '+nb.a.toFixed(2)+' 萬、配息 '+R(nb.d*1e4)+' 元。持股與現價在下方「持股明細表」。':'';if($('trSum'))$('trSum').innerText=(T.length||hasInit(S))?'成本：期初持股以撥款日收盤價計，撥款後依交易紀錄（移動平均）。「還差」＝目標－撥款後淨投入；目標＝資金配置的被動計畫金額 × 試算頁設定的 ETF 比例；主動只比較帳戶合計與計畫金額。小計與合計的「目標」欄為計畫金額。撥款後累計：被動淨投入 '+nb.p.toFixed(2)+' 萬、主動淨投入 '+nb.a.toFixed(2)+' 萬、配息 '+R(nb.d*1e4)+' 元。':''}
  // 本期結算結果
  const ce=curEff(),r=settle(S,ce);
  const prev=ss.filter(o=>sDate(o.s)<sDate(S.cur)).map(o=>o.s),twC=r?twr(S,prev.concat([ce])).pop():null;
