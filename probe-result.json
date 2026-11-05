@@ -1,0 +1,1351 @@
+{
+ "at": "2026-11-05T13:43:40.321Z",
+ "ymd": "20261105",
+ "r": {
+  "twse_open": {
+   "u": "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
+   "status": 200,
+   "ms": 1129,
+   "acao": null,
+   "ct": "application/json",
+   "len": 313406,
+   "info": {
+    "arr": 1390,
+    "keys": [
+     "Date",
+     "Code",
+     "Name",
+     "TradeVolume",
+     "TradeValue",
+     "OpeningPrice",
+     "HighestPrice",
+     "LowestPrice",
+     "ClosingPrice",
+     "Change",
+     "Transaction"
+    ],
+    "first": {
+     "Date": "1151104",
+     "Code": "00400A",
+     "Name": "主動國泰動能高息",
+     "TradeVolume": "78266533",
+     "TradeValue": "993603586",
+     "OpeningPrice": "13.06",
+     "HighestPrice": "13.06",
+     "LowestPrice": "12.30",
+     "ClosingPrice": "12.86",
+     "Change": "-0.0500",
+     "Transaction": "20893"
+    },
+    "find": {
+     "Date": "1151104",
+     "Code": "0050",
+     "Name": "元大台灣50",
+     "TradeVolume": "447215925",
+     "TradeValue": "44367305387",
+     "OpeningPrice": "101.55",
+     "HighestPrice": "101.65",
+     "LowestPrice": "97.55",
+     "ClosingPrice": "99.85",
+     "Change": "-0.7500",
+     "Transaction": "836670"
+    }
+   }
+  },
+  "twse_rwd_all": {
+   "u": "https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY_ALL?response=json",
+   "status": 200,
+   "ms": 1066,
+   "acao": "*",
+   "ct": "text/csv;charset=utf-8",
+   "len": 130118,
+   "info": {
+    "text": "日期,證券代號,證券名稱,成交股數,成交金額,開盤價,最高價,最低價,收盤價,漲跌價差,成交筆數\r\n\"1151105\",\"00400A\",\"主動國泰動能高息\",\"87839346\",\"1076317847\",\"12.60\",\"12.61\",\"12.05\",\"12.06\",\"-0.8000\",\"26700\"\r\n\"1151105\",\"00401A\",\"主動摩根台灣鑫收\",\"17329949\",\"209261412\",\"12.31\",\"12.34\",\"11.90\",\"11.91\",\"-0.4900\",\"3909\"\r\n\"1151105\",\"00402A\",\"主動安聯美國科技\",\"1747755\",\"1"
+   }
+  },
+  "twse_old_all": {
+   "u": "https://www.twse.com.tw/exchangeReport/STOCK_DAY_ALL?response=json",
+   "status": 200,
+   "ms": 985,
+   "acao": "*",
+   "ct": "text/csv;charset=utf-8",
+   "len": 130118,
+   "info": {
+    "text": "日期,證券代號,證券名稱,成交股數,成交金額,開盤價,最高價,最低價,收盤價,漲跌價差,成交筆數\r\n\"1151105\",\"00400A\",\"主動國泰動能高息\",\"87839346\",\"1076317847\",\"12.60\",\"12.61\",\"12.05\",\"12.06\",\"-0.8000\",\"26700\"\r\n\"1151105\",\"00401A\",\"主動摩根台灣鑫收\",\"17329949\",\"209261412\",\"12.31\",\"12.34\",\"11.90\",\"11.91\",\"-0.4900\",\"3909\"\r\n\"1151105\",\"00402A\",\"主動安聯美國科技\",\"1747755\",\"1"
+   }
+  },
+  "twse_mi_index": {
+   "u": "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=20261105&type=ALLBUT0999&response=json",
+   "status": 200,
+   "ms": 189,
+   "acao": "*",
+   "ct": "application/json;charset=UTF-8",
+   "len": 235774,
+   "info": {
+    "keys": [
+     "tables",
+     "type",
+     "params",
+     "stat",
+     "date"
+    ],
+    "stat": "OK",
+    "date": "20261105",
+    "dlen": 0,
+    "tables": [
+     {
+      "title": "115年11月05日 價格指數(臺灣證券交易所)",
+      "fields": [
+       "指數",
+       "收盤指數",
+       "漲跌(+/-)",
+       "漲跌點數",
+       "漲跌百分比(%)",
+       "特殊處理註記"
+      ],
+      "n": 56,
+      "d0": [
+       "寶島股價指數",
+       "45,763.61",
+       "<p style ='color:green'>-</p>",
+       "1,613.46",
+       "-3.41",
+       ""
+      ]
+     },
+     {
+      "title": "價格指數(跨市場)",
+      "fields": [
+       "指數",
+       "收盤指數",
+       "漲跌(+/-)",
+       "漲跌點數",
+       "漲跌百分比(%)",
+       "特殊處理註記"
+      ],
+      "n": 46,
+      "d0": [
+       "臺灣生技指數",
+       "3,802.28",
+       "<p style ='color:green'>-</p>",
+       "28.84",
+       "-0.75",
+       ""
+      ]
+     },
+     {
+      "title": "價格指數(臺灣指數公司)",
+      "fields": [
+       "指數",
+       "收盤指數",
+       "漲跌(+/-)",
+       "漲跌點數",
+       "漲跌百分比(%)",
+       "特殊處理註記"
+      ],
+      "n": 36,
+      "d0": [
+       "金融類日報酬兩倍指數",
+       "131,455.03",
+       "<p style ='color:red'>+</p>",
+       "1,065.70",
+       "0.82",
+       ""
+      ]
+     },
+     {
+      "title": "報酬指數(臺灣證券交易所)",
+      "fields": [
+       "報酬指數",
+       "收盤指數",
+       "漲跌(+/-)",
+       "漲跌點數",
+       "漲跌百分比(%)",
+       "特殊處理註記"
+      ],
+      "n": 47,
+      "d0": [
+       "寶島股價報酬指數",
+       "71,197.92",
+       "<p style ='color:green'>-</p>",
+       "2,510.09",
+       "-3.41",
+       ""
+      ]
+     },
+     {
+      "title": "報酬指數(跨市場)",
+      "fields": [
+       "報酬指數",
+       "收盤指數",
+       "漲跌(+/-)",
+       "漲跌點數",
+       "漲跌百分比(%)",
+       "特殊處理註記"
+      ],
+      "n": 47,
+      "d0": [
+       "臺灣生技報酬指數",
+       "4,472.82",
+       "<p style ='color:green'>-</p>",
+       "33.92",
+       "-0.75",
+       ""
+      ]
+     },
+     {
+      "title": "報酬指數(臺灣指數公司)",
+      "fields": [
+       "報酬指數",
+       "收盤指數",
+       "漲跌(+/-)",
+       "漲跌點數",
+       "漲跌百分比(%)",
+       "特殊處理註記"
+      ],
+      "n": 35,
+      "d0": [
+       "漲升股利150報酬指數",
+       "30,668.77",
+       "<p style ='color:green'>-</p>",
+       "1,437.80",
+       "-4.48",
+       ""
+      ]
+     },
+     {
+      "title": "115年11月05日 大盤統計資訊",
+      "fields": [
+       "成交統計",
+       "成交金額(元)",
+       "成交股數(股)",
+       "成交筆數"
+      ],
+      "n": 17,
+      "d0": [
+       "1.一般股票",
+       "823,555,720,099",
+       "4,317,460,168",
+       "3,877,075"
+      ]
+     },
+     {
+      "title": "漲跌證券數合計",
+      "fields": [
+       "類型",
+       "整體市場",
+       "股票"
+      ],
+      "n": 5,
+      "d0": [
+       "上漲(漲停)",
+       "2,663(12)",
+       "167(5)"
+      ]
+     },
+     {
+      "title": "115年11月05日 每日收盤行情(全部(不含權證、牛熊證、可展延牛熊證))",
+      "fields": [
+       "證券代號",
+       "證券名稱",
+       "成交股數",
+       "成交筆數",
+       "成交金額",
+       "開盤價",
+       "最高價",
+       "最低價",
+       "收盤價",
+       "漲跌(+/-)",
+       "漲跌價差",
+       "最後揭示買價",
+       "最後揭示買量",
+       "最後揭示賣價",
+       "最後揭示賣量",
+       "本益比"
+      ],
+      "n": 1389,
+      "d0": [
+       "00400A",
+       "主動國泰動能高息",
+       "87,839,346",
+       "26,700",
+       "1,076,317,847",
+       "12.60",
+       "12.61",
+       "12.05",
+       "12.06",
+       "<p style= color:green>-</p>",
+       "0.80",
+       "12.05",
+       "883",
+       "12.06",
+       "2,773",
+       "0.00"
+      ]
+     },
+     {
+      "n": 0
+     }
+    ]
+   }
+  },
+  "twse_mi_index_prev": {
+   "u": "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=20261104&type=ALLBUT0999&response=json",
+   "status": 200,
+   "ms": 187,
+   "acao": "*",
+   "ct": "application/json;charset=UTF-8",
+   "len": 234363,
+   "info": {
+    "keys": [
+     "tables",
+     "type",
+     "params",
+     "stat",
+     "date"
+    ],
+    "stat": "OK",
+    "date": "20261104",
+    "dlen": 0,
+    "tables": [
+     {
+      "title": "115年11月04日 價格指數(臺灣證券交易所)",
+      "fields": [
+       "指數",
+       "收盤指數",
+       "漲跌(+/-)",
+       "漲跌點數",
+       "漲跌百分比(%)",
+       "特殊處理註記"
+      ],
+      "n": 56,
+      "d0": [
+       "寶島股價指數",
+       "47,377.07",
+       "<p style ='color:green'>-</p>",
+       "388.17",
+       "-0.81",
+       ""
+      ]
+     },
+     {
+      "title": "價格指數(跨市場)",
+      "fields": [
+       "指數",
+       "收盤指數",
+       "漲跌(+/-)",
+       "漲跌點數",
+       "漲跌百分比(%)",
+       "特殊處理註記"
+      ],
+      "n": 46,
+      "d0": [
+       "臺灣生技指數",
+       "3,831.12",
+       "<p style ='color:red'>+</p>",
+       "1.72",
+       "0.04",
+       ""
+      ]
+     },
+     {
+      "title": "價格指數(臺灣指數公司)",
+      "fields": [
+       "指數",
+       "收盤指數",
+       "漲跌(+/-)",
+       "漲跌點數",
+       "漲跌百分比(%)",
+       "特殊處理註記"
+      ],
+      "n": 36,
+      "d0": [
+       "金融類日報酬兩倍指數",
+       "130,389.33",
+       "<p style ='color:green'>-</p>",
+       "1,871.29",
+       "-1.41",
+       ""
+      ]
+     },
+     {
+      "title": "報酬指數(臺灣證券交易所)",
+      "fields": [
+       "報酬指數",
+       "收盤指數",
+       "漲跌(+/-)",
+       "漲跌點數",
+       "漲跌百分比(%)",
+       "特殊處理註記"
+      ],
+      "n": 47,
+      "d0": [
+       "寶島股價報酬指數",
+       "73,708.01",
+       "<p style ='color:green'>-</p>",
+       "603.85",
+       "-0.81",
+       ""
+      ]
+     },
+     {
+      "title": "報酬指數(跨市場)",
+      "fields": [
+       "報酬指數",
+       "收盤指數",
+       "漲跌(+/-)",
+       "漲跌點數",
+       "漲跌百分比(%)",
+       "特殊處理註記"
+      ],
+      "n": 47,
+      "d0": [
+       "臺灣生技報酬指數",
+       "4,506.74",
+       "<p style ='color:red'>+</p>",
+       "2.02",
+       "0.04",
+       ""
+      ]
+     },
+     {
+      "title": "報酬指數(臺灣指數公司)",
+      "fields": [
+       "報酬指數",
+       "收盤指數",
+       "漲跌(+/-)",
+       "漲跌點數",
+       "漲跌百分比(%)",
+       "特殊處理註記"
+      ],
+      "n": 35,
+      "d0": [
+       "漲升股利150報酬指數",
+       "32,106.57",
+       "<p style ='color:green'>-</p>",
+       "77.11",
+       "-0.24",
+       ""
+      ]
+     },
+     {
+      "title": "115年11月04日 大盤統計資訊",
+      "fields": [
+       "成交統計",
+       "成交金額(元)",
+       "成交股數(股)",
+       "成交筆數"
+      ],
+      "n": 17,
+      "d0": [
+       "1.一般股票",
+       "1,013,823,496,008",
+       "4,723,366,836",
+       "4,169,062"
+      ]
+     },
+     {
+      "title": "漲跌證券數合計",
+      "fields": [
+       "類型",
+       "整體市場",
+       "股票"
+      ],
+      "n": 5,
+      "d0": [
+       "上漲(漲停)",
+       "3,368(40)",
+       "438(20)"
+      ]
+     },
+     {
+      "title": "115年11月04日 每日收盤行情(全部(不含權證、牛熊證、可展延牛熊證))",
+      "fields": [
+       "證券代號",
+       "證券名稱",
+       "成交股數",
+       "成交筆數",
+       "成交金額",
+       "開盤價",
+       "最高價",
+       "最低價",
+       "收盤價",
+       "漲跌(+/-)",
+       "漲跌價差",
+       "最後揭示買價",
+       "最後揭示買量",
+       "最後揭示賣價",
+       "最後揭示賣量",
+       "本益比"
+      ],
+      "n": 1390,
+      "d0": [
+       "00400A",
+       "主動國泰動能高息",
+       "78,266,533",
+       "20,893",
+       "993,603,586",
+       "13.06",
+       "13.06",
+       "12.30",
+       "12.86",
+       "<p style= color:green>-</p>",
+       "0.05",
+       "12.85",
+       "420",
+       "12.86",
+       "2,377",
+       "0.00"
+      ]
+     },
+     {
+      "n": 0
+     }
+    ]
+   }
+  },
+  "twse_stock_day": {
+   "u": "https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY?date=20261001&stockNo=0050&response=json",
+   "status": 200,
+   "ms": 270,
+   "acao": "*",
+   "ct": "application/json;charset=UTF-8",
+   "len": 2317,
+   "info": {
+    "keys": [
+     "stat",
+     "date",
+     "title",
+     "fields",
+     "data",
+     "notes",
+     "total"
+    ],
+    "stat": "OK",
+    "date": "20261001",
+    "title": "115年10月 0050 元大台灣50       各日成交資訊",
+    "fields": [
+     "日期",
+     "成交股數",
+     "成交金額",
+     "開盤價",
+     "最高價",
+     "最低價",
+     "收盤價",
+     "漲跌價差",
+     "成交筆數",
+     "註記"
+    ],
+    "dlen": 19,
+    "d0": [
+     "115/10/01",
+     "55,443,347",
+     "6,223,565,909",
+     "112.20",
+     "112.90",
+     "111.70",
+     "112.90",
+     "+0.85",
+     "73,100",
+     ""
+    ],
+    "tables": []
+   }
+  },
+  "tpex_open": {
+   "u": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
+   "status": 200,
+   "ms": 11931,
+   "acao": null,
+   "ct": "application/json",
+   "len": 5191859,
+   "info": {
+    "arr": 13679,
+    "keys": [
+     "Date",
+     "SecuritiesCompanyCode",
+     "CompanyName",
+     "Close",
+     "Change",
+     "Open",
+     "High",
+     "Low",
+     "Average",
+     "TradingShares",
+     "TransactionAmount",
+     "TransactionNumber",
+     "LatestBidPrice",
+     "LatesAskPrice",
+     "Capitals",
+     "NextReferencePrice",
+     "NextLimitUp",
+     "NextLimitDown"
+    ],
+    "first": {
+     "Date": "1151105",
+     "SecuritiesCompanyCode": "00411A",
+     "CompanyName": "主動統一前沿科技",
+     "Close": "8.91",
+     "Change": "-0.31 ",
+     "Open": "9.20",
+     "High": "9.20",
+     "Low": "8.91",
+     "Average": "8.98",
+     "TradingShares": "15251508",
+     "TransactionAmount": "136969017",
+     "TransactionNumber": "2312",
+     "LatestBidPrice": "8.90",
+     "LatesAskPrice": "8.91",
+     "Capitals": "469076000",
+     "NextReferencePrice": "8.91",
+     "NextLimitUp": "9999.95",
+     "NextLimitDown": "0.01"
+    },
+    "find": {
+     "Date": "1151105",
+     "SecuritiesCompanyCode": "2719",
+     "CompanyName": "燦星旅",
+     "Close": "17.30",
+     "Change": "0.00 ",
+     "Open": "17.30",
+     "High": "17.60",
+     "Low": "17.00",
+     "Average": "17.22",
+     "TradingShares": "13534",
+     "TransactionAmount": "233097",
+     "TransactionNumber": "20",
+     "LatestBidPrice": "17.30",
+     "LatesAskPrice": "17.35",
+     "Capitals": "69455500",
+     "NextReferencePrice": "17.30",
+     "NextLimitUp": "19.00",
+     "NextLimitDown": "15.60"
+    }
+   }
+  },
+  "tpex_www_dailyq": {
+   "u": "https://www.tpex.org.tw/www/zh-tw/afterTrading/dailyQ?date=2026/11/04&response=json",
+   "status": 200,
+   "ms": 888,
+   "acao": null,
+   "ct": "text/html",
+   "len": 8499,
+   "info": {
+    "text": "<!DOCTYPE html><html lang=\"zh-Hant-tw\"><head><title>404 - 證券櫃檯買賣中心</title><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no\"><meta name=\"author\" content=\"\"><meta name=\"description\" content=\"櫃買中心是國內第一個彙整國內外重要綠色相關標章，並揭示上市櫃公司取得"
+   }
+  },
+  "tpex_www_otc": {
+   "u": "https://www.tpex.org.tw/www/zh-tw/afterTrading/otc?date=2026/11/04&type=EW&response=json",
+   "status": 200,
+   "ms": 1529,
+   "acao": null,
+   "ct": "application/json;charset=UTF-8",
+   "len": 141277,
+   "info": {
+    "keys": [
+     "tables",
+     "date",
+     "flagField",
+     "stat"
+    ],
+    "stat": "ok",
+    "date": "20261104",
+    "dlen": 0,
+    "tables": [
+     {
+      "title": "上櫃股票每日收盤行情(不含定價)",
+      "fields": [
+       "代號",
+       "名稱",
+       "收盤 ",
+       "漲跌",
+       "開盤 ",
+       "最高 ",
+       "最低",
+       "成交股數  ",
+       " 成交金額(元)",
+       " 成交筆數 ",
+       "最後買價",
+       "最後買量<br>(張數)",
+       "最後賣價",
+       "最後賣量<br>(張數)",
+       "發行股數 ",
+       "次日漲停價 ",
+       "次日跌停價"
+      ],
+      "n": 1018,
+      "d0": [
+       "00411A",
+       "主動統一前沿科技",
+       "9.22",
+       "+0.13",
+       "9.29",
+       "9.30",
+       "8.99",
+       "15,448,000",
+       "140,635,240",
+       "1,406",
+       "9.21",
+       "8",
+       "9.22",
+       "228",
+       "464,576,000",
+       "9,999.95",
+       "0.01"
+      ]
+     }
+    ]
+   }
+  },
+  "tpex_old": {
+   "u": "https://www.tpex.org.tw/web/stock/aftertrading/daily_close_quotes/stk_quote_result.php?l=zh-tw&d=115/11/04&o=json",
+   "status": 200,
+   "ms": 3169,
+   "acao": null,
+   "ct": "application/json;charset=UTF-8",
+   "len": 1892284,
+   "info": {
+    "keys": [
+     "date",
+     "tables",
+     "flagField",
+     "stat"
+    ],
+    "stat": "ok",
+    "date": "20261105",
+    "dlen": 0,
+    "tables": [
+     {
+      "title": "上櫃股票行情",
+      "fields": [
+       "代號",
+       "名稱",
+       "收盤",
+       "漲跌",
+       "開盤",
+       "最高",
+       "最低",
+       "均價",
+       "成交股數",
+       "成交金額(元)",
+       "成交筆數",
+       "最後買價",
+       "最後買量(張數)",
+       "最後賣價",
+       "最後賣量(張數)",
+       "發行股數",
+       "次日 參考價",
+       "次日 漲停價",
+       "次日 跌停價"
+      ],
+      "n": 13679,
+      "d0": [
+       "00411A",
+       "主動統一前沿科技",
+       "8.91",
+       "-0.31 ",
+       "9.20",
+       "9.20",
+       "8.91",
+       "8.98",
+       "15,251,508",
+       "136,969,017",
+       "2,312",
+       "8.90",
+       "376",
+       "8.91",
+       "227",
+       "469,076,000",
+       "8.91",
+       "9999.95",
+       "0.01"
+      ]
+     },
+     {
+      "title": "管理股票",
+      "fields": [
+       "代號",
+       "名稱",
+       "收盤",
+       "漲跌",
+       "開盤",
+       "最高",
+       "最低",
+       "均價",
+       "成交股數",
+       "成交金額(元)",
+       "成交筆數",
+       "最後買價",
+       "最後買量(張數)",
+       "最後賣價",
+       "最後賣量(張數)",
+       "發行股數",
+       "次日 參考價",
+       "次日 漲停價",
+       "次日 跌停價"
+      ],
+      "n": 0
+     }
+    ]
+   }
+  },
+  "mis": {
+   "u": "https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_0050.tw|tse_2330.tw&json=1&delay=0",
+   "status": 200,
+   "ms": 571,
+   "acao": null,
+   "ct": "application/json;charset=UTF-8",
+   "len": 1989,
+   "info": {
+    "keys": [
+     "msgArray",
+     "referer",
+     "userDelay",
+     "rtcode",
+     "queryTime",
+     "rtmessage",
+     "exKey",
+     "cachedAlive"
+    ],
+    "dlen": 0,
+    "tables": [],
+    "msg": [
+     {
+      "@": "0050.tw",
+      "tv": "5166",
+      "ps": "4827",
+      "nu": "http://www.yuantaetfs.com/#/RtNav/Index",
+      "pid": "9.tse.tw|15",
+      "pz": "97.1500",
+      "bp": "0",
+      "fv": "1156",
+      "oa": "97.3500",
+      "ob": "97.3000",
+      "m%": "000000",
+      "key": "tse_0050.tw_20261105",
+      "^": "20261105",
+      "a": "97.1500_97.2000_97.2500_97.3000_97.3500_",
+      "b": "97.1000_97.0500_97.0000_96.9500_96.9000_",
+      "c": "0050",
+      "#": "13.tse.tw|2738",
+      "d": "20261105",
+      "%": "14:30:00",
+      "ch": "0050.tw",
+      "tlong": "1793860200000",
+      "ot": "14:30:00",
+      "f": "133_1706_931_144_94_",
+      "g": "656_1079_1697_491_1108_",
+      "ip": "0",
+      "mt": "000000",
+      "ov": "513651",
+      "h": "99.7500",
+      "it": "02",
+      "oz": "97.3500",
+      "l": "96.9000",
+      "n": "元大台灣50",
+      "o": "99.4000",
+      "p": "0",
+      "ex": "tse",
+      "s": "5166",
+      "trade": {
+       "t": "13:30:00",
+       "v": 5166,
+       "z": "97.1500",
+       "ft": 20
+      },
+      "t": "13:30:00",
+      "u": "109.8000",
+      "v": "423468",
+      "w": "89.9000",
+      "nf": "元大台灣卓越50證券投資信託基金",
+      "y": "99.8500",
+      "z": "97.1500",
+      "ts": "0"
+     },
+     {
+      "@": "2330.tw",
+      "tv": "4601",
+      "ps": "4578",
+      "pid": "9.tse.tw|17256",
+      "pz": "2240.0000",
+      "bp": "0",
+      "fv": "148",
+      "oa": "2240.0000",
+      "ob": "2235.0000",
+      "m%": "000000",
+      "^": "20261105",
+      "key": "tse_2330.tw_20261105",
+      "a": "2240.0000_2245.0000_2250.0000_2255.0000_2260.0000_",
+      "b": "2235.0000_2230.0000_2225.0000_2220.0000_2215.0000_",
+      "c": "2330",
+      "#": "13.tse.tw|2626",
+      "d": "20261105",
+      "%": "14:30:00",
+      "ch": "2330.tw",
+      "tlong": "1793860200000",
+      "ot": "14:30:00",
+      "f": "41_949_1346_408_370_",
+      "g": "258_577_235_782_599_",
+      "ip": "0",
+      "mt": "000000",
+      "ov": "278278",
+      "h": "2285.0000",
+      "i": "24",
+      "it": "12",
+      "oz": "2240.0000",
+      "l": "2235.0000",
+      "n": "台積電",
+      "o": "2250.0000",
+      "p": "0",
+      "ex": "tse",
+      "s": "4601",
+      "trade": {
+       "t": "13:30:00",
+       "v": 4601,
+       "z": "2240.0000",
+       "ft": 20
+      },
+      "t": "13:30:00",
+      "u": "2485.0000",
+      "v": "36437",
+      "w": "2035.0000",
+      "nf": "台灣積體電路製造股份有限公司",
+      "y": "2260.0000",
+      "z": "2240.0000",
+      "ts": "0"
+     }
+    ]
+   }
+  },
+  "mis_otc": {
+   "u": "https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=otc_3529.tw&json=1&delay=0",
+   "status": 200,
+   "ms": 139,
+   "acao": null,
+   "ct": "application/json;charset=UTF-8",
+   "len": 1117,
+   "info": {
+    "keys": [
+     "msgArray",
+     "referer",
+     "userDelay",
+     "rtcode",
+     "queryTime",
+     "rtmessage",
+     "exKey",
+     "cachedAlive"
+    ],
+    "dlen": 0,
+    "tables": [],
+    "msg": [
+     {
+      "@": "3529.tw",
+      "tv": "64",
+      "ps": "57",
+      "pid": "9.otc.tw|374",
+      "pz": "2025.0000",
+      "bp": "0",
+      "fv": "1",
+      "oa": "2030.0000",
+      "ob": "2025.0000",
+      "m%": "000000",
+      "^": "20261105",
+      "key": "otc_3529.tw_20261105",
+      "a": "2030.0000_2035.0000_2040.0000_2045.0000_2050.0000_",
+      "b": "2025.0000_2020.0000_2010.0000_2005.0000_2000.0000_",
+      "c": "3529",
+      "#": "13.otc.tw|1646",
+      "d": "20261105",
+      "%": "14:30:00",
+      "ch": "3529.tw",
+      "tlong": "1793860200000",
+      "ot": "14:30:00",
+      "f": "11_3_2_1_3_",
+      "g": "2_3_1_6_21_",
+      "ip": "0",
+      "mt": "000000",
+      "ov": "822",
+      "h": "2155.0000",
+      "i": "24",
+      "it": "12",
+      "oz": "2030.0000",
+      "l": "2005.0000",
+      "n": "力旺",
+      "o": "2145.0000",
+      "p": "0",
+      "ex": "otc",
+      "s": "64",
+      "trade": {
+       "t": "13:30:00",
+       "v": 64,
+       "z": "2025.0000",
+       "ft": 20
+      },
+      "t": "13:30:00",
+      "u": "2375.0000",
+      "v": "929",
+      "w": "1945.0000",
+      "nf": "力旺電子股份有限公司",
+      "y": "2160.0000",
+      "z": "2025.0000",
+      "ts": "0"
+     }
+    ]
+   }
+  },
+  "twse_t86": {
+   "u": "https://www.twse.com.tw/rwd/zh/fund/T86?date=20261104&selectType=ALLBUT0999&response=json",
+   "status": 200,
+   "ms": 768,
+   "acao": "*",
+   "ct": "application/json;charset=UTF-8",
+   "len": 189135,
+   "info": {
+    "keys": [
+     "stat",
+     "date",
+     "title",
+     "hints",
+     "fields",
+     "data",
+     "selectType",
+     "notes",
+     "total"
+    ],
+    "stat": "OK",
+    "date": "20261104",
+    "title": "115年11月04日 三大法人買賣超日報",
+    "fields": [
+     "證券代號",
+     "證券名稱",
+     "外陸資買進股數(不含外資自營商)",
+     "外陸資賣出股數(不含外資自營商)",
+     "外陸資買賣超股數(不含外資自營商)",
+     "外資自營商買進股數",
+     "外資自營商賣出股數",
+     "外資自營商買賣超股數",
+     "投信買進股數",
+     "投信賣出股數",
+     "投信買賣超股數",
+     "自營商買賣超股數",
+     "自營商買進股數(自行買賣)",
+     "自營商賣出股數(自行買賣)",
+     "自營商買賣超股數(自行買賣)",
+     "自營商買進股數(避險)",
+     "自營商賣出股數(避險)",
+     "自營商買賣超股數(避險)",
+     "三大法人買賣超股數"
+    ],
+    "dlen": 1354,
+    "d0": [
+     "00632R",
+     "元大台灣50反1   ",
+     "6,269,000",
+     "4,146,000",
+     "2,123,000",
+     "0",
+     "0",
+     "0",
+     "0",
+     "0",
+     "0",
+     "133,115,277",
+     "648,000",
+     "4,350,000",
+     "-3,702,000",
+     "174,978,079",
+     "38,160,802",
+     "136,817,277",
+     "135,238,277"
+    ],
+    "tables": []
+   }
+  },
+  "twse_margin": {
+   "u": "https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date=20261104&selectType=ALL&response=json",
+   "status": 200,
+   "ms": 204,
+   "acao": "*",
+   "ct": "application/json;charset=UTF-8",
+   "len": 121409,
+   "info": {
+    "keys": [
+     "stat",
+     "date",
+     "tables"
+    ],
+    "stat": "OK",
+    "date": "20261104",
+    "dlen": 0,
+    "tables": [
+     {
+      "title": "115年11月04日 信用交易統計",
+      "fields": [
+       "項目",
+       "買進",
+       "賣出",
+       "現金(券)償還",
+       "前日餘額",
+       "今日餘額"
+      ],
+      "n": 3,
+      "d0": [
+       "融資(交易單位)",
+       "446,302",
+       "404,510",
+       "9,713",
+       "9,482,836",
+       "9,514,915"
+      ]
+     },
+     {
+      "title": "115年11月04日 融資融券彙總 (全部)",
+      "fields": [
+       "代號",
+       "名稱",
+       "買進",
+       "賣出",
+       "現金償還",
+       "前日餘額",
+       "今日餘額",
+       "次一營業日限額",
+       "買進",
+       "賣出",
+       "現券償還",
+       "前日餘額",
+       "今日餘額",
+       "次一營業日限額",
+       "資券互抵",
+       "註記"
+      ],
+      "n": 1306,
+      "d0": [
+       "00400A",
+       "主動國泰動能高息",
+       "1,962",
+       "465",
+       "61",
+       "14,771",
+       "16,207",
+       "567,785",
+       "0",
+       "0",
+       "0",
+       "0",
+       "0",
+       "567,785",
+       "0",
+       "X "
+      ]
+     }
+    ]
+   }
+  },
+  "tpex_open_inst": {
+   "u": "https://www.tpex.org.tw/openapi/v1/tpex_3insti_daily_trading",
+   "status": 200,
+   "ms": 1178,
+   "acao": null,
+   "ct": "application/json",
+   "len": 857897,
+   "info": {
+    "arr": 910,
+    "keys": [
+     "Date",
+     "SecuritiesCompanyCode",
+     "CompanyName",
+     "Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Total Buy",
+     " Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Total Sell",
+     "Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Difference",
+     "Foreign Dealers-Total Buy",
+     "Foreign Dealers-TotalSell",
+     "ForeignDealers-Difference",
+     "ForeignInvestorsIncludeMainlandAreaInvestors-TotalBuy",
+     "ForeignInvestorsIncludeMainlandAreaInvestors-TotalSell",
+     "ForeignInvestorsInclude MainlandAreaInvestors-Difference",
+     "SecuritiesInvestmentTrustCompanies-TotalBuy",
+     "SecuritiesInvestmentTrustCompanies-TotalSell",
+     "SecuritiesInvestmentTrustCompanies-Difference",
+     "Dealers-TotalBuy",
+     "Dealers-TotalSell",
+     "Dealers-Difference",
+     "Dealers -TotalSell",
+     "TotalDifference"
+    ],
+    "first": {
+     "Date": "1151105",
+     "SecuritiesCompanyCode": "00411A",
+     "CompanyName": "主動統一前沿科技",
+     "Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Total Buy": "1694099",
+     " Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Total Sell": "1696100",
+     "Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Difference": "-2001",
+     "Foreign Dealers-Total Buy": "0",
+     "Foreign Dealers-TotalSell": "0",
+     "ForeignDealers-Difference": "0",
+     "ForeignInvestorsIncludeMainlandAreaInvestors-TotalBuy": "1694099",
+     "ForeignInvestorsIncludeMainlandAreaInvestors-TotalSell": "1696100",
+     "ForeignInvestorsInclude MainlandAreaInvestors-Difference": "-2001",
+     "SecuritiesInvestmentTrustCompanies-TotalBuy": "0",
+     "SecuritiesInvestmentTrustCompanies-TotalSell": "0",
+     "SecuritiesInvestmentTrustCompanies-Difference": "0",
+     "Dealers-TotalBuy": "5966000",
+     "Dealers-TotalSell": "6121245",
+     "Dealers-Difference": "-155245",
+     "Dealers -TotalSell": "6121245",
+     "TotalDifference": "-157246"
+    },
+    "find": {
+     "Date": "1151105",
+     "SecuritiesCompanyCode": "00998A",
+     "CompanyName": "主動復華金融股息",
+     "Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Total Buy": "8476300",
+     " Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Total Sell": "853000",
+     "Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Difference": "7623300",
+     "Foreign Dealers-Total Buy": "0",
+     "Foreign Dealers-TotalSell": "0",
+     "ForeignDealers-Difference": "0",
+     "ForeignInvestorsIncludeMainlandAreaInvestors-TotalBuy": "8476300",
+     "ForeignInvestorsIncludeMainlandAreaInvestors-TotalSell": "853000",
+     "ForeignInvestorsInclude MainlandAreaInvestors-Difference": "7623300",
+     "SecuritiesInvestmentTrustCompanies-TotalBuy": "0",
+     "SecuritiesInvestmentTrustCompanies-TotalSell": "0",
+     "SecuritiesInvestmentTrustCompanies-Difference": "0",
+     "Dealers-TotalBuy": "4667000",
+     "Dealers-TotalSell": "3606000",
+     "Dealers-Difference": "1061000",
+     "Dealers -TotalSell": "3606000",
+     "TotalDifference": "8684300"
+    }
+   }
+  },
+  "twse_open_rev": {
+   "u": "https://openapi.twse.com.tw/v1/opendata/t187ap05_L",
+   "status": 200,
+   "ms": 858,
+   "acao": null,
+   "ct": "application/json",
+   "len": 353192,
+   "info": {
+    "arr": 1088,
+    "keys": [
+     "出表日期",
+     "資料年月",
+     "公司代號",
+     "公司名稱",
+     "產業別",
+     "營業收入-當月營收",
+     "營業收入-上月營收",
+     "營業收入-去年當月營收",
+     "營業收入-上月比較增減(%)",
+     "營業收入-去年同月增減(%)",
+     "累計營業收入-當月累計營收",
+     "累計營業收入-去年累計營收",
+     "累計營業收入-前期比較增減(%)",
+     "備註"
+    ],
+    "first": {
+     "出表日期": "1151017",
+     "資料年月": "11509",
+     "公司代號": "1101",
+     "公司名稱": "台泥",
+     "產業別": "水泥工業",
+     "營業收入-當月營收": "14321556",
+     "營業收入-上月營收": "13515534",
+     "營業收入-去年當月營收": "13306676",
+     "營業收入-上月比較增減(%)": "5.963671135746468",
+     "營業收入-去年同月增減(%)": "7.626848357921993",
+     "累計營業收入-當月累計營收": "113048525",
+     "累計營業收入-去年累計營收": "109438297",
+     "累計營業收入-前期比較增減(%)": "3.298870778298021",
+     "備註": "-"
+    },
+    "find": {
+     "出表日期": "1151017",
+     "資料年月": "11509",
+     "公司代號": "2025",
+     "公司名稱": "千興",
+     "產業別": "鋼鐵工業",
+     "營業收入-當月營收": "159354",
+     "營業收入-上月營收": "212580",
+     "營業收入-去年當月營收": "60584",
+     "營業收入-上月比較增減(%)": "-25.0381033022862",
+     "營業收入-去年同月增減(%)": "163.02984286280207",
+     "累計營業收入-當月累計營收": "1387493",
+     "累計營業收入-去年累計營收": "580511",
+     "累計營業收入-前期比較增減(%)": "139.012352909764",
+     "備註": "本月及本年營收較去年同期增加，係因鎳價上漲帶動不銹鋼售價提高，另一因素為去年基期較低，造成增加數大幅成長。"
+    }
+   }
+  },
+  "tpex_open_rev": {
+   "u": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O",
+   "status": 200,
+   "ms": 620,
+   "acao": null,
+   "ct": "application/json",
+   "len": 287031,
+   "info": {
+    "arr": 893,
+    "keys": [
+     "出表日期",
+     "資料年月",
+     "公司代號",
+     "公司名稱",
+     "產業別",
+     "營業收入-當月營收",
+     "營業收入-上月營收",
+     "營業收入-去年當月營收",
+     "營業收入-上月比較增減(%)",
+     "營業收入-去年同月增減(%)",
+     "累計營業收入-當月累計營收",
+     "累計營業收入-去年累計營收",
+     "累計營業收入-前期比較增減(%)",
+     "備註"
+    ],
+    "first": {
+     "出表日期": "1151017",
+     "資料年月": "11509",
+     "公司代號": "1240",
+     "公司名稱": "茂生農經",
+     "產業別": "農業科技",
+     "營業收入-當月營收": "282821",
+     "營業收入-上月營收": "251724",
+     "營業收入-去年當月營收": "250266",
+     "營業收入-上月比較增減(%)": "12.353609508827128",
+     "營業收入-去年同月增減(%)": "13.008159318485133",
+     "累計營業收入-當月累計營收": "2217728",
+     "累計營業收入-去年累計營收": "2045284",
+     "累計營業收入-前期比較增減(%)": "8.431298538491475",
+     "備註": "-"
+    },
+    "find": {
+     "出表日期": "1151017",
+     "資料年月": "11509",
+     "公司代號": "2035",
+     "公司名稱": "唐榮公司",
+     "產業別": "鋼鐵工業",
+     "營業收入-當月營收": "704470",
+     "營業收入-上月營收": "669227",
+     "營業收入-去年當月營收": "763703",
+     "營業收入-上月比較增減(%)": "5.266225062646905",
+     "營業收入-去年同月增減(%)": "-7.756025575387291",
+     "累計營業收入-當月累計營收": "7545638",
+     "累計營業收入-去年累計營收": "7566506",
+     "累計營業收入-前期比較增減(%)": "-0.2757944023304812",
+     "備註": "-"
+    }
+   }
+  },
+  "tdcc": {
+   "u": "https://opendata.tdcc.com.tw/getOD.ashx?id=1-5",
+   "status": 200,
+   "ms": 2192,
+   "acao": null,
+   "ct": "text/csv; charset=UTF-8",
+   "len": 2393612,
+   "info": {
+    "text": "資料日期,證券代號,持股分級,人數,股數,占集保庫存數比例%\r\n20261030,000218,1,0,0,0.00\r\n20261030,000218,2,0,0,0.00\r\n20261030,000218,3,0,0,0.00\r\n20261030,000218,4,0,0,0.00\r\n20261030,000218,5,0,0,0.00\r\n20261030,000218,6,0,0,0.00\r\n20261030,000218,7,0,0,0.00\r\n20261030,000218,8,0,0,0.00\r\n20261030,000218,9,0,0,0.00\r\n20261030,000218,"
+   }
+  }
+ }
+}
