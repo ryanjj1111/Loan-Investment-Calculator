@@ -1,0 +1,40 @@
+# 每個交易日收盤後自動抓收盤價（證交所、櫃買中心的全市場公開資料，不含任何個人持股）
+name: 收盤價
+on:
+  schedule:
+    - cron: '47 6 * * 1-5'    # 台灣 14:47
+    - cron: '17 8 * * 1-5'    # 台灣 16:17
+    - cron: '47 10 * * 1-5'   # 台灣 18:47
+    - cron: '17 13 * * 1-5'   # 台灣 21:17
+  workflow_dispatch:
+    inputs:
+      from:
+        description: '補抓開始日（YYYY-MM-DD，留空＝只抓最新）'
+        required: false
+  push:
+    branches: ['claude/**']
+    paths: ['tools/fetch-prices.mjs', '.github/workflows/prices.yml']
+permissions:
+  contents: write
+concurrency:
+  group: prices-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 抓收盤價
+        run: node tools/fetch-prices.mjs "${{ github.event_name == 'push' && '2026-09-01' || inputs.from }}"
+      - name: 存檔
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          git add data/prices.json data/px
+          if git diff --cached --quiet; then echo "沒有新價格"; exit 0; fi
+          git commit -m "收盤價 $(TZ=Asia/Taipei date +%F' '%H:%M) [skip ci]"
+          for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done; exit 1
