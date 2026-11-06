@@ -1,0 +1,16 @@
+{
+ "name": "投資帳本｜資產・策略・信貸",
+ "short_name": "投資帳本",
+ "description": "台股資產、投資策略與信貸投資試算（資料只存在自己的裝置）",
+ "lang": "zh-TW",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#f5f7fa",
+ "theme_color": "#7c3aed",
+ "icons": [
+  {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+  {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+  {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+ ]
+}

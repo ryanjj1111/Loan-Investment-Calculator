@@ -221,7 +221,7 @@ function migrate(j){j=j||{};const v=+j.v||0,m=migrate0(v>=7?Object.assign({},j,{
 const newTid=()=>'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 function up9(o){o.strategies=o.strategies||[];o.theses=o.theses||[];o.tags=o.tags||{};o.pxa=o.pxa||{};(o.trades||[]).forEach(x=>{if(x.thesisId==null)x.thesisId='';if(!x.id)x.id=newTid();if(x.rs==null)x.rs=''});
  // v10：策略加「預設停損 %」「每筆風險 %」；舊版本快照補空白欄位，避免被誤判成有未存的修改
- if(o.feeMode==null)o.feeMode='now';if(o.feeDay==null)o.feeDay=10;(o.theses||[]).forEach(T=>{if(T.status=='build')T.status='hold';if(!T.met)T.met=[]});
+ o.events=o.events||[];o.imports=o.imports||[];if(o.feeMode==null)o.feeMode='now';if(o.feeDay==null)o.feeDay=10;(o.theses||[]).forEach(T=>{if(T.status=='build')T.status='hold';if(!T.met)T.met=[]});
  o.strategies.forEach(st=>{['stopPct','riskPct'].forEach(k=>{if(st[k]==null)st[k]='';(st.hist||[]).forEach(h=>{if(h.snap&&h.snap[k]==null)h.snap[k]=''})})});return o}
 function up8(o){o.trades=o.trades||[];o.smode='acct';o.fees=Object.assign(clone(DEF.fees),o.fees||{});
  (o.snaps||[]).forEach(s=>{if(!s.dt&&s.m)s.dt=s.m+'-15'});if(o.cur&&!o.cur.dt&&o.cur.m)o.cur.dt=o.cur.m+'-15';(o.ledger||[]).forEach(e=>{if(!e.dt&&e.m)e.dt=e.m+'-01'});return o}

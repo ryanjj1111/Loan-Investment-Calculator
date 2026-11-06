@@ -11,9 +11,11 @@ function niceStep(r){if(!(r>0))return 1;const e=Math.pow(10,Math.floor(Math.log1
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);v===null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){return null}}
 function load(){try{const j=JSON.parse(ls('lc3'));if(j){S=migrate(j).o;fixCur();return}}catch(e){}S=norm(clone(DEF));fixCur()}
 function fixCur(){if(!S.cur.dt){S.cur.dt=TODAY;S.cur.m=TODAY.slice(0,7)}}
-function save(){ls('lc3',JSON.stringify(S));if(typeof bkUpd=='function')bkUpd()}
+function save(){const e=sigE();if(e!==ls('lce')){if(ls('lce')!=null)S.edited=new Date().toISOString();ls('lce',e)}ls('lc3',JSON.stringify(S));if(typeof bkUpd=='function')bkUpd()}
+// 最後修改時間：只看實際內容（不含現價自動更新、畫面狀態），匯入舊檔時用來警告
+function sigE(){const o=Object.assign({},S);['trG','trOpen','rng','pin','edited','px','pxd','pxa','ui'].forEach(k=>delete o[k]);const s=JSON.stringify(o);let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return String(h)}
 // 備份狀態：以內容指紋判斷是否有尚未匯出的變更
-function sig(){const o=Object.assign({},S);delete o.trG;delete o.trOpen;delete o.rng;delete o.pin;const s=JSON.stringify(o);let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return String(h)}
+function sig(){const o=Object.assign({},S);delete o.trG;delete o.trOpen;delete o.rng;delete o.pin;delete o.edited;const s=JSON.stringify(o);let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return String(h)}
 const INFO={
  alpha:'最新一次結算的實際 A／B／C。B（定投收益）在初期接近 0 是正常的：月付金才繳了幾期、還沒時間增值，會隨時間累積。年化報酬（XIRR）＝整個追蹤帳戶平均每年賺幾 %，已考慮你什麼時候放錢進去；高於信貸成本代表借來的錢跑贏利息。未滿 6 個月時年化數字會被放大（例如兩個月賺 7%，換算一年約 50%），所以先顯示期間報酬。',
  alpha0:'最新一次結算的借貸淨效益。A 面額＝借錢投資比「不借錢、每月月付金放著不投資」多賺多少；B 定投收益＝每月月付金如果拿去定期定額（以機會成本報酬率計）能多賺多少；C 機會成本＝A−B＝借錢投資比「不借錢、每月定期定額」多賺多少。主要看 C：大於 0 代表借錢比定期定額好。',
@@ -448,7 +450,7 @@ window.expCsv=()=>{const ss=sortedSnaps(),tw=twr(S,ss.map(o=>o.s)),q=v=>'"'+Stri
  const rows=[['日期','被動(萬)','主動(萬)','帳戶現金(萬)','本期被動淨買進(萬)','本期主動淨買進(萬)','股息利息(萬)','0050還原價','0050累計報酬%','剩餘本金(元)','真實淨資產(萬)','Alpha面額(萬)','Alpha機會成本(萬)','XIRR%','被動報酬%','主動報酬%','備註']];
  ss.forEach((o,k)=>{const s=o.s,r=settle(S,s),t=tw[k];if(!r)return;rows.push([sDate(s),(+s.p).toFixed(2),(+s.a).toFixed(2),s.c,s.bp??'',s.ba??'',s.d??'',s.x50??'',r.sbOk?r.sb.toFixed(2):'',Math.round(r.rem),W2(r.real),W2(r.af),W2(r.ao),isNaN(r.x)?'':fx(r.x),t?t.rp.toFixed(2):'',t?t.ra.toFixed(2):'',s.note||''])});
  dl('loan-settlements-'+new Date().toISOString().slice(0,10)+'.csv','﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n'),'text/csv')};
-window.imp=el=>{const f=el.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const pu=S.ui,m=migrate(JSON.parse(rd.result));S=m.o;fixCur();setTimeout(()=>{ls('lch',sig());ls('lcx',new Date().toISOString());bkUpd()},0);if(hasSettle())S.ui='pro';else if(!S.ui)S.ui=pu||'pro';$('chz').style.display='none';hi=null;lastE=[];save();build();tab(isS()?'F':curT);if(m.note)alert(m.note)}catch(e){alert('JSON 格式錯誤')}el.value=''};rd.readAsText(f)};
+window.imp=el=>{const f=el.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const raw=JSON.parse(rd.result);if(typeof rpGuard=='function'&&!rpGuard(raw)){el.value='';return}const pu=S.ui,m=migrate(raw);S=m.o;fixCur();ls('lce',sigE());setTimeout(()=>{ls('lch',sig());ls('lcx',new Date().toISOString());bkUpd()},0);if(hasSettle())S.ui='pro';else if(!S.ui)S.ui=pu||'pro';$('chz').style.display='none';hi=null;lastE=[];save();build();tab(isS()?'F':curT);if(m.note)alert(m.note)}catch(e){alert('JSON 格式錯誤')}el.value=''};rd.readAsText(f)};
 window.resetD=()=>{if(confirm('清除目前所有設定、出入金與結算紀錄，回到預設？（建議先匯出備份）')){ls('lc3',null);load();lastE=[];hi=null;build();tab('F');if(!S.ui)$('chz').style.display='flex'}};
 window.showGd=()=>{$('gdn').checked=ls('lcg')=='1';$('gd').style.display='flex'};
 window.closeGd=()=>{ls('lcg',$('gdn').checked?'1':null);$('gd').style.display='none'};
