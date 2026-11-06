@@ -108,6 +108,7 @@ button.lk{border:0;background:none;color:var(--pri);padding:0 2px;font-size:12px
 .astl{display:grid;grid-template-columns:88px 1fr auto;gap:6px;align-items:center;font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line)}.astl button{padding:1px 7px}
 .rsc{font-size:11px;padding:0 5px;border-radius:6px;background:#fef3c7;color:#92400e;white-space:nowrap;margin-right:2px}
 .ash2{font-weight:700;font-size:13.5px}.ash2 .h{font-weight:400}
+.ckb{font-size:11px;white-space:nowrap;margin-left:2px}.ckw{display:block;font-size:11.5px}.ckl{margin:3px 0 0 2px}.ckc{border-color:#a7f3d0;background:#f7fffb}
 .asck{border:1px dashed #c7d2fe;border-radius:8px;padding:5px 8px;margin:6px 0;font-size:12.5px;background:#fff}.asck .ck{display:flex;gap:6px;align-items:flex-start;margin:3px 0;font-size:12.5px;line-height:1.45}.asck .ck input{margin-top:2px;width:auto}
 details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 .cdd>summary{font-size:13px;font-weight:700;margin:6px 0 0;cursor:pointer}body.simple .cdd>summary{display:none}
@@ -291,6 +292,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <ul><li><b>📈 績效</b>：最上方是「主動部位有沒有贏 0050」。依策略列出論點數、勝率、平均賺賠比（只算已出場）、投入、損益、報酬率、超額報酬、最大回撤、照規則出場的比例；「未分類（主動）」「期初持股」「被動（依配置）」分開列。<b>勝率要累積 20 筆以上已出場的論點才有參考價值。</b></li>
 <li><b>📚 策略庫</b>：每個策略分成「選什麼／何時買（含買多少）／何時賣」。規則寫成一行一個條件（1. 2. 3.），第一行可寫【選什麼：全部符合】或【何時買：至少 2 項】設定門檻；寫「分 N 批」會自動建立分批計畫；出場規則裡「理由失效」那一條會成為論點預設的「錯了的條件」。另有預計持有期間、單一個股與族群上限、預設停損 %、每筆風險 %。小地方改「儲存為小修正」，邏輯或規則改變「建立新版本」並寫原因，舊版本保留。</li>
 <li><b>📌 論點</b>：所有論點的完整表單。狀態依股數自動（沒買過＝規劃中、有股數＝持有中並顯示第幾批、歸零＝已出場）；可補勾當初符合的條件，「（待確認）」的條件勾選後就不再提醒；分批計畫、預計期間、目標估值收在「更多」。</li>
+<li><b>📋 自動檢核</b>：策略條件裡有公開數字可以判斷的（均線、RSI、MACD、成交量、投信／外資買賣超、融資餘額、月營收年增率、加權指數、千張大戶持股比例），每個交易日收盤後會自動判斷，在條件旁標「✅ 自動」或「❌ 自動」，並寫出用到的數字。記交易選策略時，今天自動符合的條件會先幫你勾好（可以取消）；個股頁有「📋 今日自動檢核」；論點標題顯示「今日自動 ✅幾項 ❌幾項」。看不懂或需要判斷的條件（產業地位、法人預估 EPS、毛利率…）維持自己勾，條件後面寫「（手動）」就一定不自動判斷。<b>寫法要像策略範本</b>，例如「收盤價在季線 ±3% 內」「投信近 5 日合計買超」「融資餘額近 10 日減少 ≥ 5%」；月線＝20 日、季線＝60 日、半年線＝120 日均線（收盤價、未還原除權息）。資料：證交所、櫃買中心、公開資訊觀測站、集保結算所的公開資料；三大法人約下午 4 點、融資約晚上 10 點、股權分散表每週六更新。</li>
 <li><b>提醒</b>（🧭 策略按鈕上的紅色數字，資產頁也會顯示）：個股或族群超過上限、持有超過預計期間、跌破停損價、達到目標價、已出場還沒選原因、條件待確認、事件到期；每月 11 日起檢查上月營收（月營收於次月 10 日前公告）；財報公布後檢查（一般產業：第一季 5/15、第二季 8/14、第三季 11/14、年報 3/31 前）。</li></ul></details>
 
 <details class="gds" id="g5"><summary>💰 信貸（試算、風險、結算）</summary>
@@ -348,7 +350,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li><b>預估損益</b>：市值 − 券商成本 − 預估賣出費用。有些券商 App 的報酬率用「扣股利前的成本」當分母，所以報酬率可能和 App 略有不同，損益金額會一致。</li>
 <li><b>A／B／C、划算門檻、vs 0050</b>：見「💰 信貸」與「📊 資產」。<b>年化報酬（XIRR）</b>考慮出入金時間點；未滿 6 個月顯示期間報酬。</li>
 <li><b>真實淨資產</b>＝（股票＋現金）−剩餘本金−累計已繳月付−開辦費（口袋付）−淨入金−外部費用。</li>
-<li><b>限制</b>：試算用固定報酬率，不代表未來；壓力情境是簡化模型；補充保費、股利稅以簡化方式估算（債券 ETF 配息的稅務屬性不同，建議每年用扣繳憑單校正）；盤中沒有即時價格。</li>
+<li><b>限制</b>：試算用固定報酬率，不代表未來；壓力情境是簡化模型；補充保費、股利稅以簡化方式估算（債券 ETF 配息的稅務屬性不同，建議每年用扣繳憑單校正）；盤中沒有即時價格；自動檢核只看公開資料、僅供參考，「千張大戶連 N 週上升」要累積 N+1 週的資料，「月營收創新高」是和近 3 年比較，「外資單日賣超前 5 大」是和資料庫裡已有的交易日比較。</li>
 <li>本工具僅供試算，非投資或稅務建議。</li></ul></details>
 </div>
 
@@ -356,15 +358,16 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <button style="margin-top:8px" onclick="closeGd()">我知道了</button></div></div>
 
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261106b"></script>
-<script src="data/stocks.js?v=20261106b"></script>
-<script src="js/engine.js?v=20261106b"></script>
-<script src="js/ui.js?v=20261106b"></script>
-<script src="js/strategy-engine.js?v=20261106b"></script>
-<script src="js/asset-engine.js?v=20261106b"></script>
-<script src="js/prices.js?v=20261106b"></script>
-<script src="js/strategy-ui.js?v=20261106b"></script>
-<script src="js/asset-ui.js?v=20261106b"></script>
-<script src="js/ai-import.js?v=20261106b"></script>
-<script src="js/main.js?v=20261106b"></script>
+<script src="data/etf-ref.js?v=20261106c"></script>
+<script src="data/stocks.js?v=20261106c"></script>
+<script src="js/engine.js?v=20261106c"></script>
+<script src="js/ui.js?v=20261106c"></script>
+<script src="js/strategy-engine.js?v=20261106c"></script>
+<script src="js/asset-engine.js?v=20261106c"></script>
+<script src="js/prices.js?v=20261106c"></script>
+<script src="js/check.js?v=20261106c"></script>
+<script src="js/strategy-ui.js?v=20261106c"></script>
+<script src="js/asset-ui.js?v=20261106c"></script>
+<script src="js/ai-import.js?v=20261106c"></script>
+<script src="js/main.js?v=20261106c"></script>
 </body></html>
