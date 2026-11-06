@@ -34,7 +34,7 @@ async function pxLoad(force){if(pxBusy)return;pxBusy=1;pxErr='';try{
  // 收盤後（台灣時間 14:00 起的平日）如果還沒有今天的上市收盤價，直接向證交所抓一次（30 分鐘內不重複）
  const tw=pxTw(),today=tw.toISOString().slice(0,10),wd=tw.getUTCDay(),late=tw.getUTCHours()>=14,o=PXL[bmC(S)];
  if(force||(wd>0&&wd<6&&late&&(!o||o.d<today)&&Date.now()-(+ls('lcpx')||0)>18e5)){ls('lcpx',String(Date.now()));await pxTwse()}
- const n=pxApply();await pxHist();if(force)toast(n?`已更新 ${n} 檔現價`:(Object.keys(PXL).length?'現價已是最新':'讀不到自動價格，請手動填寫'),0);
+ const n=pxApply();await pxHist();if(typeof ckLoad=='function'){if(force&&CK)CK._t=0;ckLoad()}if(force)toast(n?`已更新 ${n} 檔現價`:(Object.keys(PXL).length?'現價已是最新':'讀不到自動價格，請手動填寫'),0);
  if(typeof asCalc=='function')asCalc()}finally{pxBusy=0}}
 window.pxRefresh=()=>pxLoad(1);
 // 手動改了現價，就不再標示「自動」
