@@ -5,14 +5,19 @@
 let CK=null,ckBusy=0,ckErr=0;const CKM={};
 async function ckLoad(){if(ckBusy||(CK&&Date.now()-CK._t<18e5))return;ckBusy=1;try{const j=await pxGet('chk.json');if(j&&j.s&&j.f){j._t=Date.now();CK=j;ckErr=0;for(const k in CKM)delete CKM[k]}else ckErr=1;ckRefresh()}finally{ckBusy=0}}
 // 某檔股票的指標（物件）；沒有資料＝null
-function ckM(c){c=cU(c);if(!CK||!c)return null;if(CKM[c]!==undefined)return CKM[c];const a=CK.s[c];if(!a){CKM[c]=null;return null}const o={};CK.f.forEach((k,i)=>o[k]=a[i]);return CKM[c]=o}
+function ckM0(c){c=cU(c);if(!CK||!c)return null;if(CKM[c]!==undefined)return CKM[c];const a=CK.s[c];if(!a){CKM[c]=null;return null}const o={};CK.f.forEach((k,i)=>o[k]=a[i]);return CKM[c]=o}
+// 檢核資料是前一個交易日收盤；之後有新價格（手填的盤中價，或網頁抓到的當天收盤）時，和價格有關的條件改用新價格試算
+// RSI、MACD、均線、法人、融資、營收維持用檢核資料
+function ckM(c){const o=ckM0(c);if(!o)return o;c=cU(c);const px=num((S.px||{})[c]),d=(S.pxd||{})[c]||'',auto=!!(S.pxa||{})[c];
+ if(px==null||px==o.c)return o;if(auto?d>CK.d:d>=CK.d||!d)return Object.assign({},o,{c:px,live:{px,d,auto,c0:o.c}});return o}
+const ckLive=m=>m&&m.live?(m.live.auto?`價格條件用 ${ckMD(m.live.d)} 收盤 ${f2(m.live.px)} 試算（檢核資料是 ${ckMD(CK.d)} 收盤 ${f2(m.live.c0)}）`:`價格條件用你填的現價 ${f2(m.live.px)} 試算（檢核資料是 ${ckMD(CK.d)} 收盤 ${f2(m.live.c0)}）`):'';
 const ckMD=d=>d?String(d).slice(5).replace('-','/'):'';
 // 資料日期一句話
 function ckAsOf(){if(!CK)return'';return`收盤 ${ckMD(CK.d)}｜法人 ${ckMD(CK.dC)||'—'}｜融資 ${ckMD(CK.dM)||'—'}｜月營收 ${CK.rM||'—'}${CK.bW&&CK.bW.length?'｜大戶 '+ckMD(CK.bW[CK.bW.length-1]):''}`}
 
 // ---------- 條件文字 → 判斷
 const CK_MA={'月線':['m20','m20p',20],'季線':['m60','m60p',60],'半年線':['m120','',120]};
-const ckN=s=>String(s||'').replace(/〔[^〕]*〕/g,'').replace(/（[^）]*）|\([^)]*\)/g,'').replace(/\s+/g,'').replace(/，/g,',').replace(/：/g,':').replace(/＞/g,'>').replace(/＜/g,'<').replace(/[≧]|>=/g,'≥').replace(/[≦]|<=/g,'≤').replace(/[～〜]/g,'~').replace(/％/g,'%').replace(/^第\d+批:/,'').replace(/^[-‧•]/,'').replace(/^符合上面條件,且/,'');
+const ckN=s=>String(s||'').replace(/〔[^〕]*〕/g,'').replace(/（[^）]*）|\([^)]*\)/g,'').replace(/\s+/g,'').replace(/，/g,',').replace(/：/g,':').replace(/＞/g,'>').replace(/＜/g,'<').replace(/[≧]|>=/g,'≥').replace(/[≦]|<=/g,'≤').replace(/[～〜]/g,'~').replace(/％/g,'%').replace(/；/g,';').replace(/^第\d+批:/,'').replace(/^[-‧•]/,'').replace(/^符合上面條件,且/,'');
 const f1=x=>x==null?'—':(Math.round(x*10)/10).toLocaleString(),f2=x=>x==null?'—':(+x).toLocaleString(undefined,{maximumFractionDigits:2}),pc=x=>(x>=0?'+':'')+(Math.round(x*10)/10)+'%';
 const ckSum=(a,n)=>a&&a.length>=n&&a.slice(-n).every(x=>x!=null)?a.slice(-n).reduce((s,x)=>s+x,0):null;
 const R_=(v,why,miss)=>({v,why:why||'',miss:miss||''});
@@ -55,6 +60,7 @@ const CK_ATOMS=[
  [/^千張大戶持股比例?連(\d+)週上升$/,x=>m=>{const n=+x[1],b=(m.bh||[]).filter(v=>v!=null);if(b.length<n+1)return NA(`股權分散表每週累積，需要 ${n+1} 週（目前 ${b.length} 週）`);const L=b.slice(-n-1);return R_(L.every((v,i)=>!i||v>L[i-1]),`千張大戶 ${L.map(v=>v+'%').join(' → ')}`)}],
  // ---------- 技術（新增）
  [/^收盤價?(?:≤|低於)(月線|季線|半年線)(?:\+(\d+(?:\.\d+)?)%)?$/,x=>m=>{const[k]=CK_MA[x[1]],ma=m[k];if(ma==null)return NA(x[1]+'資料不足');const p=+(x[2]||0);return R_(m.c<=ma*(1+p/100),`收盤 ${f2(m.c)}，${x[1]} ${f2(ma)}（${pc((m.c/ma-1)*100)}）`)}],
+ [/^收盤價?低於(月線|季線|半年線)(\d+(?:\.\d+)?)%以上$|^(月線|季線|半年線)負乖離≥?(\d+(?:\.\d+)?)%$/,x=>m=>{const w=x[1]||x[3],p=+(x[2]||x[4]),[k]=CK_MA[w],ma=m[k];if(ma==null)return NA(w+'資料不足');const d=(m.c/ma-1)*100;return R_(d<=-p,`收盤 ${f2(m.c)}，${w} ${f2(ma)}（${pc(d)}）`)}],
  [/^連(\d+)日不創20日新低$/,x=>m=>m.dNL==null?NA('資料不足'):R_(m.dNL>=+x[1],`已連 ${m.dNL} 日沒有創 20 日新低`)],
  [/^突破前20日高點$/,x=>m=>m.hi20==null?NA('資料不足'):R_(m.c>m.hi20,`收盤 ${f2(m.c)}，前 20 日最高收盤 ${f2(m.hi20)}`)],
  [/^賺賠比<(\d+(?:\.\d+)?)$/,x=>m=>{const st=CKX.st;if(!st)return NA('要搭配策略計算');const s=stStopCalc(st,CKX.c,m.c),r=s?stRR(CKX.c,m.c,s.v):null;if(!r)return NA('算不出賺賠比');
@@ -107,21 +113,25 @@ const CKC={};
 function ckAtom(s){for(const[re,mk]of CK_ATOMS){const x=s.match(re);if(x)return mk(x)}return null}
 // 整句：先整句比對；再依「，或」拆成「或」，每段再依「，且／，／、／且」拆成「且」（拆開後看不懂的片段會試著和下一段合併）
 function ckParse(t){const s=ckN(t);if(CKC[s]!==undefined)return CKC[s];let r=ckAtom(s);
+ const ko=!r&&s.match(/^(?:(?:下面)?\d+項中)?至少(\d+)項:(.+)$/);if(ko){const parts=ko[2].split(';').filter(Boolean);return CKC[s]={kof:+ko[1],parts:parts.map(p=>({t:p,P:ckParse(p)}))}}
  if(!r){const ors=s.split(/,或者?/).map(p=>{const parts=p.split(/,且|,|、/).filter(Boolean),fs=[];for(let i=0;i<parts.length;i++){let f=ckAtom(parts[i]),j=i;while(!f&&j+1<parts.length){j++;f=ckAtom(parts.slice(i,j+1).join(','))}if(!f)return null;fs.push(f);i=j}return fs});
   if(ors.every(a=>a===null))r=null;else r={or:ors}}
  return CKC[s]=r}
 // 判斷一個條件：{v:true／false／null, why, miss, auto}；null＝不是自動條件（要自己勾）
 const ckAuto=t=>!/（手動）|\(手動\)/.test(t)&&!!ckParse(t);
 function ckEval(c,t,st){if(!CK||!ckAuto(t))return null;CKX={c:cU(c),st:st||null};const P=ckParse(t),m=ckM(c),k=CK.mkt;if(!m)return{v:null,why:'',miss:'沒有這檔的資料',auto:1};
- const run=f=>{const o=f(m,k);return o.skip?null:o};
- if(typeof P=='function'){const o=run(P);return o?Object.assign(o,{auto:1}):null}
+ const o=ckRun(P,m,k);return o?Object.assign(o,{auto:1}):null}
+function ckRun(P,m,k){if(!P)return null;if(typeof P=='function'){const o=P(m,k);return o.skip?null:o}
+ // 至少 N 項：每項分開判斷
+ if(P.kof){let ok=0,u=0;const W=[],Ms=[];for(const p of P.parts){const o=ckRun(p.P,m,k);if(!o){u++;continue}if(o.v===true)ok++;else if(o.v==null)u++;W.push((o.v===true?'✓':o.v===false?'✗':'?')+' '+(o.why||o.miss||''))}
+  const v=ok>=P.kof?true:ok+u>=P.kof?null:false;return{v,why:`${P.parts.length} 項中符合 ${ok} 項（需要 ${P.kof} 項）：${W.join('；')}`,miss:u&&v==null?`${u} 項判斷不了`:''}}
  // 或：有一段成立就成立；且：有一段不成立就不成立
  let any=false,unk=false,whys=[],miss=[],man=false;
- for(const fs of P.or){if(!fs){man=true;continue}let ok=true,u=false;for(const f of fs){const o=run(f);if(!o)continue;if(o.why)whys.push(o.why);if(o.miss)miss.push(o.miss);if(o.v===false)ok=false;else if(o.v==null)u=true}
+ for(const fs of P.or){if(!fs){man=true;continue}let ok=true,u=false;for(const f of fs){const o=ckRun(f,m,k);if(!o)continue;if(o.why)whys.push(o.why);if(o.miss)miss.push(o.miss);if(o.v===false)ok=false;else if(o.v==null)u=true}
   if(ok&&!u){any=true}else if(ok&&u)unk=true}
- const v=any?true:(unk||man)?null:false;return{v,why:whys.join('；'),miss:miss.join('；')+(man&&!any?'（有一部分要自己判斷）':''),auto:1}}
+ const v=any?true:(unk||man)?null:false;return{v,why:whys.join('；'),miss:miss.join('；')+(man&&!any?'（有一部分要自己判斷）':'')}}
 // 策略的每一組條件，加上自動判斷結果
-function ckGroups(st,c){return stConds(st).map(g=>({sec:g.sec,need:g.need,items:g.items.map(t=>({t,r:ckEval(c,t,st)}))}))}
+function ckGroups(st,c){return stConds(st).map(g=>({sec:g.sec,need:g.need,rule:g.rule,items:g.items.map(t=>({t,r:ckEval(c,t,st)}))}))}
 // 條件文字：〔基〕〔技〕〔籌〕〔盤〕顯示成小標籤
 const CK_TG={'基':'b','技':'t','籌':'c','盤':'m'};
 const ckT=t=>esc(t).replace(/〔(基|技|籌|盤)〕/g,(_,k)=>`<span class="ctg ctg${CK_TG[k]}">${k}</span>`);
@@ -130,29 +140,45 @@ function ckBadge(r,long){if(!r)return'';const ic=r.v===true?'✅':r.v===false?'�
  return` <span class="ckb ${cl}">${ic} 自動</span>${long&&(r.why||r.miss)?`<span class="ckw h">${esc(r.why)}${r.miss?' <i>'+esc(r.miss)+'</i>':''}</span>`:''}`}
 // 論點摘要用：自動 ✅3 ❌2
 function ckCount(T){const st=stStrat(S,T.sid);if(!st||!CK)return null;let ok=0,no=0;for(const g of ckGroups(st,T.code).filter(g=>g.need!='none'))for(const it of g.items)if(it.r){if(it.r.v===true)ok++;else if(it.r.v===false)no++}return ok+no?{ok,no}:null}
-// 個股頁：今天的自動檢核
-function ckCardHtml(T,st){if(!st)return'';const c=cU(T.code);if(!stConds(st).some(g=>g.items.some(ckAuto)))return'';
- if(!CK)return`<div class="asck ckc"><b>📋 今日自動檢核</b><div class=h>${ckErr?'讀不到自動檢核資料（離線，或網站還沒有資料）。':'資料讀取中…'}</div></div>`;
- const G=ckGroups(st,c).filter(g=>g.items.some(i=>i.r));
- return`<div class="asck ckc"><b>📋 今日自動檢核</b> <span class=h>${esc(ckAsOf())}</span>${G.map(g=>{const A=g.items.filter(i=>i.r),ok=A.filter(i=>i.r.v===true).length,man=g.items.length-A.length;
-  if(g.need=='none')return`<div style="margin-top:4px"><b>⛔ ${esc(g.sec)}</b> <span class=h>任何一項成立就不買</span>${A.map(i=>`<div class=ckl>${i.r.v===true?'⛔ 成立':i.r.v===false?'✓ 沒有':'❔'} ${ckT(i.t)}<div class=h>${esc(i.r.why)}${i.r.miss?' <i>'+esc(i.r.miss)+'</i>':''}</div></div>`).join('')}</div>`;
-  return`<div style="margin-top:4px"><b>${esc(g.sec)}</b> <span class=h>自動符合 ${ok}／${A.length} 項${man?`，另外 ${man} 項要自己判斷`:''}${g.need?'（需要 '+(g.need=='all'||g.need>=g.items.length?'全部':g.need+' 項')+'）':''}</span>${A.map(i=>`<div class=ckl>${i.r.v===true?'✅':i.r.v===false?'❌':'❔'} ${ckT(i.t)}<div class=h>${esc(i.r.why)}${i.r.miss?' <i>'+esc(i.r.miss)+'</i>':''}</div></div>`).join('')}</div>`}).join('')}
+// 已經買了幾批（分批計畫有對應交易的）與日期
+function ckDone(T){const R=(T.plan||[]).filter(r=>r.tid),D=R.map(r=>{const x=(S.trades||[]).find(z=>z.id==r.tid);return x?x.dt:''});return{n:R.length,d:D}}
+// 個股頁、完整論點：今天的條件檢核（自動判斷的顯示結果；要自己判斷的可以按「確認符合」）
+function ckCardHtml(T,st){if(!st)return'';const c=cU(T.code),C=stConds(st);if(!C.length)return'';
+ if(!CK)return`<div class="asck ckc"><b>📋 今日條件檢核</b><div class=h>${ckErr?'讀不到自動檢核資料（離線，或網站還沒有資料）。':'資料讀取中…'}</div></div>`;
+ const M=new Set(T.met||[]),D=ckDone(T),G=ckGroups(st,c),m=ckM(c),lv=ckLive(m);
+ const why=r=>`<div class=h>${esc(r.why)}${r.miss?' <i>'+esc(r.miss)+'</i>':''}</div>`;
+ const row=(i,gi,ii,pre)=>i.r?`<div class=ckl>${i.r.v===true?'✅':i.r.v===false?'❌':'❔'} ${pre||''}${ckT(i.t)}${why(i.r)}</div>`
+  :`<div class=ckl>${M.has(i.t)?'☑️':'❔'} ${pre||''}${ckT(i.t)} <button class=ckmb onclick="ckMetTog('${T.id}',${gi},${ii})">${M.has(i.t)?'取消確認':'確認符合'}</button><div class=h>${M.has(i.t)?'你確認過符合':'要自己判斷，符合就按「確認符合」'}</div></div>`;
+ return`<div class="asck ckc"><b>📋 今日條件檢核</b> <span class=h>${esc(ckAsOf())}</span>${lv?`<div class=wn style="font-size:12.5px">${esc(lv)}</div>`:''}${G.map((g,gi)=>{
+  if(g.need=='none')return`<div style="margin-top:4px"><b>⛔ ${esc(g.sec)}</b> <span class=h>任何一項成立就不買</span>${g.items.map(i=>i.r?`<div class=ckl>${i.r.v===true?'⛔ 成立':i.r.v===false?'✓ 沒有':'❔'} ${ckT(i.t)}${why(i.r)}</div>`:`<div class=ckl>❔ ${ckT(i.t)}<div class=h>要自己判斷</div></div>`).join('')}</div>`;
+  if(/依序/.test(g.rule||''))return`<div style="margin-top:4px"><b>${esc(g.sec)}</b> <span class=h>依序加碼，已買 ${Math.min(D.n,g.items.length)}／${g.items.length} 批</span>${g.items.map((i,ii)=>ii<D.n?`<div class="ckl h">🟢 已買${D.d[ii]?' '+ckMD(D.d[ii]):''}　${ckT(i.t)}</div>`:row(i,gi,ii,ii==D.n?'👉 ':'')).join('')}</div>`;
+  const A=g.items.filter(i=>i.r),ok=A.filter(i=>i.r.v===true).length,mn=g.items.filter(i=>!i.r),mk=mn.filter(i=>M.has(i.t)).length;
+  return`<div style="margin-top:4px"><b>${esc(g.sec)}</b> <span class=h>${A.length?`自動符合 ${ok}／${A.length} 項`:''}${mn.length?`${A.length?'，':''}自己確認 ${mk}／${mn.length} 項`:''}${g.need?'（需要 '+(g.need=='all'||g.need>=g.items.length?'全部':g.need+' 項')+'）':''}</span>${g.items.map((i,ii)=>row(i,gi,ii)).join('')}</div>`}).join('')}
   <div class=h style="margin-top:4px">自動檢核只看公開資料，僅供參考，不是投資建議。</div></div>`}
+// 買進時記下的條件（收起來，點開才看）
+function ckMetRec(T,st){const L=T.met||[];if(!L.length)return'';const cur=new Set(st?stConds(st).flatMap(g=>g.items):[]),old=L.filter(t=>!cur.has(t));
+ return`<details class=ckrec><summary class=h>買進時（${esc(T.metAt||T.created||'')}）記錄符合 ${L.length} 項${old.length?`，其中 ${old.length} 項是舊版本的條件`:''}</summary>${L.map(t=>`<div class=h>✓ ${ckT(t)}${(T.metNote||{})[t]?' <i>（'+esc(T.metNote[t])+'）</i>':''}</div>`).join('')}</details>`}
+window.ckMetTog=(id,gi,ii)=>{const T=stThesis(S,id),st=T&&stStrat(S,T.sid),g=st&&stConds(st)[gi],t=g&&g.items[ii];if(!t)return;const on=!(T.met||[]).includes(t);stMetT(id,t,on);ckRefresh()};
 // 檢核資料讀到後，重畫用得到的地方
 function ckRefresh(){try{if(typeof stCalc=='function')stCalc();if(typeof AT!='undefined'&&AT&&typeof asTh=='function'){const b=$('asOvB'),h=b?b.scrollTop:0;asTh();if(b)b.scrollTop=h}else if(typeof asCur!='undefined'&&asCur&&typeof asStock=='function'){const b=$('asOvB'),h=b?b.scrollTop:0;asStock(asCur.c,asCur.ac);if(b)b.scrollTop=h}}catch(e){}}
 // 依策略的結論：可以買或加碼／還差幾項／不買條件成立／已達上限
 // 自動判斷的看 ✅❌❔；要自己判斷的看論點有沒有勾；「依序加碼」看下一批的條件
-function ckVerdict(T){const st=stStrat(S,T.sid);if(!st||!CK||T.status=='exit')return null;const c=cU(T.code),M=new Set(T.met||[]),done=(T.plan||[]).filter(r=>r.tid).length;
- let need=0,unk=0,man=0;const nb=[];
+// 依策略的結論：可以買或加碼／還差幾項／不買條件成立／已達上限／加碼間隔還沒到
+// 自動判斷的看 ✅❌❔；要自己判斷的看有沒有按「確認符合」；「依序加碼」看下一批的條件
+function ckVerdict(T){const st=stStrat(S,T.sid);if(!st||!CK||T.status=='exit')return null;const c=cU(T.code),M=new Set(T.met||[]),done=ckDone(T).n;
+ let need=0,unk=0,man=0,bl='',fin=0;const nb=[];
  const one=i=>i.r?(i.r.v===true?1:i.r.v===false?0:-1):(M.has(i.t)?1:-2);
  for(const g of ckGroups(st,c)){
   if(g.need=='none'){for(const i of g.items)if(i.r&&i.r.v===true)nb.push(i.t.replace(/〔.〕/g,''));continue}
-  if(/依序/.test(g.rule||'')){if(done>=g.items.length)continue;const s=one(g.items[done]);if(s==0)need++;else if(s==-1)unk++;else if(s==-2)man++;continue}
+  if(/依序/.test(g.rule||'')){if(done>=g.items.length){fin=g.items.length;continue}bl=`第 ${done+1} 批`;const s=one(g.items[done]);if(s==0)need++;else if(s==-1)unk++;else if(s==-2)man++;continue}
   const n=g.need=='all'?g.items.length:(+g.need||0);if(!n)continue;const L=g.items.map(one),ok=L.filter(x=>x==1).length;if(ok>=n)continue;
   let lack=n-ok;const u=L.filter(x=>x==-1).length,m=L.filter(x=>x==-2).length;const a=Math.min(lack,m);man+=a;lack-=a;const b=Math.min(lack,u);unk+=b;lack-=b;need+=lack}
  const verb=T.status=='plan'?'買':'加碼',E=stExposure(S),p=E.tot>0?(E.by[c]||0)/E.tot*100:0,cap=stCapStock(S,c);
  if(nb.length)return{t:'⛔ 不買：'+nb[0],cls:'bad'};
+ if(fin&&!bl)return{t:`${fin} 批都買完了，不再加碼`,cls:'h'};
+ const pre=bl?bl+'：':'',G=typeof stAddGate=='function'?stAddGate(S,T,st):null,hl=G&&G.halt?`⏸ 暫停加碼（${G.halt}）`:'';
  const parts=[need?`還差 ${need} 項`:'',man?`${man} 項要自己確認`:'',unk?`${unk} 項資料不足`:''].filter(Boolean);
- if(parts.length)return{t:parts.join('、'),cls:need?'h':'wn'};
- if(p>=cap)return{t:`條件符合，但已達個股上限 ${cap}%`,cls:'wn'};
- return{t:`✅ 條件符合，可以${verb}`,cls:'ok'}}
+ if(parts.length)return{t:(hl?hl+'；':'')+pre+parts.join('、'),cls:hl?'wn':need?'h':'wn'};
+ if(G&&G.wait)return{t:`${pre}條件符合，但${G.wait}`,cls:'wn'};
+ if(p>=cap)return{t:`${pre}條件符合，但已達個股上限 ${cap}%`,cls:'wn'};
+ return{t:`✅ ${pre}條件符合，可以${verb}${hl?'（注意：'+G.halt+'）':''}`,cls:'ok'}}

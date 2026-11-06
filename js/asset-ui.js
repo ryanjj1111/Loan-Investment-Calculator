@@ -2,7 +2,7 @@
 // 投資帳本｜資產・策略・信貸｜https://ryanjj1111.github.io/Loan-Investment-Calculator/
 // 依賴 ui.js（$、esc、R、W2、nameOf、toast、upd、save、calc、renderTrades、NEW）、strategy-ui.js（stWs、stTxt、stTi）與 asset-engine.js
 
-let asG=ls('lcag')||'ac',asCl=ls('lcac')=='1',AT=null,asCur=null;
+let asG=ls('lcag')||'ac',asSo=ls('lcas')||'mv',asF=ls('lcaf')||'all',asCl=ls('lcac')=='1',AT=null,asCur=null;
 const asPct=v=>v==null||isNaN(v)?'—':(v>=0?'+':'')+v.toFixed(1)+'%';
 const asM=v=>v==null||isNaN(v)?'—':(v>=0?'+':'−')+W2(Math.abs(v))+' 萬';
 const asY=v=>v==null||isNaN(v)?'—':(v>=0?'+':'−')+R(Math.abs(v));
@@ -10,8 +10,10 @@ const asC=v=>v==null||isNaN(v)?'':v<0?'bad':'ok';
 const asD=d=>d?String(d).slice(5).replace('-','/'):'';
 const asKN=k=>({buy:'買進',sell:'賣出',div:'配息',sdiv:'配股'})[k]||k;
 
-function asBuild(){if(!$('pgA'))return;const cdd=$('cardsD');if(cdd){cdd.open=isS()||ls('lccd')!='0';cdd.ontoggle=()=>{if(!isS())ls('lccd',cdd.open?'1':'0');asCardsSum()}}if(typeof pxApply=='function'&&typeof PXL!='undefined'&&Object.keys(PXL).length)setTimeout(pxApply,0);$('asGrp').innerHTML=[['ac','部位'],['st','策略'],['tag','族群']].map(([k,l])=>`<button class="${asG==k?'on':''}" onclick="asSetG('${k}')">${l}</button>`).join('');$('asClosed').checked=asCl;asCalc()}
-window.asSetG=k=>{asG=k;ls('lcag',k);asBuild()};
+function asBuild(){if(!$('pgA'))return;const cdd=$('cardsD');if(cdd){cdd.open=isS()||ls('lccd')!='0';cdd.ontoggle=()=>{if(!isS())ls('lccd',cdd.open?'1':'0');asCardsSum()}}if(typeof pxApply=='function'&&typeof PXL!='undefined'&&Object.keys(PXL).length)setTimeout(pxApply,0);const sel=(v,f,L)=>`<select onchange="${f}(this.value)">${L.map(([k,l])=>`<option value="${k}" ${v==k?'selected':''}>${l}</option>`).join('')}</select>`;
+ $('asGrp').innerHTML=`<label>分組 ${sel(asG,'asSetG',[['ac','部位'],['st','策略'],['tag','族群'],['no','不分組']])}</label><label>排序 ${sel(asSo,'asSetSo',[['mv','市值'],['pl','損益 %'],['w','占比'],['stop','離停損'],['v','判斷結果']])}</label>`;
+ $('asFlt').innerHTML=[['all','全部'],['ok','✅ 可以買／加碼'],['bad','⛔ 不買'],['al','⚠️ 有提醒']].map(([k,l])=>`<button class="${asF==k?'on':''}" onclick="asSetF('${k}')">${l}</button>`).join('');$('asClosed').checked=asCl;asCalc()}
+window.asSetG=k=>{asG=k;ls('lcag',k);asBuild()};window.asSetSo=k=>{asSo=k;ls('lcas',k);asBuild()};window.asSetF=k=>{asF=k;ls('lcaf',k);asBuild()};
 window.asShowClosed=v=>{asCl=!!v;ls('lcac',v?'1':'0');asCalc()};
 
 // ---------- 首頁
@@ -43,15 +45,22 @@ function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)s
   <div class=asl>帳戶現金 <input type=number step=any value="${CS.cur!=null?CS.cur:''}" placeholder="${CS.v!=null?CS.v:'0'}" onchange="asCashSet(this.value)" style="width:90px"> 萬 <span class="${CS.old?'wn':'h'}">${CS.cur!=null?(S.cashD?'（'+esc(asD(S.cashD))+' 填）':''):CS.v!=null?'（沿用 '+esc(asD(CS.d))+' 結算的現金）':'（還沒填）'}${CS.old?'，超過 30 天沒更新':''}</span><div class=h>和「💰 信貸 → 📋 結算」這一期的「追蹤帳戶現金合計」是同一格，填一次兩邊都會更新。</div></div>
   ${G.length?`<div class=asl>族群（占主動）：${G.map(g=>`<span class="${g.p>g.cap?'wn':''}">${esc(g.g)} ${g.p.toFixed(0)}%${g.p>g.cap?'（上限 '+g.cap+'%）':''}</span>`).join('、')}</div>`:''}`:'';
  // 庫存
- const L=asRows(S).filter(r=>r.open||(asCl&&(Math.abs(r.real)>0.5||r.div>0))),E=stExposure(S),grp={};
+ const E=stExposure(S),grp={},AL=typeof stAlerts=='function'?stAlerts(S):[];
+ // 每檔的判斷結果、提醒、離停損（篩選與排序用）
+ const L=asRows(S).filter(r=>r.open||(asCl&&(Math.abs(r.real)>0.5||r.div>0))).map(r=>{const T=r.ac=='a'?asThesisOf(S,r.c):null,v=T&&typeof ckVerdict=='function'?ckVerdict(T):null,sp=T?num(T.stop):null;
+  r.vd=v;r.al=T?AL.filter(a=>a.th==T.id).length:0;r.sd=sp!=null&&r.px?(sp/r.px-1)*100:null;r.w=r.ac=='a'?(E.tot>0&&E.by[r.c]?E.by[r.c]/E.tot*100:null):(r.mv!=null&&z.p.mv>0?r.mv/z.p.mv*100:null);return r})
+  .filter(r=>asF=='all'||(asF=='ok'?r.vd&&r.vd.cls=='ok':asF=='bad'?r.vd&&r.vd.cls=='bad':r.al>0||(r.sd!=null&&r.sd>=0)));
+ const VR={ok:0,wn:1,h:2,bad:3};
+ const so=(a,b)=>asSo=='pl'?(b.ubp??-1e9)-(a.ubp??-1e9):asSo=='w'?(b.w??-1)-(a.w??-1):asSo=='stop'?(b.sd??-1e9)-(a.sd??-1e9):asSo=='v'?((a.vd?VR[a.vd.cls]??2:9)-(b.vd?VR[b.vd.cls]??2:9))||(b.mv||0)-(a.mv||0):(b.mv||0)-(a.mv||0);
  for(const r of L){const T=r.ac=='a'?asThesisOf(S,r.c):null;let k,l;
   if(asG=='st'){if(r.ac=='p'){k='~p';l='🛡️ 被動（依配置）'}else if(T&&stStrat(S,T.sid)){const st=stStrat(S,T.sid);k=st.id;l='🧭 '+st.id+' '+st.name}else{k='~u';l='⚡ 主動・未分類'}}
   else if(asG=='tag'){if(r.ac=='p'){k='~p';l='🛡️ 被動'}else{const t=((S.tags||{})[r.c]||[])[0]||(typeof indOf=='function'?indOf(r.c):'');k=t?'t'+t:'~u';l=t?'🏷️ '+t:'⚡ 主動・未加標籤'}}
+  else if(asG=='no'){k='0';l='全部持股'}
   else{k=r.ac=='p'?'1':'2';l=r.ac=='p'?'🛡️ 被動':'⚡ 主動'}
   (grp[k]=grp[k]||{l,L:[]}).L.push(r)}
- $('asList').innerHTML=Object.keys(grp).sort().map(k=>{const g=grp[k],mv=g.L.reduce((a,r)=>a+(r.mv||0),0),un=g.L.reduce((a,r)=>a+(r.ub||0),0);g.L.sort((a,b)=>(b.mv||0)-(a.mv||0));
-  const act=g.L.every(r=>r.ac=='a'),gp=act&&k!='2'&&E.tot>0?mv/E.tot*100:null;
-  return`<div class=asgh><span>${esc(g.l)}${gp!=null?' <small class=h>占主動 '+gp.toFixed(0)+'%</small>':''}</span><span>${W2(mv)} 萬　<span class="${asC(un)}">${asY(un)}</span></span></div>${g.L.map(r=>asRow(r,z.p.mv,E)).join('')}`}).join('')||'<div class=h style="margin:8px 0">還沒有持股。按「＋記交易」記下第一筆，或在信貸頁的「撥款前狀態」填期初持股。</div>';
+ $('asList').innerHTML=Object.keys(grp).sort().map(k=>{const g=grp[k],mv=g.L.reduce((a,r)=>a+(r.mv||0),0),un=g.L.reduce((a,r)=>a+(r.ub||0),0);g.L.sort(so);
+  const act=g.L.every(r=>r.ac=='a'),gp=act&&k!='2'&&k!='0'&&E.tot>0?mv/E.tot*100:null;
+  return`<div class=asgh><span>${esc(g.l)}${gp!=null?' <small class=h>占主動 '+gp.toFixed(0)+'%</small>':''}</span><span>${W2(mv)} 萬　<span class="${asC(un)}">${asY(un)}</span></span></div>${g.L.map(r=>asRow(r,z.p.mv,E)).join('')}`}).join('')||(asF!='all'?'<div class=h style="margin:8px 0">沒有符合這個篩選的持股。</div>':'')||'<div class=h style="margin:8px 0">還沒有持股。按「＋記交易」記下第一筆，或在信貸頁的「撥款前狀態」填期初持股。</div>';
  if(asCur&&$('asStopD')){const T=asThesisOf(S,asCur.c),px=num((S.px||{})[asCur.c]),st=T?num(T.stop):null;$('asStopD').innerText=px&&st?`現價距離停損 ${((st/px-1)*100).toFixed(1)}%`:''}}
 // 帳戶現金（萬）：這一期結算填的；還沒填就沿用最近一次儲存的結算
 function asCash(){const cur=num(S.cur&&S.cur.c);if(cur!=null){const d=S.cashD||sDate(S.cur);return{v:cur,cur,d,old:!!d&&dDays(d,TODAY)>30}}
@@ -65,7 +74,7 @@ function asRow(r,tot,E){const T=r.ac=='a'?asThesisOf(S,r.c):null,st=T?stStrat(S,
  if(T&&num(T.tgtPx)!=null&&r.px!=null&&r.px>=num(T.tgtPx))fl.push('🎯 達到目標價 '+T.tgtPx);
  if(r.ac=='a'&&r.open&&E.tot>0){const p=(E.by[r.c]||0)/E.tot*100,cap=stCapStock(S,r.c);if(p>cap)fl.push(`⚠️ 占主動 ${p.toFixed(1)}%，超過上限 ${cap}%`)}
  const w=r.ac=='a'?(E.tot>0&&E.by[r.c]?E.by[r.c]/E.tot*100:null):(r.mv!=null&&tot>0?r.mv/tot*100:null),wl=r.ac=='a'?'占主動':'占被動';
- return`<div class=asr onclick="asStock('${r.c}','${r.ac}')"><div class=a1><span><b>${esc(r.c)}</b> ${esc(nameOf(r.c))}${T?` <span class="thc on">${T.id}${st?'·'+st.id:''}</span>`:r.ac=='a'&&r.open?' <span class=thc>未分類</span>':''}</span><span class="${asC(r.open?r.ub:r.realB+r.div)}">${r.open?(r.ub!=null?asY(r.ub)+' <small>'+asPct(r.ubp)+'</small>':'<small class=wn>需現價</small>'):'已出清 '+asY(r.realB+r.div)}</span></div>
+ return`<div class=asr onclick="asStock('${r.c}','${r.ac}')"><div class=a1><span><b>${esc(r.c)}</b> ${esc(nameOf(r.c))}${T?` <span class="thc on">${T.id}${st?'·'+st.id:''}</span>`:r.ac=='a'&&r.open?' <span class=thc>未分類</span>':''}${r.vd&&(r.vd.cls=='ok'||r.vd.cls=='bad')?` <small class="${r.vd.cls=='ok'?'ok':'bad'}">${r.vd.cls=='ok'?'✅ 可'+(T&&T.status=='plan'?'買':'加碼'):'⛔ 不買'}</small>`:''}</span><span class="${asC(r.open?r.ub:r.realB+r.div)}">${r.open?(r.ub!=null?asY(r.ub)+' <small>'+asPct(r.ubp)+'</small>':'<small class=wn>需現價</small>'):'已出清 '+asY(r.realB+r.div)}</span></div>
  <div class=a2><span>${r.open?R(r.q)+' 股｜均 '+(r.avgB!=null?r.avgB.toFixed(2):'—'):'0 股'}</span><span>${r.px!=null?'現 '+r.px+' <small>'+(r.auto?'收盤 ':'手填 ')+asD(r.pxd)+'</small>':''}</span></div>
  ${r.open?`<div class=a2><span>市值 ${r.mv!=null?W2(r.mv)+' 萬':'—'}${w!=null?'｜'+wl+' '+w.toFixed(1)+'%':''}</span><span>${r.un!=null&&asPostOn()&&asHasPost(r)?'撥款後 <span class="'+asC(r.un)+'">'+asY(r.un)+'</span>':''}${r.div?'｜股利 '+R(r.div):''}${r.noC0?' <small class=wn>未填原始成本</small>':''}</span></div>`:''}
  ${fl.length?`<div class="a2 wn">${fl.join('　')}</div>`:''}</div>`}
@@ -181,9 +190,8 @@ window.asTradeSave=()=>{const a=AT,c=cU(a.c);if(!c){toast('請填代號',0);retu
 window.asTradeDel=()=>{if(!confirm('刪除這筆交易？'))return;const x=S.trades[AT.i];S.trades.splice(AT.i,1);if(typeof trEd!='undefined')trEd.clear();renderTrades();upd();toast('已刪除',0);asStock(cU(x.n),x.ac=='a'?'a':'p')};
 
 // 當初符合的策略條件（個股頁）
-function asMetHtml(T,st){if(!st)return'';const E=stCondEval(st,T.met);if(!E.length)return'';const M=new Set(T.met||[]),P=new Set(T.pend||[]);
- if(!M.size&&!P.size)return`<div class=asck><div class=h>沒有當初勾選的條件紀錄（例如重新分類的舊持股），條件看下面的「📋 今日自動檢核」。</div>${asEvHtml(cU(T.code))}</div>${typeof ckCardHtml=='function'?ckCardHtml(T,st):''}`;
- return`<div class=asck>${(T.met||[]).length?'':'<div class=h>還沒勾選符合的條件（到「完整論點」可以補勾）。</div>'}${E.map(g=>`<div><b>${esc(g.sec)}</b> <span class="${g.ok?'ok':'wn'}">${g.n}／${g.tot}${g.need?'（需要 '+(g.need>=g.tot?'全部':g.need+' 項')+'）':''}${g.ok?' ✅':' ⚠️'}</span>${g.items.filter(t=>M.has(t)||P.has(t)).map(t=>`<div class=h>${M.has(t)?'✓':'❔ 待確認：'} ${typeof ckT=='function'?ckT(t):esc(t)}${(T.metNote||{})[t]?' <i>（'+esc(T.metNote[t])+'）</i>':''}</div>`).join('')}</div>`).join('')}${asEvHtml(cU(T.code))}</div>${typeof ckCardHtml=='function'?ckCardHtml(T,st):''}`}
+function asMetHtml(T,st){if(!st)return'';const ev=asEvHtml(cU(T.code));
+ return`${ev?`<div class=asck>${ev}</div>`:''}${typeof ckCardHtml=='function'?ckCardHtml(T,st):''}${typeof ckMetRec=='function'?ckMetRec(T,st):''}`}
 // 這檔股票接下來的事件（除息、財報…）
 function asEvHtml(c){const L=(S.events||[]).filter(e=>e.code==c&&!e.done).sort((a,b)=>a.date<b.date?-1:1);return L.length?`<div style="margin-top:4px"><b>📅 事件</b>${L.map(e=>`<div class=h>${esc(e.date)} ${esc(e.type)}${e.note?'：'+esc(e.note):''}${e.date<=TODAY?' <button onclick="evDone(\''+e.id+'\')">✓ 完成</button>':''}</div>`).join('')}</div>`:''}
 // 快速記交易：勾選符合的策略條件（＝買進理由）
@@ -195,3 +203,6 @@ function asCondPick(st){if(!st)return'';const C=stConds(st);if(!C.length)return'
  const E=stCondEval(st,AT.met),M=new Set(AT.met||[]),bad=E.filter(g=>!g.ok);
  return`<div class=asck><div class=h>勾選現在符合的條件（會存成這次的買進理由）${ckOn&&CK?'；標「自動」的是用公開資料判斷的（'+esc(ckAsOf())+'），已先幫你勾好':''}：</div>${E.map((g,gi)=>`<div style="margin-top:4px"><b>${esc(g.sec)}</b> <span class="${g.ok?'ok':'wn'}">${g.n}／${g.tot}${g.need?'（需要 '+(g.need>=g.tot?'全部':g.need+' 項')+'）':''}</span>${g.items.map((t,ix)=>`<label class=ck><input type=checkbox onchange="asAtMet(${gi},${ix},this.checked)" ${M.has(t)?'checked':''}><span>${typeof ckT=='function'?ckT(t):esc(t)}${ckOn?ckBadge(ckEval(c,t,st),1):''}</span></label>`).join('')}</div>`).join('')}${NB.length?`<div style="margin-top:4px"><b>⛔ 不買</b> <span class=h>任何一項成立就不買</span>${nbR.map(o=>`<div class=ckl>${o.r?(o.r.v===true?'<b class=bad>⛔ 成立</b>':o.r.v===false?'✓ 沒有':'❔'):'·'} ${typeof ckT=='function'?ckT(o.t):esc(o.t)}${o.r&&(o.r.why||o.r.miss)?`<div class=h>${esc(o.r.why)}${o.r.miss?' <i>'+esc(o.r.miss)+'</i>':''}</div>`:''}</div>`).join('')}</div>`:''}${nbHit.length?`<div class=bad style="margin-top:4px">⛔ 有「不買」條件成立：${nbHit.map(o=>esc(o.t.replace(/〔.〕/g,''))).join('、')}。仍可以儲存，但會記錄下來。</div>`:''}${bad.length?`<div class=wn style="margin-top:4px">⚠️ ${bad.map(g=>g.sec).join('、')}還沒達到策略的門檻。仍可以儲存，會記錄下來，之後檢討時看得到。</div>`:''}</div>`}
 window.asAtMet=(gi,ix,on)=>{const st=stStrat(S,AT.sid),g=stCondEval(st,AT.met)[gi];if(!g)return;const t=g.items[ix];AT.met=(AT.met||[]).filter(x=>x!=t);if(on)AT.met.push(t);const h=$('asOvB').scrollTop;asTh();asPrev();$('asOvB').scrollTop=h};
+
+// 個股頁開著時改了現價（例如填盤中價），重畫個股頁，讓價格條件用新價格試算
+document.addEventListener('change',e=>{if(e.target.dataset&&e.target.dataset.px&&asCur&&e.target.closest&&e.target.closest('#asOvB')){setTimeout(()=>{const b=$('asOvB'),h=b?b.scrollTop:0;asStock(asCur.c,asCur.ac);const b2=$('asOvB');if(b2)b2.scrollTop=h},0)}});

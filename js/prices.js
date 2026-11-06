@@ -17,7 +17,9 @@ function pxCodes(){const s=new Set([bmC(S)]);for(const o of holdings(S))if(o.q>0
 // 自動價格的日期不比手填的舊，就帶入（手填的會被當天或更新的收盤價取代）
 function pxApply(){let ch=0;S.px=S.px||{};S.pxd=S.pxd||{};S.pxa=S.pxa||{};
  for(const c of pxCodes()){const o=PXL[c];if(!o)continue;const d0=S.pxd[c]||'';if(d0&&o.d<d0)continue;if(num(S.px[c])===o.v&&d0==o.d&&S.pxa[c])continue;S.px[c]=o.v;S.pxd[c]=o.d;S.pxa[c]=o.src||1;ch++}
- if(ch){save();calc()}return ch}
+ if(ch){save();calc();
+  // 個股頁開著（不是在記交易）時，用新價格重畫
+  if(typeof asCur!='undefined'&&asCur&&typeof AT!='undefined'&&!AT&&typeof asStock=='function'&&$('asOvB')){const b=$('asOvB'),h=b.scrollTop;asStock(asCur.c,asCur.ac);const b2=$('asOvB');if(b2)b2.scrollTop=h}}return ch}
 // 歷史收盤價（每月一個檔案），用來自動帶入每筆交易當天的基準 ETF 價格
 async function pxHist(){const need=new Set();const add=d=>{if(d&&/^\d{4}-\d{2}/.test(d))need.add(d.slice(0,7))};add(S.dd);for(const x of S.trades||[])if(x.k=='buy'||x.k=='sell')add(x.dt);for(const T of S.theses||[])if(+T.useInit&&num(T.basePx)==null)add(T.baseD||T.created);
  const keep=pxCodes();let got=0;for(const m of need){if(pxMon.has(m))continue;pxMon.add(m);const j=await pxGet('px/'+m+'.json');if(!j||!j.codes||!j.d)continue;
