@@ -6,7 +6,12 @@
 const ST_CAP={stock:20,group:40};
 const ST_STATUS=[['plan','規劃中'],['hold','持有中'],['exit','已出場']];
 const ST_EXIT=[['invalid','理由失效'],['target','達到估值目標'],['stop','停損'],['timeout','超過持有期限'],['other','其他']];
-const ST_FIELDS=['name','logic','screen','entry','exit','holdMin','holdMax','capStock','capGroup','stopPct','riskPct'];
+const ST_FIELDS=['name','logic','term','screen','entry','exit','holdMin','holdMax','capStock','capGroup','capStrat','stopPct','stopTech','riskPct','rr'];
+// 期別：買之前先決定打算持有多久，再選對應的策略
+const ST_TERM=[['短','短期（1～8 週）'],['中','中期（2～12 個月）'],['長','長期（1 年以上）']];
+const stTermN=k=>(ST_TERM.find(x=>x[0]==k)||['',''])[1];
+// 技術停損：和固定 % 停損一起算，取離現價比較近（比較高）的那個
+const ST_STOPT=[['','（只用固定 %）'],['lo20','跌破進場前 20 日最低收盤'],['ma20','跌破月線'],['ma20-3','跌破月線 −3%'],['ma60-5','跌破季線 −5%'],['lo250','跌破近一年最低收盤'],['brk-5','跌回突破點（前 60 日高點）−5%'],['ma60-5|lo250','季線 −5% 或近一年最低收盤']];
 const ST_TPL=[
  {name:'範例：價值回歸',logic:'基本面穩定的公司，股價因短期因素跌到估值區間下緣時分批買進，等估值回到區間中位數。（範例，請依自己的方法修改）',screen:'【選什麼：全部符合】\n1. 近 5 年獲利穩定\n2. 本益比或股價淨值比位於近 5 年區間下緣\n3. 負債比率不高',entry:'【何時買：至少 1 項】\n1. 股價止跌、站回月線\n2. 月營收年增率轉正\n【買多少】分 3 批、每批 1/3',exit:'1. 估值回到區間中位數以上：分批賣出\n2. 理由失效：獲利連 2 季衰退，全部賣出\n3. 停損：跌破均價 −20%\n4. 持有超過 12 個月仍未反映：重新評估',holdMin:3,holdMax:12,capStock:20,capGroup:40,stopPct:20,riskPct:2},
  {name:'範例：趨勢追蹤',logic:'順著中期趨勢操作：股價站上長期均線且營收成長時進場，跌破均線或營收轉弱時出場。（範例，請依自己的方法修改）',screen:'【選什麼：全部符合】\n1. 月營收年增率連 3 個月為正',entry:'【何時買：至少 2 項】\n1. 股價位於季線與半年線之上\n2. 突破整理區間\n3. 回測季線不破\n【買多少】分 2 批、每批 1/2',exit:'1. 收盤跌破季線：全部賣出\n2. 理由失效：月營收年增率轉負，全部賣出\n3. 停損：跌破均價 −10%',holdMin:1,holdMax:6,capStock:15,capGroup:35,stopPct:10,riskPct:1}];
@@ -17,7 +22,7 @@ const stStatusN=k=>k=='build'?'持有中':(ST_STATUS.find(x=>x[0]==k)||['',''])[
 function stNextId(list,pfx,w){let n=0;for(const x of list||[]){const m=new RegExp('^'+pfx+'(\\d+)$').exec(x.id||'');if(m)n=Math.max(n,+m[1])}return pfx+String(n+1).padStart(w,'0')}
 function stSnapOf(st){const o={};ST_FIELDS.forEach(k=>o[k]=st[k]??'');return o}
 // 目前內容和最新一個版本的內容不同＝有尚未存成版本的修改
-function stDirty(st){const h=(st.hist||[]).slice(-1)[0];return!h||JSON.stringify(h.snap)!=JSON.stringify(stSnapOf(st))}
+function stDirty(st){const h=(st.hist||[]).slice(-1)[0];return!h||JSON.stringify(stSnapOf(h.snap))!=JSON.stringify(stSnapOf(st))}
 function stNewStrategy(S,tpl,date){const st=Object.assign({id:stNextId(S.strategies,'S',2),ver:1,on:1},stSnapOf(tpl||{name:'新策略',holdMin:3,holdMax:12,capStock:ST_CAP.stock,capGroup:ST_CAP.group}));st.hist=[{ver:1,date:date||TODAY,reason:'初版',snap:stSnapOf(st)}];return st}
 function stNewThesis(S,o){return Object.assign({id:stNextId(S.theses,'T',3),code:'',sid:'',sver:1,status:'plan',created:TODAY,why:'',wrongIf:'',expectM:'',plan:[],target:'',tgtPx:'',stop:'',useInit:0,reviews:[],exit:{date:'',reason:'',followed:'',note:''}},o||{})}
 const addMon=(d,m)=>{const t=new Date(d+'T00:00:00Z');t.setUTCMonth(t.getUTCMonth()+(+m||0));return t.toISOString().slice(0,10)};
@@ -99,7 +104,7 @@ function stMDD(S,theses){const pts=[];for(const s of(S.snaps||[]).slice().sort((
 // 主動部位曝險：各檔市值（有現價用現價，沒有用成本）、族群合計
 function stExposure(S){const H=holdings(S).filter(o=>o.ac=='a'&&o.q>0);let tot=0;const by={},noPx=[];
  for(const o of H){const c=cU(o.n),px=num((S.px||{})[c]),v=px!=null?o.q*px:o.cost;if(px==null)noPx.push(c);by[c]=(by[c]||0)+v;tot+=v}
- const grp={};for(const c in by)for(const g of(S.tags||{})[c]||[])grp[g]=(grp[g]||0)+by[c];return{tot,by,grp,noPx}}
+ const grp={};for(const c in by){const T=(S.tags||{})[c]||[],G=T.length?T:[(typeof indOf=='function'&&indOf(c))||'未分類'];for(const g of G)grp[g]=(grp[g]||0)+by[c]}return{tot,by,grp,noPx}}
 // 上限：這檔股票有進行中的論點時，取所屬策略中最嚴格的；沒有就用預設 20% / 40%
 function stCapStock(S,c){let v=null;for(const T of S.theses||[]){if(T.status=='exit'||cU(T.code)!=c)continue;const st=stStrat(S,T.sid);if(st&&num(st.capStock)!=null)v=Math.min(v??Infinity,num(st.capStock))}return v??ST_CAP.stock}
 function stCapGroup(S,g){let v=null;for(const T of S.theses||[]){if(T.status=='exit')continue;if(!((S.tags||{})[cU(T.code)]||[]).includes(g))continue;const st=stStrat(S,T.sid);if(st&&num(st.capGroup)!=null)v=Math.min(v??Infinity,num(st.capGroup))}return v??ST_CAP.group}
@@ -111,7 +116,9 @@ function stFinDue(t){const y=+t.slice(0,4),L=[];for(const Y of [y-1,y]){L.push([
 // 提醒清單
 function stAlerts(S){const A=[],E=stExposure(S),nm=c=>c+(typeof nameOf=='function'&&nameOf(c)?' '+nameOf(c):'');
  if(E.tot>0){for(const c in E.by){const p=E.by[c]/E.tot*100,cap=stCapStock(S,c);if(p>cap)A.push({k:'cap',lv:'wn',t:`${nm(c)} 占主動部位 ${p.toFixed(1)}%，超過個股上限 ${cap}%`+(E.noPx.includes(c)?'（尚未填現價，以成本估算）':'')})}
-  for(const g in E.grp){const p=E.grp[g]/E.tot*100,cap=stCapGroup(S,g);if(p>cap)A.push({k:'cap',lv:'wn',t:`族群「${g}」占主動部位 ${p.toFixed(1)}%，超過族群上限 ${cap}%`})}}
+  for(const g in E.grp){const p=E.grp[g]/E.tot*100,cap=stCapGroup(S,g);if(p>cap)A.push({k:'cap',lv:'wn',t:`族群「${g}」占主動部位 ${p.toFixed(1)}%，超過族群上限 ${cap}%`})}
+  // 策略合計上限（例如短打合計不超過 10%）
+  for(const st of S.strategies||[]){const cs=num(st.capStrat);if(!cs)continue;const cs2=new Set((S.theses||[]).filter(T=>T.sid==st.id&&T.status!='exit').map(T=>cU(T.code)));let v=0;for(const c of cs2)v+=E.by[c]||0;const p=v/E.tot*100;if(p>cs)A.push({k:'cap',lv:'wn',t:`${st.id} ${st.name} 合計占主動部位 ${p.toFixed(1)}%，超過策略上限 ${cs}%`})}}
  const rd=stRevDue(TODAY),fd=stFinDue(TODAY);
  for(const T of S.theses||[]){if(T.status=='exit'||T.status=='plan')continue;const p=stPerf(S,T),st=stStrat(S,T.sid),c=cU(T.code),since=p.first||T.created||TODAY;
   const mo=num(T.expectM)??(st?num(st.holdMax):null);if(p.first&&mo){const due=addMon(p.first,mo);if(TODAY>due)A.push({k:'due',lv:'wn',th:T.id,t:`${T.id} ${nm(c)} 已持有 ${(dDays(p.first,TODAY)/30.44).toFixed(1)} 個月，超過預計 ${mo} 個月`})}
@@ -129,10 +136,12 @@ function stAlerts(S){const A=[],E=stExposure(S),nm=c=>c+(typeof nameOf=='functio
 // 策略規則：第一行可寫【標題：全部符合／至少 N 項】，下面一行一個條件「1. …」
 function stConds(st){const out=[];if(!st)return out;for(const f of['screen','entry']){let cur=null;
  for(const ln of String(st[f]||'').split(/\n/)){const s=ln.trim();if(!s)continue;const h=s.match(/^【([^】：:]+)[：:]?([^】]*)】/);
-  if(h){const r=(h[2]||'').trim(),n=r.match(/至少\s*(\d+)/);cur={sec:h[1].trim(),rule:r,need:/全部/.test(r)?'all':n?+n[1]:0,items:[]};out.push(cur);continue}
+  if(h){const r=(h[2]||'').trim(),n=r.match(/至少\s*(\d+)/),sec=h[1].trim();cur={sec,rule:r,need:/不買|不進場/.test(sec)?'none':/全部/.test(r)?'all':n?+n[1]:0,items:[]};out.push(cur);continue}
   const m=s.match(/^(\d+)[.、．)]\s*(.+)$/);if(m){if(!cur){cur={sec:f=='screen'?'選什麼':'何時買',rule:'',need:0,items:[]};out.push(cur)}cur.items.push(m[2].trim())}}}
  return out.filter(g=>g.items.length)}
-function stCondEval(st,met){const M=new Set(met||[]);return stConds(st).map(g=>{const n=g.items.filter(t=>M.has(t)).length,need=g.need=='all'?g.items.length:g.need;return{sec:g.sec,rule:g.rule,items:g.items,n,tot:g.items.length,need,ok:!need||n>=need}})}
+// 【不買】段落：任何一條成立就不買（不放進買進理由）
+const stNoBuy=st=>stConds(st).filter(g=>g.need=='none').flatMap(g=>g.items);
+function stCondEval(st,met){const M=new Set(met||[]);return stConds(st).filter(g=>g.need!='none').map(g=>{const n=g.items.filter(t=>M.has(t)).length,need=g.need=='all'?g.items.length:g.need;return{sec:g.sec,rule:g.rule,items:g.items,n,tot:g.items.length,need,ok:!need||n>=need}})}
 // 「什麼情況代表我錯了」預設＝策略出場規則裡的「理由失效」那一條
 const stWrongDef=st=>{if(!st)return'';const l=String(st.exit||'').split(/\n/).find(s=>/理由失效/.test(s));return l?l.replace(/^\s*\d+[.、．)]\s*/,'').replace(/^理由失效[：:]\s*/,'').replace(/[，,]\s*全部賣出\s*$/,'').trim():''};
 // 分批計畫預設＝策略進場規則裡的「分 N 批」
@@ -142,7 +151,14 @@ function stPlanDef(st){const n=stPlanN(st);if(n<2)return[];const p=Math.round(10
 function stLinkPlan(T,x){if(!T||!x||x.k!='buy'||!(T.plan&&T.plan.length)||T.plan.some(r=>r.tid==x.id))return;const r=T.plan.find(r=>!r.tid);if(r)r.tid=x.id}
 const stPlanProg=T=>{const n=(T.plan||[]).length;return n?`第 ${(T.plan||[]).filter(r=>r.tid).length}／${n} 批`:''};
 // 新論點的預設值：停損價、什麼情況代表錯了、分批計畫
-function stThDefaults(S,T,px){const st=stStrat(S,T.sid);if(!st)return T;if(!T.wrongIf)T.wrongIf=stWrongDef(st);if(!(T.plan&&T.plan.length))T.plan=stPlanDef(st);const sp=num(st.stopPct);if(num(T.stop)==null&&sp&&num(px))T.stop=+(num(px)*(1-sp/100)).toFixed(2);return T}
+// 預設停損價：固定 %（成交價或成本 ×（1 − %））和技術停損，取比較高、離現價比較近的那個
+function stStopCalc(st,c,px){px=num(px);if(!st||!px)return null;const L=[],sp=num(st.stopPct);if(sp)L.push({v:px*(1-sp/100),t:`−${sp}%`});
+ const m=typeof ckM=='function'?ckM(c):null;if(m)for(const k of String(st.stopTech||'').split('|').filter(Boolean)){const v=k=='lo20'?m.lo20:k=='ma20'?m.m20:k=='ma20-3'?(m.m20!=null?m.m20*0.97:null):k=='ma60-5'?(m.m60!=null?m.m60*0.95:null):k=='lo250'?m.lo250:k=='brk-5'?(m.hi60!=null?m.hi60*0.95:null):null;
+  if(v!=null&&v<px)L.push({v,t:(ST_STOPT.find(x=>x[0]==k)||['',k])[1]})}
+ if(!L.length)return null;const b=L.reduce((a,x)=>x.v>a.v?x:a);return{v:+b.v.toFixed(2),t:b.t,all:L}}
+// 賺賠比＝（目標價 − 買價）÷（買價 − 停損價）；目標價不手填，用近一年最高收盤
+function stRR(c,px,stop){const m=typeof ckM=='function'?ckM(c):null;px=num(px);stop=num(stop);if(!m||m.hi250==null||!px||stop==null||stop>=px)return null;return{rr:(m.hi250-px)/(px-stop),tgt:m.hi250}}
+function stThDefaults(S,T,px){const st=stStrat(S,T.sid);if(!st)return T;if(!T.wrongIf)T.wrongIf=stWrongDef(st);if(!(T.plan&&T.plan.length))T.plan=stPlanDef(st);if(num(T.stop)==null&&num(px)){const s=stStopCalc(st,T.code,px);if(s)T.stop=s.v}return T}
 // 狀態自動：沒買過＝規劃中、有股數＝持有中、股數歸零＝已出場（手動標記的已出場不會改回）
 function stSync(S){let ch=0;for(const T of S.theses||[]){if(T.status=='exit')continue;const p=stPerf(S,T),s=!p.first?'plan':p.open?'hold':'exit';
  if(s!=T.status){T.status=s;if(s=='exit'){T.exit=T.exit||{};if(!T.exit.date)T.exit.date=p.end||TODAY}ch++}}return ch}
