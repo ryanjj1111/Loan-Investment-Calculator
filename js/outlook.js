@@ -10,6 +10,8 @@ const olDir=v=>{const s=String(v??'').trim().toLowerCase();if(!s)return'';if(/^(
 const olOld=d=>!d||dDays(d,TODAY)>OL_STALE;
 function olRe(){save();if(typeof asCalc=='function')asCalc();if(typeof asCur!='undefined'&&asCur){const b=$('asOvB'),h=b?b.scrollTop:0;asStock(asCur.c,asCur.ac);const b2=$('asOvB');if(b2)b2.scrollTop=h}if(typeof stBuild=='function')stBuild()}
 
+// 這檔股票進行中論點的策略，有沒有用到某類條件
+const olUses=(c,re)=>(S.theses||[]).some(T=>T.status!='exit'&&cU(T.code)==cU(c)&&typeof stConds=='function'&&stConds(stStrat(S,T.sid)).some(g=>g.items.some(t=>re.test(t))));
 // 個股頁：前瞻資料卡
 function olHtml(c){c=cU(c);const a=(S.attr||{})[c]||{},o=(S.outlook||{})[c]||{},E=(o.eps||[]).map((e,i)=>({e,i})).sort((p,q)=>(q.e.d||'')>(p.e.d||'')?1:-1),g=o.guide||{},th=a.theme&&(S.themes||{})[a.theme];
  const miss=['growth','cyc','lead'].filter(k=>a[k]==null||a[k]==='').length+(E.length?0:1)+(g.d?0:1);
@@ -19,10 +21,10 @@ function olHtml(c){c=cU(c);const a=(S.attr||{})[c]||{},o=(S.outlook||{})[c]||{},
  return`<details class=olc ${ls('lcol')=='1'?'open':''} ontoggle="ls('lcol',this.open?'1':'0')"><summary><b>🔭 前瞻資料與股票屬性</b> <span class=h>${miss?`還有 ${miss} 項沒填`:'已填'}</span></summary>
  <div class=sub>股票屬性（每檔確認一次）</div>${tri('growth','產業有 2 年以上結構性成長')}${tri('cyc','景氣循環股')}${tri('lead','產業龍頭或寡占')}
  <div class=olr><span>所屬主題</span><input list=olThL value="${esc(a.theme||'')}" placeholder="例如 AI 伺服器" onchange="olAttr('${c}','theme',this.value.trim())"><datalist id=olThL>${Object.keys(S.themes||{}).map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
- ${a.theme?`<div class=h>主題「${esc(a.theme)}」：${th&&th.d?`${olDirN(th.st)}（${esc(th.d)}${th.note?'：'+esc(th.note):''}）${olOld(th.d)?' <span class=wn>超過 4 個月，請更新</span>':''}`:'<span class=wn>還沒填</span>，到「🧭 策略 → 📚 策略庫」最上方的主題指標填寫'}</div>`:''}
+ ${a.theme?`<div class=h>主題「${esc(a.theme)}」：${th&&th.d?`${olDirN(th.st)}（${esc(th.d)}${th.note?'：'+esc(th.note):''}）${olOld(th.d)?' <span class=wn>超過 4 個月，請更新</span>':''}`:(olUses(c,/主題|產業報價/)?'<span class=wn>還沒填</span>，到「🧭 策略 → 📚 策略庫」最上方的主題指標填寫':'還沒填（這檔的策略沒有用到主題條件，可以不填）')}</div>`:''}
  <div class=sub>法人 EPS 預估</div>
- ${E.length?`<div class=olt>${E.map(({e,i})=>`<div class="olr ${olOld(e.d)?'old':''}"><span>${esc(e.y)} 年 <b>${esc(e.v)}</b> 元</span><span class=h>${esc(e.src||'未註明來源')}｜${esc(e.d||'')}${olOld(e.d)?'（超過 4 個月）':''}</span><button onclick="olEpsDel('${c}',${i})">✕</button></div>`).join('')}</div>`:'<div class=h>還沒有預估資料。</div>'}
- <div class=olf><input id=olY value="${y1}" type=number style="width:70px" aria-label="年度"><input id=olV type=number step=any placeholder="EPS" style="width:80px"><input id=olS placeholder="來源，例如 元大投顧" style="flex:1;min-width:110px"><input id=olD type=date value="${TODAY}" style="width:140px"><button onclick="olEpsAdd('${c}')">新增</button></div>
+ ${E.length?`<div class=ok style="font-size:12.5px">✅ 已有 ${[...new Set(E.map(({e})=>e.y))].sort().join('、')} 年預估（最新 ${esc(E.map(({e})=>e.d).filter(Boolean).sort().pop()||'')}）</div><div class=olt>${E.map(({e,i})=>`<div class="olr ${olOld(e.d)?'old':''}"><span>${esc(e.y)} 年 <b>${esc(e.v)}</b> 元</span><span class=h>${esc(e.src||'未註明來源')}｜${esc(e.d||'')}${olOld(e.d)?'（超過 4 個月）':''}</span><button onclick="olEpsDel('${c}',${i})">✕</button></div>`).join('')}</div>`:'<div class=h>還沒有預估資料。</div>'}
+ ${E.length?'<details class=oladd><summary class=h>＋再加一筆（另一家法人，或新的一次預估）</summary>':''}<div class=olf><input id=olY value="${y1}" type=number style="width:70px" aria-label="年度"><input id=olV type=number step=any placeholder="EPS" style="width:80px"><input id=olS placeholder="來源，例如 元大投顧" style="flex:1;min-width:110px"><input id=olD type=date value="${TODAY}" style="width:140px"><button onclick="olEpsAdd('${c}')">新增</button></div><div class=h>日期填報告或新聞的日期，不是今天輸入的日期。</div>${E.length?'</details>':''}
  <div class=sub>最近一次法說指引</div>${dir('rev','下一季營收')}${dir('gm','下一季毛利率')}
  <div class=olf><input type=date value="${esc(g.d||'')}" onchange="olGuide('${c}','d',this.value)" style="width:140px"><input value="${esc(g.src||'')}" placeholder="來源" onchange="olGuide('${c}','src',this.value)" style="width:110px"><input value="${esc(g.note||'')}" placeholder="重點，一句話" onchange="olGuide('${c}','note',this.value)" style="flex:1;min-width:120px"></div>
  ${g.d&&olOld(g.d)?'<div class=wn>法說指引超過 4 個月，請更新。</div>':''}

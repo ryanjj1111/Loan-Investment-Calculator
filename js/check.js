@@ -94,7 +94,8 @@ const CK_ATOMS=[
  [/^近3個月法人EPS預估(持平或上修|沒有下修)$/,x=>m=>{const o=ckOut(CKX.c),y=+TODAY.slice(0,4)+1,now=o.med(y,0,45),old=o.med(y,60,150);
   if(now!=null&&old!=null){const d=(now/old-1)*100;return R_(d>=-2,`${y} 年 EPS 預估 ${f2(old)} → ${f2(now)}（${pc(d)}）`)}
   const r=m.ry;if(!r||r.length<6||r.some(v=>v==null))return NA(o.med(y,0,45)==null?'前瞻資料沒有最近的 EPS 預估，月營收資料也不足':'還沒有 3 個月前的預估紀錄，月營收資料也不足',o.med(y,0,45)==null?'eps':'');const a=(r[0]+r[1]+r[2])/3,b=(r[3]+r[4]+r[5])/3;
-  return R_(b>=a,`近 3 個月營收年增率平均 ${f1(b)}%，前 3 個月 ${f1(a)}%`,'（還沒有 3 個月前的預估紀錄，先用月營收判斷）')}],
+  const dN=o.dIn(y,0,45),dO=o.dIn(y,60,150),cut=ckMD(ckAddD(TODAY,-45)),why=dN?`（⏳ 還沒有 3 個月前的預估：${ckMD(dN)} 那筆約 ${ckMD(ckAddD(dN,60))} 起可以拿來比較，先用月營收判斷）`:dO?`（有 ${ckMD(dO)} 的預估，還缺 ${cut} 之後的新預估才能比較，先用月營收判斷）`:'（還沒有法人 EPS 預估，先用月營收判斷）';
+  return Object.assign(R_(b>=a,`近 3 個月營收年增率平均 ${f1(b)}%，前 3 個月 ${f1(a)}%`,why),{hint:dN?'wait':dO?'new':'none',hd:dO||''})}],
  [/^最近一次法說(?:的)?營收與毛利率展望不低於持平$/,x=>m=>{const g=ckOut(CKX.c).guide;if(!g||!g.d)return NA('前瞻資料沒有法說指引','guide');if(!g.rev||!g.gm)return NA('法說指引缺營收或毛利率的方向','guide');if(dDays(g.d,TODAY)>120)return NA(`法說指引是 ${g.d} 的，超過 4 個月，請更新`,'guide');
   return R_(g.rev!='down'&&g.gm!='down',`${g.d} 法說：營收${CK_DIR[g.rev]||'—'}、毛利率${CK_DIR[g.gm]||'—'}${g.src?'（'+g.src+'）':''}`)}],
  [/^(?:產業報價止跌|所屬主題需求展望不是向下)$/,x=>m=>{const a=(S.attr||{})[CKX.c]||{},th=a.theme&&(S.themes||{})[a.theme];if(!a.theme)return NA('股票屬性還沒有填主題','attr:theme');if(!th||!th.d||!th.st)return NA(`主題「${a.theme}」還沒有狀態`,'theme:'+a.theme);if(dDays(th.d,TODAY)>120)return NA(`主題「${a.theme}」的指標是 ${th.d} 的，請更新`,'theme:'+a.theme);
@@ -113,7 +114,9 @@ function ckOut(c){const o=(S.outlook||{})[cU(c)]||{},E=o.eps||[];const pick=(y,a
  const lat=y=>{const L=latL(y).map(e=>+e.v).filter(isFinite).sort((p,q)=>p-q);if(!L.length)return null;const k=L.length>>1;return L.length%2?L[k]:(L[k-1]+L[k])/2};
  const srcL=y=>{const L=latL(y);return L.length?[...new Set(L.map(e=>e.src||'未註明'))].slice(0,3).join('、')+(L.length>3?' 等 '+L.length+' 筆':'')+'，'+L.map(e=>e.d).sort().pop():''};
  const old=y=>E.some(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)>120);
- return{med,src,lat,srcL,old,guide:o.guide||null}}
+ const dIn=(y,a,b)=>E.filter(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)>=a&&dDays(e.d,TODAY)<=b).map(e=>e.d).sort().pop()||'';
+ return{med,src,lat,srcL,old,dIn,guide:o.guide||null}}
+const ckAddD=(d,n)=>{const t=new Date(d+'T00:00:00Z');t.setUTCDate(t.getUTCDate()+n);return t.toISOString().slice(0,10)};
 const CKC={};
 // 一個片段 → 判斷函式（看不懂＝null）
 function ckAtom(s){for(const[re,mk]of CK_ATOMS){const x=s.match(re);if(x)return mk(x)}return null}
@@ -194,25 +197,29 @@ function ckTodo(){if(!CK)return[];const L=[],key=new Set(),push=o=>{const k=o.k+
  for(const T of S.theses||[]){if(T.status=='exit')continue;const st=stStrat(S,T.sid);if(!st)continue;const c=cU(T.code),done=ckDone(T).n,use={eps:0,guide:0,theme:0};
   for(const g of ckGroups(st,c)){const items=/依序/.test(g.rule||'')?g.items.slice(done,done+1):g.items;
    for(const i of items){const t=ckN(i.t);if(/EPS預估/.test(t))use.eps=1;if(/法說/.test(t))use.guide=1;if(/主題|產業報價/.test(t))use.theme=1;
-    if(!i.r)continue;if(ckFixable(i.r))for(const f of i.r.fix){if(f.startsWith('theme:'))push({k:'fix',f:'theme',n:f.slice(6),c});else push({k:'fix',f,c:c,n:c+f})}
-    else if(i.r.miss&&/先用月營收判斷/.test(i.r.miss))push({k:'soft',f:'eps',c,n:c+'soft'})}}
+    if(!i.r)continue;if(ckFixable(i.r))for(const f of i.r.fix){if(f.startsWith('theme:'))push({k:'fix',f:'theme',n:f.slice(6),c});
+     else if(f=='eps'&&(((S.outlook||{})[c]||{}).eps||[]).length&&!(S.outlook[c].eps).some(e=>e.d&&dDays(e.d,TODAY)<=120)){const d=((S.outlook||{})[c].eps).map(e=>e.d).filter(Boolean).sort().pop();push({k:'old',f:'eps',c,n:c+'oldeps',w:ckStaleWhy(c,d)||`是 ${ckMD(d)} 的，請更新`})}
+     else push({k:'fix',f,c:c,n:c+f})}
+    else if(i.r.hint=='new')push({k:'soft',f:'eps',c,n:c+'soft',w:`有 ${ckMD(i.r.hd)} 的預估；要一筆 ${ckMD(ckAddD(TODAY,-45))} 之後的新預估，才能比較有沒有下修`});
+    else if(i.r.hint=='none')push({k:'soft',f:'eps',c,n:c+'soft',w:'補上法人 EPS 預估，就不用再用月營收代替判斷'})}}
   const o=(S.outlook||{})[c]||{};
-  if(use.eps&&(o.eps||[]).length){const d=o.eps.map(e=>e.d).filter(Boolean).sort().pop(),w=ckStaleWhy(c,d);if(w&&!key.has('fix|'+c+'eps'))push({k:'old',f:'eps',c,n:c+'oldeps',w})}
+  if(use.eps&&(o.eps||[]).length){const d=o.eps.map(e=>e.d).filter(Boolean).sort().pop(),w=ckStaleWhy(c,d);if(w&&!key.has('fix|'+c+'eps')&&!key.has('old|'+c+'oldeps'))push({k:'old',f:'eps',c,n:c+'oldeps',w})}
   if(use.guide&&o.guide&&o.guide.d){const w=ckStaleWhy(c,o.guide.d);if(w&&!key.has('fix|'+c+'guide'))push({k:'old',f:'guide',c,n:c+'oldguide',w})}
   if(use.theme){const n=((S.attr||{})[c]||{}).theme,t=n&&(S.themes||{})[n];if(t&&t.d&&t.st&&dDays(t.d,TODAY)>120)push({k:'old',f:'theme',n,c,w:`是 ${ckMD(t.d)} 的，超過 4 個月`})}}
- L.forEach(o=>{if(o.k=='soft'&&key.has('fix|'+o.c+'eps'))o.skip=1});return L.filter(o=>!o.skip).sort((a,b)=>({fix:0,old:1,soft:2})[a.k]-({fix:0,old:1,soft:2})[b.k])}
+ L.forEach(o=>{if(o.k=='soft'&&(key.has('fix|'+o.c+'eps')||key.has('old|'+o.c+'oldeps')))o.skip=1});return L.filter(o=>!o.skip).sort((a,b)=>({fix:0,old:1,soft:2})[a.k]-({fix:0,old:1,soft:2})[b.k])}
 function ckTodoHtml(){const L=ckTodo();if(!L.length)return'';const nm=c=>esc(c+' '+nameOf(c)),dir=n=>(typeof OL_DIR!='undefined'?OL_DIR:[]).map(([v,l])=>`<button data-n="${esc(n)}" onclick="ckFix.th(this,'${v}')">${l}</button>`).join('');
  const row=o=>{if(o.f=='theme')return`<div class=ckto data-n="${esc(o.n)}">${o.k=='old'?'🔄':'✏️'} 主題「${esc(o.n)}」${o.k=='old'?o.w:'還沒有狀態'}（${o.cs.map(nm).join('、')}）：${dir(o.n)}</div>`;
   if(o.f.startsWith('attr:')&&o.f!='attr:theme'){const k=o.f.slice(5);return`<div class=ckto>✏️ ${nm(o.c)}：${CK_ATTR[k]}？<button onclick="ckFix.attr('${o.c}','${k}',1)">是</button><button onclick="ckFix.attr('${o.c}','${k}',0)">否</button></div>`}
   const lb={'attr:theme':'所屬主題',eps:'法人 EPS 預估（'+TODAY.slice(0,4)+'、'+(+TODAY.slice(0,4)+1)+'）',guide:'最近一次法說指引'}[o.f]||o.f;
-  return`<div class=ckto>${o.k=='old'?'🔄':o.k=='soft'?'💡':'✏️'} ${nm(o.c)}：${lb}${o.k=='old'?' '+esc(o.w):o.k=='soft'?'（現在先用月營收代替判斷，補了更準）':''} <button onclick="ckGo('${o.c}','${o.f}',${o.k=='old'?1:0})">${o.k=='old'?'更新':'填寫'}</button></div>`};
+  if(o.k=='soft')return`<div class=ckto>💡 ${nm(o.c)}：${esc(o.w)} <button onclick="ckGo('${o.c}','eps',1)">填寫</button></div>`;
+  return`<div class=ckto>${o.k=='old'?'🔄':'✏️'} ${nm(o.c)}：${lb}${o.k=='old'?' '+esc(o.w):''} <button onclick="ckGo('${o.c}','${o.f}',${o.k=='old'?1:0})">${o.k=='old'?'更新':'填寫'}</button></div>`};
  const n=L.filter(o=>o.k!='soft').length;
  return`<details class="stal asfx" ${ls('lcfx')=='0'?'':'open'} ontoggle="ls('lcfx',this.open?'1':'0')"><summary><b>✏️ 待補資料（${n}）</b> <span class=h>補了之後，條件會自動重新判斷</span></summary>${L.map(row).join('')}
   <div class=h style="margin-top:4px">✏️ 缺的資料　🔄 舊了要更新（超過 4 個月、財報期限或法說會之後）　💡 補了判斷更準</div><div class=asbtn><button onclick="ckAiAsk()">🤖 請 AI 幫我找（複製請求）</button></div></details>`}
 // 跳到個股頁的填寫位置
 window.ckGo=(c,f,old)=>{asStock(c,'a');setTimeout(()=>{const b=$('asOvB');if(!b)return;let el=!old&&b.querySelector(`.ckfx[data-k="${f}"]`);
  if(!el){const d=b.querySelector('details.olc');if(d){d.open=true;el=f=='eps'?b.querySelector('#olV'):f=='guide'?d.querySelector('.olf input[type=date]'):d}}
- if(el){el.scrollIntoView({block:'center'});const i=el.matches&&el.matches('input')?el:el.querySelector&&el.querySelector('input');if(i)i.focus();(el.closest('.ckfx')||el).classList.add('ckhi')}},60)};
+ if(el){let p=el.parentNode;while(p&&p!==b){if(p.tagName=='DETAILS')p.open=true;p=p.parentNode}el.scrollIntoView({block:'center'});const i=el.matches&&el.matches('input')?el:el.querySelector&&el.querySelector('input');if(i)i.focus();(el.closest('.ckfx')||el).classList.add('ckhi')}},60)};
 // 複製一段請求給 AI：列出缺的與要更新的資料，要求附來源、用投資帳本 v1 輸出
 window.ckAiAsk=()=>{const L=ckTodo(),y=+TODAY.slice(0,4),nm=c=>c+' '+nameOf(c),by=f=>L.filter(o=>o.f==f),uniq=a=>[...new Set(a)];
  const eps=uniq(by('eps').map(o=>nm(o.c))),gd=uniq(by('guide').map(o=>nm(o.c))),th=by('theme').map(o=>`${o.n}（${o.cs.map(nm).join('、')}）`),at=L.filter(o=>o.f.startsWith('attr:')).map(o=>nm(o.c)+'：'+(o.f=='attr:theme'?'所屬主題':CK_ATTR[o.f.slice(5)]));
