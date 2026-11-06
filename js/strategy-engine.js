@@ -62,13 +62,25 @@ function stRun(S,code,events,opt){opt=opt||{};const asOf=opt.asOf||events.reduce
  return{code,q,cost,real,un,div,inv,pl,ret,xr,days,first,end,open,mv,px,bmRet,ex:ret!=null&&bmRet!=null?ret-bmRet:null,miss,bmNowMiss:open&&bmNow==null}}
 
 // 論點的事件：期初持股（選擇納入時）＋歸屬此論點的交易＋沒歸類的配息依股數比例分配
-function stThesisEvents(S,T){const c=cU(T.code),ev=[];
- if(+T.useInit&&hasInit(S)){let q=0,cost=0;for(const r of S.init)if(r.ac=='a'&&cU(r.n)==c){q+=+r.q||0;cost+=(+r.q||0)*(+r.px||0)}if(q>0)ev.push({d:S.dd,k:'buy',q,g:cost,fee:0,tax:0,cash:-cost,bm:stBmPx(S,S.dd,null),init:1})}
- for(const x of S.trades||[]){if(!x.dt||cU(x.n)!=c)continue;
+// 策略起算：撥款前就有的持股，在建立論點那天（或自己填的起算日）才歸到策略，
+// 策略的損益、持有天數、vs 0050、均價都從起算日的收盤價開始算；實際帳戶損益看資產頁的「📦 我的庫存」
+function stBaseClose(S,c,d){if(typeof PXH!='undefined'&&PXH[d]&&num(PXH[d][c])!=null)return{v:num(PXH[d][c]),fix:1};
+ const pd=(S.pxd||{})[c],v=num((S.px||{})[c]);if(v!=null&&pd==d)return{v,fix:1};if(v!=null&&d>=TODAY&&(!pd||pd<=d))return{v,fix:0};return null}
+function stBase(S,T){if(!+T.useInit||!hasInit(S))return null;const d=T.baseD||T.created;if(!d||!S.dd||d<=S.dd)return null;
+ const m=num(T.basePx),au=String(T.baseAuto||'');if(m!=null&&!(au&&au.endsWith('|'+m)&&au!=d+'|'+m))return{d,px:m,src:au==d+'|'+m?'收盤':'填'};const b=stBaseClose(S,cU(T.code),d);return b?{d,px:b.v,src:b.fix?'收盤':'暫用現價'}:{d,px:null,src:''}}
+function stThesisEvents(S,T,B){const c=cU(T.code),ev=[];if(B===undefined)B=stBase(S,T);const on=B&&B.px!=null;
+ if(+T.useInit&&hasInit(S)){let q=0,cost=0;for(const r of S.init)if(r.ac=='a'&&cU(r.n)==c){q+=+r.q||0;cost+=(+r.q||0)*(+r.px||0)}
+  if(on){for(const x of S.trades||[])if(x.thesisId==T.id&&x.dt&&x.dt<B.d){const n=num(x.q)||0;if(x.k=='buy'||x.k=='sdiv')q+=n;else if(x.k=='sell')q-=n}
+   if(q>0)ev.push({d:B.d,k:'buy',q,g:q*B.px,fee:0,tax:0,cash:-q*B.px,bm:stBmPx(S,B.d,null),init:1,base:1})}
+  else if(q>0)ev.push({d:S.dd,k:'buy',q,g:cost,fee:0,tax:0,cash:-cost,bm:stBmPx(S,S.dd,null),init:1})}
+ for(const x of S.trades||[]){if(!x.dt||cU(x.n)!=c)continue;if(on&&x.dt<B.d)continue;
+  if(on&&x.k=='div'&&x.dt==B.d)continue;
   if(x.thesisId==T.id){const m=tradeAmt(S,x);if(x.k=='buy'||x.k=='sell')ev.push({d:x.dt,k:x.k,q:num(x.q)||0,g:m.g,fee:m.fee,tax:m.tax,cash:m.cash,bm:stBmPx(S,x.dt,x.bmPx),id:x.id});else if(x.k=='sdiv')ev.push({d:x.dt,k:'sdiv',q:num(x.q)||0});else if(x.k=='div')ev.push({d:x.dt,pd:x.pdt||x.dt,k:'div',cash:m.cash})}
   else if(!x.thesisId&&x.k=='div'&&x.ac=='a')ev.push({d:x.dt,k:'divU',x})}
  return ev}
-function stPerf(S,T,opt){return stRun(S,cU(T.code),stThesisEvents(S,T),Object.assign({exitDate:T.status=='exit'&&T.exit&&T.exit.date?T.exit.date:null},opt||{}))}
+function stPerf(S,T,opt){const B=stBase(S,T),r=stRun(S,cU(T.code),stThesisEvents(S,T,B),Object.assign({exitDate:T.status=='exit'&&T.exit&&T.exit.date?T.exit.date:null},opt||{}));r.base=B&&B.px!=null?B:null;return r}
+// 起算日的收盤價抓到後寫進論點，之後就固定
+function stBaseFix(S){let ch=0;for(const T of S.theses||[]){const B=stBase(S,T);if(!B||B.src!='收盤'||num(T.basePx)===B.px)continue;T.basePx=B.px;T.baseAuto=B.d+'|'+B.px;T.baseD=T.baseD||B.d;ch++}return ch}
 
 // 沒有歸類的部位：每檔分成「未分類」與「期初持股」兩個桶；沒歸類的賣出先扣未分類的股數，不夠再扣期初持股
 function stUntagged(S,ac){const adopted=new Set((S.theses||[]).filter(T=>+T.useInit).map(T=>cU(T.code)));const codes=new Set();
@@ -160,5 +172,5 @@ function stStopCalc(st,c,px){px=num(px);if(!st||!px)return null;const L=[],sp=nu
 function stRR(c,px,stop){const m=typeof ckM=='function'?ckM(c):null;px=num(px);stop=num(stop);if(!m||m.hi250==null||!px||stop==null||stop>=px)return null;return{rr:(m.hi250-px)/(px-stop),tgt:m.hi250}}
 function stThDefaults(S,T,px){const st=stStrat(S,T.sid);if(!st)return T;if(!T.wrongIf)T.wrongIf=stWrongDef(st);if(!(T.plan&&T.plan.length))T.plan=stPlanDef(st);if(num(T.stop)==null&&num(px)){const s=stStopCalc(st,T.code,px);if(s)T.stop=s.v}return T}
 // 狀態自動：沒買過＝規劃中、有股數＝持有中、股數歸零＝已出場（手動標記的已出場不會改回）
-function stSync(S){let ch=0;for(const T of S.theses||[]){if(T.status=='exit')continue;const p=stPerf(S,T),s=!p.first?'plan':p.open?'hold':'exit';
+function stSync(S){let ch=stBaseFix(S);for(const T of S.theses||[]){if(T.status=='exit')continue;const p=stPerf(S,T),s=!p.first?'plan':p.open?'hold':'exit';
  if(s!=T.status){T.status=s;if(s=='exit'){T.exit=T.exit||{};if(!T.exit.date)T.exit.date=p.end||TODAY}ch++}}return ch}

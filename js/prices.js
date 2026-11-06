@@ -19,7 +19,7 @@ function pxApply(){let ch=0;S.px=S.px||{};S.pxd=S.pxd||{};S.pxa=S.pxa||{};
  for(const c of pxCodes()){const o=PXL[c];if(!o)continue;const d0=S.pxd[c]||'';if(d0&&o.d<d0)continue;if(num(S.px[c])===o.v&&d0==o.d&&S.pxa[c])continue;S.px[c]=o.v;S.pxd[c]=o.d;S.pxa[c]=o.src||1;ch++}
  if(ch){save();calc()}return ch}
 // 歷史收盤價（每月一個檔案），用來自動帶入每筆交易當天的基準 ETF 價格
-async function pxHist(){const need=new Set();const add=d=>{if(d&&/^\d{4}-\d{2}/.test(d))need.add(d.slice(0,7))};add(S.dd);for(const x of S.trades||[])if(x.k=='buy'||x.k=='sell')add(x.dt);
+async function pxHist(){const need=new Set();const add=d=>{if(d&&/^\d{4}-\d{2}/.test(d))need.add(d.slice(0,7))};add(S.dd);for(const x of S.trades||[])if(x.k=='buy'||x.k=='sell')add(x.dt);for(const T of S.theses||[])if(+T.useInit&&num(T.basePx)==null)add(T.baseD||T.created);
  const keep=pxCodes();let got=0;for(const m of need){if(pxMon.has(m))continue;pxMon.add(m);const j=await pxGet('px/'+m+'.json');if(!j||!j.codes||!j.d)continue;
   const ix=[];j.codes.forEach((c,i)=>{if(keep.has(c))ix.push([c,i])});for(const d in j.d){const a=j.d[d],o=PXH[d]||(PXH[d]={});for(const[c,i]of ix)if(a[i]!=null)o[c]=a[i]}got++}
  if(got)calc()}
