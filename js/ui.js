@@ -105,7 +105,7 @@ function build(){
   `<div style="margin-top:8px"><button onclick="resetPlan()">📌 以目前設定重設「原始計畫」線</button> <span class=h id=pinfo></span></div>`;
  if(op.length)document.querySelectorAll('#ctl details').forEach((d,i)=>{if(i<op.length)d.open=op[i]});
  $('s1').innerHTML=`<label>結算日期${dIn('cur.dt',S.cur.dt,'結算日期')}</label>`+(usePx(S)?`<label>追蹤帳戶現金合計(萬)${inp('cur.c',S.cur.c,'o')}</label>`:`${cf_('x50',bmC(S)+' 價格(元)')}${cf_('p','被動部位市值(萬)')}${cf_('a','主動部位市值(萬)')}<label style="grid-column:span 2">追蹤帳戶現金合計(萬)${inp('cur.c',S.cur.c,'o')}</label>`)+`<label style="grid-column:span 2">備註${inp('cur.note',S.cur.note,'s')}</label>`;
- $('s1h').innerText=usePx(S)?'現金照券商 App 上的交割帳戶餘額填寫；每一檔在下方持股表填一次現價，被動、主動市值會自動計算（可在「進階」覆寫）。尚未交割的交易與尚未發放的股利會自動處理。':'市值與現金照券商 App 抄；尚未交割的交易與尚未發放的股利會自動處理。建議在試算頁「撥款前狀態」改用逐檔明細，結算只要填各檔現價，借錢效果也會更準。';
+ $('s1h').innerText=usePx(S)?'現金照券商 App 上的交割帳戶餘額填寫；現價每個交易日收盤後自動帶入（要改到「📊 資產 → 持股明細表」），被動、主動市值自動計算（可在「修正」覆寫）。尚未交割的交易、尚未發放的股利、還沒退回的手續費折讓會自動處理。':'市值與現金照券商 App 抄；尚未交割的交易與尚未發放的股利會自動處理。建議在試算頁「撥款前狀態」改用逐檔明細，結算只要填各檔現價，借錢效果也會更準。';
  $('s3').innerHTML=cf_('rem','剩餘本金(萬)：以銀行為準時才填')+(usePx(S)?cf_('p','被動市值(萬)：漏填現價或有特殊部位時才填')+cf_('a','主動市值(萬)：漏填現價或有特殊部位時才填'):'')+cf_('bp','本期被動淨買進(萬)：沒記交易紀錄時才填')+cf_('ba','本期主動淨買進(萬)：沒記交易紀錄時才填');
  renderTrades();
  $('ledger').innerHTML=S.ledger.map((e,i)=>`<div class="row r-lg">${dIn('ledger.'+i+'.dt',e.dt||(e.m?e.m+'-01':''),'日期')}<select data-p="ledger.${i}.k" data-t="s">${[['in','入金'],['out','出金'],['cost','外部費用']].map(([v,t])=>`<option value=${v} ${e.k==v?'selected':''}>${t}</option>`).join('')}</select>${inp('ledger.'+i+'.a',e.a,'o')}${inp('ledger.'+i+'.n',e.n,'s')}${del('ledger',i)}</div>`).join('');

@@ -27,10 +27,12 @@ const aiRs=v=>{if(v==null||v==='')return'';const s=String(v).trim(),k=s.split(/[
 function aiExtract(t){t=String(t||'');let s,start;const m=t.match(/```(?:json)?[^\n]*\n([\s\S]*?)```/i);
  if(m){s=m[1];start=m.index+m[0].indexOf(m[1])}else{const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a<0||b<a)return{err:'找不到 JSON：要以 { 開頭、} 結尾，或放在 ```json 區塊裡。'};s=t.slice(a,b+1);start=a}
  const off=t.slice(0,start).split('\n').length-1,tryP=x=>{try{return{j:JSON.parse(x)}}catch(e){return{e}}};
- let r=tryP(s);if(r.j)return r;const r2=tryP(s.replace(/[“”]/g,'"').replace(/,\s*([}\]])/g,'$1'));if(r2.j)return Object.assign(r2,{fixed:1});
+ let r=tryP(s);if(r.j)return r;const r1=tryP(aiNL(s));if(r1.j)return Object.assign(r1,{fixed:'nl'});const r2=tryP(aiNL(s).replace(/[“”]/g,'"').replace(/,\s*([}\]])/g,'$1'));if(r2.j)return Object.assign(r2,{fixed:1});
  const msg=String(r.e.message),lc=msg.match(/line (\d+) column (\d+)/),ps=msg.match(/position (\d+)/);let line=null,col=null;
  if(lc){line=+lc[1];col=+lc[2]}else if(ps){const p=+ps[1],pre=s.slice(0,p);line=pre.split('\n').length;col=p-pre.lastIndexOf('\n')}
  const L=t.split('\n');return{err:`JSON 格式錯誤${line?`：第 ${line+off} 行第 ${col} 個字附近`:''}。常見原因：少了逗號、引號沒有成對、最後一項後面多了逗號。`,line:line?line+off:null,txt:line?L[line+off-1]:''}}
+// 手機複製時，畫面折行可能變成真的換行：把引號裡面的換行拿掉
+function aiNL(s){let o='',q=0,e=0;for(const ch of s){if(q){if(e){e=0;o+=ch;continue}if(ch=='\\'){e=1;o+=ch;continue}if(ch=='"'){q=0;o+=ch;continue}if(ch=='\n'||ch=='\r')continue;o+=ch}else{if(ch=='"')q=1;o+=ch}}return o}
 // 某個策略版本的條件清單（AI 用「段落＋編號」對應）
 function aiConds(st,ver){const h=(st.hist||[]).find(x=>x.ver==ver);return stConds(h&&h.snap?Object.assign({},st,h.snap):st)}
 // 前一個交易日收盤價（檢查打錯價格）
@@ -99,11 +101,13 @@ function aiDiff(T,o){const D=[];for(const k in AI_UPD){if(o[k]===undefined||o[k]
 let AIP=null,AIR=null,AIX='';
 window.aiOpen=()=>{asOvOpen(aiHtml());aiSide()};
 function aiHtml(){return`<div class=ovh><button onclick="asClose()">✕</button><b>📥 從 AI 對話貼上紀錄</b></div>
- <div class=h>在分析股票的對話裡，請 AI「用投資帳本 v1 格式輸出」今天的成交、新論點與事件；把整段回覆複製貼到下面即可（工具會自己找出 JSON）。格式說明在專案文件〈工具說明與結算流程〉。</div>
+ <div class=h>在分析股票的對話裡，請 AI「用投資帳本 v1 格式輸出」今天的成交、新論點與事件。可以選 AI 給的檔案，或把整段回覆複製貼到下面（工具會自己找出 JSON）。格式說明在專案文件〈工具說明與結算流程〉。</div>
+ <div class=asbtn style="margin:4px 0 6px"><label class=filebtn>📂 選擇檔案（.txt／.json）<input type=file accept=".txt,.json,.md,text/plain,application/json" onchange="aiFile(this)" style="display:none"></label><span class=h>AI 有整理好檔案就用這個；沒有就把聊天內容複製貼到下面。</span></div>
  <textarea id=aiTx rows=8 style="width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12px" placeholder='{"format":"投資帳本 v1","trades":[…]}'>${esc(AIX)}</textarea>
  <div class=asbtn><button class=pri onclick="aiRun()">解析並預覽</button><button onclick="$('aiTx').value='';AIX='';AIP=null;$('aiPv').innerHTML=''">清除</button></div>
  <div id=aiPv></div><div id=aiSd></div>`}
-window.aiRun=()=>{AIX=$('aiTx').value;const r=aiExtract(AIX);if(r.err){AIP=null;$('aiPv').innerHTML=`<div class=stal style="border-color:#fca5a5;background:#fef2f2"><b>❌ 解析失敗</b><div>${esc(r.err)}</div>${r.txt!=null&&r.line?`<div class=h>第 ${r.line} 行：<code>${esc(r.txt)}</code></div>`:''}</div>`;return}AIP=aiPlan(r.j);if(r.fixed)AIP.glob.push('已自動修正全形引號或多餘的逗號。');aiPrevRender()};
+window.aiFile=el=>{const f=el.files&&el.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{$('aiTx').value=String(rd.result||'');el.value='';aiRun()};rd.onerror=()=>toast('讀不到這個檔案',0);rd.readAsText(f,'utf-8')};
+window.aiRun=()=>{AIX=$('aiTx').value;const r=aiExtract(AIX);if(r.err){AIP=null;$('aiPv').innerHTML=`<div class=stal style="border-color:#fca5a5;background:#fef2f2"><b>❌ 解析失敗</b><div>${esc(r.err)}</div>${r.txt!=null&&r.line?`<div class=h>第 ${r.line} 行：<code>${esc(r.txt)}</code></div>`:''}</div>`;return}AIP=aiPlan(r.j);if(r.fixed=='nl')AIP.glob.push('已自動接回文字中間被拆開的換行（手機複製時常發生）。');else if(r.fixed)AIP.glob.push('已自動修正換行、全形引號或多餘的逗號。');aiPrevRender()};
 const aiMsgs=it=>it.err.map(s=>`<div class=bad>❌ ${esc(s)}</div>`).join('')+it.warn.map(s=>`<div class=wn>⚠️ ${esc(s.replace(/^⚠️ /,''))}</div>`).join('')+it.info.map(s=>`<div class=h>ℹ️ ${esc(s)}</div>`).join('');
 const aiCk=(k,it)=>`<input type=checkbox data-ai="${k}" ${it.on&&!it.err.length?'checked':''} ${it.err.length?'disabled':''} onchange="aiTog('${k}',this.checked)">`;
 window.aiTog=(k,v)=>{const t={t:'tr',h:'th',u:'up',e:'ev'}[k[0]],it=AIP[t][+k.slice(1)];if(it)it.on=v?1:0;aiSum()};
