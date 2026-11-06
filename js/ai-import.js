@@ -40,10 +40,10 @@ function aiPrev(c,dt){let best=null,bd='';if(typeof PXL!='undefined'&&PXL[c]&&PX
 const aiKey=x=>[x.dt,cU(x.n),x.k,num(x.q),num(x.px),x.ac=='a'?'a':'p'].join('|');
 
 // 解析成預覽清單：每一項有 err（擋下）、warn（提醒）、info（說明）
-function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ck:null,glob:[]},refs={},keys=new Set((S.trades||[]).map(aiKey));
- if(!j||typeof j!='object'||Array.isArray(j)){P.glob.push('最外層要是 { … }，裡面放 trades、theses、updates、events、check。');return P}
+function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],ck:null,glob:[]},refs={},keys=new Set((S.trades||[]).map(aiKey));
+ if(!j||typeof j!='object'||Array.isArray(j)){P.glob.push('最外層要是 { … }，裡面放 trades、theses、updates、events、outlook、themes、check。');return P}
  if(j.format&&!/投資帳本/.test(j.format))P.glob.push(`format 是「${j.format}」，不是「投資帳本 v1」，仍嘗試解析。`);
- for(const k of['trades','theses','updates','events'])if(j[k]!=null&&!Array.isArray(j[k]))P.glob.push(`${k} 要是陣列 [ … ]。`);
+ for(const k of['trades','theses','updates','events','outlook','themes'])if(j[k]!=null&&!Array.isArray(j[k]))P.glob.push(`${k} 要是陣列 [ … ]。`);
  const arr=k=>Array.isArray(j[k])?j[k]:[];
  // 新論點
  arr('theses').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},lb=`theses 第 ${i+1} 筆`;P.th.push(it);
@@ -92,6 +92,17 @@ function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ck:null,glob:[]},refs={},key
  arr('events').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},lb=`events 第 ${i+1} 筆`;P.ev.push(it);const d=aiDate(o.date),c=cU(o.code||'');
   if(!d)it.err.push(`${lb} 缺 date 或格式不對（YYYY-MM-DD）`);it.e={date:d,code:c,type:String(o.type||'其他'),note:String(o.note||'')};
   if((S.events||[]).some(e=>e.date==d&&e.code==c&&e.type==it.e.type&&!e.done)){it.on=0;it.warn.push('已經有同一天、同一檔、同類型的事件，預設不匯入')}});
+ // 前瞻資料：法人 EPS 預估、法說指引、股票屬性
+ const yn=v=>v===true||v===1||/^(true|1|是|y|yes)$/i.test(String(v??''))?1:v===false||v===0||/^(false|0|否|n|no)$/i.test(String(v??''))?0:null;
+ arr('outlook').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},lb=`outlook 第 ${i+1} 筆`,c=cU(o.code||'');P.ol.push(it);it.c=c;if(!c){it.err.push(`${lb} 缺 code`);return}
+  const old=((S.outlook||{})[c]||{}).eps||[];it.eps=[];for(const [k,e] of (Array.isArray(o.eps)?o.eps:[]).entries()){const y=aiNum(e.year??e.y),v=aiNum(e.eps??e.v),d=aiDate(e.date??e.d)||'';
+   if(!y||v==null){it.warn.push(`eps 第 ${k+1} 筆缺 year 或 eps，略過`);continue}if(!d)it.warn.push(`eps 第 ${k+1} 筆沒有 date，用今天`);const r={y,v,src:String(e.src||e.source||''),d:d||TODAY};
+   if(old.some(z=>+z.y==r.y&&+z.v==r.v&&z.d==r.d&&(z.src||'')==r.src)){it.warn.push(`${r.y} 年 ${r.v}（${r.src||'未註明'}）已經有了，略過`);continue}it.eps.push(r)}
+  if(o.guide&&typeof o.guide=='object'){const g=o.guide;it.guide={rev:olDir(g.rev),gm:olDir(g.gm),d:aiDate(g.date)||TODAY,src:String(g.src||''),note:String(g.note||'')};if(!it.guide.rev&&!it.guide.gm)it.warn.push('guide 的 rev、gm 看不懂（用 up／flat／down 或 向上／持平／向下）')}
+  if(o.attr&&typeof o.attr=='object'){const a=o.attr;it.attr={};for(const k of['growth','cyc','lead']){const v=yn(a[k]);if(v!=null)it.attr[k]=v}if(a.theme)it.attr.theme=String(a.theme).trim()}
+  if(!it.eps.length&&!it.guide&&!(it.attr&&Object.keys(it.attr).length)){it.on=0;it.warn.push('沒有要更新的內容')}});
+ arr('themes').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},lb=`themes 第 ${i+1} 筆`;P.tm.push(it);const n=String(o.name||'').trim();if(!n){it.err.push(`${lb} 缺 name`);return}
+  it.n=n;it.t={st:olDir(o.status??o.st),d:aiDate(o.date)||TODAY,src:String(o.src||''),note:String(o.note||'')};if(!it.t.st)it.err.push(`${lb} 的 status 看不懂（用 up／flat／down）`)});
  // 庫存核對（套用這次的交易後再比）
  if(j.check){const items=Array.isArray(j.check)?j.check:Array.isArray(j.check.items)?j.check.items:[];P.ck={date:aiDate(j.check.date)||TODAY,items};}
  return P}
@@ -110,7 +121,7 @@ window.aiFile=el=>{const f=el.files&&el.files[0];if(!f)return;const rd=new FileR
 window.aiRun=()=>{AIX=$('aiTx').value;const r=aiExtract(AIX);if(r.err){AIP=null;$('aiPv').innerHTML=`<div class=stal style="border-color:#fca5a5;background:#fef2f2"><b>❌ 解析失敗</b><div>${esc(r.err)}</div>${r.txt!=null&&r.line?`<div class=h>第 ${r.line} 行：<code>${esc(r.txt)}</code></div>`:''}</div>`;return}AIP=aiPlan(r.j);if(r.fixed=='nl')AIP.glob.push('已自動接回文字中間被拆開的換行（手機複製時常發生）。');else if(r.fixed)AIP.glob.push('已自動修正換行、全形引號或多餘的逗號。');aiPrevRender()};
 const aiMsgs=it=>it.err.map(s=>`<div class=bad>❌ ${esc(s)}</div>`).join('')+it.warn.map(s=>`<div class=wn>⚠️ ${esc(s.replace(/^⚠️ /,''))}</div>`).join('')+it.info.map(s=>`<div class=h>ℹ️ ${esc(s)}</div>`).join('');
 const aiCk=(k,it)=>`<input type=checkbox data-ai="${k}" ${it.on&&!it.err.length?'checked':''} ${it.err.length?'disabled':''} onchange="aiTog('${k}',this.checked)">`;
-window.aiTog=(k,v)=>{const t={t:'tr',h:'th',u:'up',e:'ev'}[k[0]],it=AIP[t][+k.slice(1)];if(it)it.on=v?1:0;aiSum()};
+window.aiTog=(k,v)=>{const t={t:'tr',h:'th',u:'up',e:'ev',o:'ol',m:'tm'}[k[0]],it=AIP[t][+k.slice(1)];if(it)it.on=v?1:0;aiSum()};
 function aiTh(it){if(it.ref&&AIP){const h=AIP.th.find(z=>z.ref==it.ref);if(h)return h.merge?h.merge.id:h.id?h.id+'（新）':'（新論點有錯）'}return it.tid||''}
 function aiPrevRender(){const P=AIP,el=$('aiPv');let h='';
  if(P.glob.length)h+=`<div class=stal>${P.glob.map(s=>`<div>· ${esc(s)}</div>`).join('')}</div>`;
@@ -122,11 +133,14 @@ function aiPrevRender(){const P=AIP,el=$('aiPv');let h='';
   ${m&&(x.k=='buy'||x.k=='sell')?`<div class=h>手續費 ${R(m.fee)}${x.k=='sell'?'｜證交稅 '+R(m.tax):''}｜${x.k=='buy'?'付出':'收到'} ${R(Math.abs(m.cash))} 元${S.feeMode=='month'?'（券商先收全額 '+R(fullFee(x))+'，折讓每月退回）':''}</div>`:''}${aiMsgs(it)}</div></label>`}).join('');
  if(P.up.length)h+=`<div class=sub>修改既有論點（${P.up.length}）</div>`+P.up.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('u'+i,it)}<div><b>${it.T?it.T.id+' '+esc(cU(it.T.code))+' '+esc(nameOf(it.T.code)):'?'}</b>${(it.diff||[]).map(d=>`<div class=h>${esc(d.lb)}：${esc(String(d.old)||'（空）')} → <b>${esc(String(d.nw))}</b></div>`).join('')}${aiMsgs(it)}</div></label>`).join('');
  if(P.ev.length)h+=`<div class=sub>事件提醒（${P.ev.length}）</div>`+P.ev.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('e'+i,it)}<div><b>${esc(it.e.date||'?')} ${esc(it.e.type)}</b> ${esc(it.e.code)} ${esc(nameOf(it.e.code))}<div class=h>${esc(it.e.note)}</div>${aiMsgs(it)}</div></label>`).join('');
+ const aA=a=>a?['growth','cyc','lead'].filter(k=>a[k]!=null).map(k=>({growth:'結構性成長',cyc:'景氣循環',lead:'產業龍頭'})[k]+(a[k]?'：是':'：否')).concat(a.theme?['主題：'+a.theme]:[]).join('、'):'';
+ if(P.ol.length)h+=`<div class=sub>前瞻資料（${P.ol.length}）</div>`+P.ol.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('o'+i,it)}<div><b>${esc(it.c)} ${esc(nameOf(it.c))}</b>${(it.eps||[]).length?`<div class=h>EPS 預估：${it.eps.map(e=>`${e.y} 年 ${e.v}（${esc(e.src||'未註明')}，${e.d}）`).join('；')}</div>`:''}${it.guide?`<div class=h>法說指引（${it.guide.d}）：營收${olDirN(it.guide.rev)}、毛利率${olDirN(it.guide.gm)}${it.guide.note?'｜'+esc(it.guide.note):''}</div>`:''}${it.attr&&aA(it.attr)?`<div class=h>股票屬性：${esc(aA(it.attr))}</div>`:''}${aiMsgs(it)}</div></label>`).join('');
+ if(P.tm.length)h+=`<div class=sub>主題指標（${P.tm.length}）</div>`+P.tm.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('m'+i,it)}<div><b>${esc(it.n||'?')}</b>：${it.t?olDirN(it.t.st):'?'}${it.t?` <span class=h>${it.t.d}${it.t.note?'｜'+esc(it.t.note):''}</span>`:''}${aiMsgs(it)}</div></label>`).join('');
  if(P.ck)h+=aiCheckHtml(P);
- if(!P.th.length&&!P.tr.length&&!P.up.length&&!P.ev.length&&!P.ck)h+='<div class=wn>沒有找到 trades、theses、updates、events 或 check。</div>';
+ if(!P.th.length&&!P.tr.length&&!P.up.length&&!P.ev.length&&!P.ol.length&&!P.tm.length&&!P.ck)h+='<div class=wn>沒有找到 trades、theses、updates、events、outlook、themes 或 check。</div>';
  h+=`<div class=asbtn><button class=pri id=aiGo onclick="aiCommit()"></button><button onclick="asClose()">取消</button></div><div class=h>匯入前會自動存還原點；匯入後可以在下方「匯入紀錄」整批復原。</div>`;
  el.innerHTML=h;aiSum()}
-function aiSum(){const b=$('aiGo');if(!b||!AIP)return;const n=t=>AIP[t].filter(it=>it.on&&!it.err.length).length,a=n('tr'),t=n('th'),u=n('up'),e=n('ev');b.innerText=`確認匯入（交易 ${a}、論點 ${t}、修改 ${u}、事件 ${e}）`;b.disabled=!(a+t+u+e)}
+function aiSum(){const b=$('aiGo');if(!b||!AIP)return;const n=t=>AIP[t].filter(it=>it.on&&!it.err.length).length,a=n('tr'),t=n('th'),u=n('up'),e=n('ev'),o=n('ol'),m=n('tm');b.innerText=`確認匯入（交易 ${a}、論點 ${t}、修改 ${u}、事件 ${e}${o?'、前瞻 '+o:''}${m?'、主題 '+m:''}）`;b.disabled=!(a+t+u+e+o+m)}
 // 庫存核對：套用這次勾選的交易後，逐檔比股數（有給成本也比成本）
 function aiCheckHtml(P){const S2=clone(S);S2.trades=(S2.trades||[]).concat(P.tr.filter(it=>it.on&&!it.err.length).map(it=>Object.assign(NEW.trades(),it.x)));
  const H={},HB=asHoldB(S2);for(const o of holdings(S2)){if(o.q<=0)continue;const c=cU(o.n);H[c]=H[c]||{q:0,cb:0};H[c].q+=o.q;H[c].cb+=(HB[o.ac+'|'+c]||{}).cost||0}
@@ -138,7 +152,12 @@ function aiCheckHtml(P){const S2=clone(S);S2.trades=(S2.trades||[]).concat(P.tr.
 
 // ---------- 寫入（一次匯入＝一批，可以整批復原）
 window.aiCommit=async()=>{const P=AIP;if(!P)return;await rpSave('AI 匯入前');
- const B={id:'b'+Date.now().toString(36),at:new Date().toISOString(),tr:[],th:[],ev:[],upd:[],tags:[],plan:[]},idOf={};
+ const B={id:'b'+Date.now().toString(36),at:new Date().toISOString(),tr:[],th:[],ev:[],upd:[],tags:[],plan:[],ol:[],tm:[]},idOf={};
+ // 前瞻資料與主題指標（記下原本的內容，整批復原時還原）
+ S.outlook=S.outlook||{};S.attr=S.attr||{};S.themes=S.themes||{};
+ for(const it of P.ol){if(!it.on||it.err.length)continue;const c=it.c;B.ol.push({c,o:JSON.stringify(S.outlook[c]??null),a:JSON.stringify(S.attr[c]??null)});const o=S.outlook[c]=S.outlook[c]||{};
+  if(it.eps.length)o.eps=(o.eps||[]).concat(it.eps);if(it.guide)o.guide=Object.assign({},o.guide||{},Object.fromEntries(Object.entries(it.guide).filter(([k,v])=>v!=='')));if(it.attr&&Object.keys(it.attr).length)S.attr[c]=Object.assign({},S.attr[c]||{},it.attr,{d:TODAY})}
+ for(const it of P.tm){if(!it.on||it.err.length)continue;B.tm.push({n:it.n,o:JSON.stringify(S.themes[it.n]??null)});S.themes[it.n]=it.t}
  const setF=(T,f,v)=>{B.upd.push({id:T.id,f,old:T[f]});T[f]=v};
  for(const it of P.th){if(!it.on||it.err.length)continue;const o=it.o;let T;
   if(it.merge){T=it.merge;for(const d of it.diff||[])setF(T,d.f,d.nw);if(it.met.length||it.pend.length){setF(T,'met',[...new Set((T.met||[]).concat(it.met))]);setF(T,'pend',[...new Set((T.pend||[]).concat(it.pend))]);setF(T,'metNote',Object.assign({},T.metNote||{},it.note))}}
@@ -153,7 +172,7 @@ window.aiCommit=async()=>{const P=AIP;if(!P)return;await rpSave('AI 匯入前');
  S.events=S.events||[];for(const it of P.ev){if(!it.on||it.err.length)continue;const e=Object.assign({id:'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),done:0,src:'ai',batch:B.id},it.e);S.events.push(e);B.ev.push(e.id)}
  // 賣到股數歸零的論點：出場原因依賣出依據
  stSync(S);for(const x of made.filter(Boolean)){if(x.k!='sell'||!x.thesisId)continue;const T=stThesis(S,x.thesisId);if(T&&T.status=='exit'&&!T.exit.reason){T.exit.reason=AS_RS2EXIT[x.rs]||'';T.exit.date=T.exit.date||x.dt}}
- const sum=`交易 ${B.tr.length}、新論點 ${B.th.length}${B.th.length?'（'+B.th.join('、')+'）':''}、修改 ${new Set(B.upd.map(u=>u.id)).size}、事件 ${B.ev.length}`;B.sum=sum;
+ const sum=`交易 ${B.tr.length}、新論點 ${B.th.length}${B.th.length?'（'+B.th.join('、')+'）':''}、修改 ${new Set(B.upd.map(u=>u.id)).size}、事件 ${B.ev.length}${B.ol.length?'、前瞻 '+B.ol.length:''}${B.tm.length?'、主題 '+B.tm.length:''}`;B.sum=sum;
  S.imports=[B].concat(S.imports||[]).slice(0,20);
  if(typeof trEd!='undefined')trEd.clear();renderTrades();stBuild();upd();if(typeof pxApply=='function')pxApply();AIP=null;AIX='';
  $('asOvB').innerHTML=`<div class=ovh><button onclick="asClose()">✕</button><b>✅ 已匯入</b></div><div>${esc(sum)}</div>
@@ -163,6 +182,8 @@ window.aiUndo=async id=>{const B=(S.imports||[]).find(b=>b.id==id);if(!B||B.undo
  const tr=new Set(B.tr),th=new Set(B.th),ev=new Set(B.ev);S.trades=S.trades.filter(x=>!tr.has(x.id));S.theses=S.theses.filter(T=>!th.has(T.id));S.trades.forEach(x=>{if(th.has(x.thesisId))x.thesisId=''});S.events=(S.events||[]).filter(e=>!ev.has(e.id));
  for(const u of B.upd.slice().reverse()){const T=stThesis(S,u.id);if(T)T[u.f]=u.old}for(const p of B.plan||[]){const T=stThesis(S,p.id);if(T)(T.plan||[]).forEach(r=>{if(r.tid==p.tid)r.tid=''})}
  for(const t of B.tags.slice().reverse()){if(t.old===undefined)delete S.tags[t.c];else S.tags[t.c]=t.old}
+ for(const x of (B.ol||[]).slice().reverse()){const o=JSON.parse(x.o),a=JSON.parse(x.a);if(o==null)delete S.outlook[x.c];else S.outlook[x.c]=o;if(a==null)delete S.attr[x.c];else S.attr[x.c]=a}
+ for(const x of (B.tm||[]).slice().reverse()){const o=JSON.parse(x.o);if(o==null)delete S.themes[x.n];else S.themes[x.n]=o}
  for(const T of S.theses)if(T.status=='exit'&&stPerf(S,T).open)T.status='hold';
  B.undone=TODAY;if(typeof trEd!='undefined')trEd.clear();renderTrades();stBuild();upd();toast('已整批復原',0);aiOpen()};
 async function aiSide(){const el=$('aiSd');if(!el)return;const L=await rpAll(),I=(S.imports||[]).slice(0,10);
