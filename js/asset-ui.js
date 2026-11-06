@@ -92,7 +92,7 @@ function asStockHtml(c,ac){const r=asRows(S).find(o=>o.c==c&&o.ac==ac)||{c,ac,q:
  const T=ac=='a'?asThesisOf(S,c):null,st=T?stStrat(S,T.sid):null,ti=T?stTi(T.id):-1,p=T?stPerf(S,T):null,past=(S.theses||[]).filter(t=>t.status=='exit'&&cU(t.code)==c);
  let th='';
  if(ac=='a'&&T){const rv=(T.reviews||[]).slice(0,3);
-  th=`<div class=asth><div><b>📌 ${T.id}</b>｜${st?esc(st.id+' '+st.name)+' v'+(T.sver||1):'未指定策略'}｜<span class="stS ${T.status}">${stStatusN(T.status)}</span>${p&&p.first?'｜持有 '+Math.round(p.days)+' 天':''}</div>${(()=>{const v=typeof ckVerdict=='function'?ckVerdict(T):null;return v?`<div class="stv1 ${v.cls}">依 ${esc(st?st.id:'')}：${esc(v.t)}</div>`:''})()}
+  th=`<div class=asth><div><b>📌 ${T.id}</b>｜${st?esc(st.id+' '+st.name)+' v'+(T.sver||1):'未指定策略'}｜<span class="stS ${T.status}">${stStatusN(T.status)}</span>${p&&p.first?(p.base?'｜策略起算後 '+Math.round(p.days)+' 天':'｜持有 '+Math.round(p.days)+' 天'):''}</div>${(()=>{const v=typeof ckVerdict=='function'?ckVerdict(T):null;return v?`<div class="stv1 ${v.cls}">依 ${esc(st?st.id:'')}：${esc(v.t)}</div>`:''})()}
    ${asMetHtml(T,st)}
    ${typeof olHtml=='function'?olHtml(c):''}
    <label>為什麼買（補充一句）${stTxt(`theses.${ti}.why`,T.why,'一句話就好',2)}</label>
@@ -153,7 +153,7 @@ function asTh(){const el=$('atTh');if(!el||!AT)return;const a=AT,c=cU(a.c);if(a.
  const p=T?stPerf(S,T):null;
  el.innerHTML=`<div class=asth>${T?`<b>當初的依據（${T.id}｜${st?esc(st.id+' '+st.name):'未指定策略'}）</b>
   <div>為什麼買：${esc(T.why||'（沒寫）')}</div><div>什麼情況代表我錯了：${esc(T.wrongIf||'（沒寫）')}</div>
-  <div>停損 ${esc(T.stop||'—')}｜目標 ${esc(T.tgtPx||'—')}${p&&p.first?`｜目前 ${p.pl!=null?asY(p.pl)+'（'+asPct(p.ret)+'）':'需現價'}｜持有 ${Math.round(p.days)} 天`:''}</div>`:'<span class=h>這檔沒有進行中的論點。</span>'}
+  <div>停損 ${esc(T.stop||'—')}｜目標 ${esc(T.tgtPx||'—')}${p&&p.first?`｜${p.base?'策略起算後':'目前'} ${p.pl!=null?asY(p.pl)+'（'+asPct(p.ret)+'）':'需現價'}｜${p.base?'起算後':'持有'} ${Math.round(p.days)} 天`:''}</div>`:'<span class=h>這檔沒有進行中的論點。</span>'}
   <div class=chips>賣出依據：${AS_RS.sell.map(([k,l])=>chip('rs',k,l)).join('')}</div>
   ${T?`<div class=chips>有沒有照規則做：${chip('fol','1','是')}${chip('fol','0','否')}</div><div class=h id=atLeft></div>`:''}</div>`}
 // 即時試算：手續費、建議股數、停損價、買進後占比
