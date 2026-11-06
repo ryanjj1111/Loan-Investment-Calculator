@@ -36,7 +36,7 @@ function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)s
   <div class=asl>vs ${bm}（同樣的錢、同樣的時間點買 ${bm}）：全部 ${asBmTxt(all)}｜主動 ${asBmTxt(act)}</div>
   <div class=asl>${loan} <button class=lk onclick="setWs('loan')">看信貸 ›</button></div>`:`<div class=asl style="margin-top:8px"><button class=lk onclick="asPostSet(1)">📅 顯示撥款後績效</button> <span class=h>（有用信貸投資時，看撥款日之後的損益和 vs ${bm}）</span></div>`}
   <div class=asl>現價：${pxStatus()} <button class=lk onclick="pxRefresh()">🔄 更新</button></div>`;
- const A=stAlerts(S);$('asAl').innerHTML=A.length?`<div class=stal><b>⚠️ 提醒（${A.length}）</b>${A.slice(0,4).map(asAlRow).join('')}${A.length>4?`<div><button onclick="setWs('st')">看全部 ${A.length} 則 ›</button></div>`:''}</div>`:'';
+ const fx=$('asFix');if(fx)fx.innerHTML=typeof ckTodoHtml=='function'?ckTodoHtml():'';const A=stAlerts(S);$('asAl').innerHTML=A.length?`<div class=stal><b>⚠️ 提醒（${A.length}）</b>${A.slice(0,4).map(asAlRow).join('')}${A.length>4?`<div><button onclick="setWs('st')">看全部 ${A.length} 則 ›</button></div>`:''}</div>`:'';
  // 配置
  const CS=asCash(),cash=CS.v!=null?CS.v*1e4:null,tot=z.p.mv+z.a.mv+(cash||0),seg=(v,c,l)=>tot>0&&v>0?`<span style="width:${v/tot*100}%;background:${c}" title="${l}"></span>`:'';
  const W=(+S.Wp||0)+(+S.Wa||0)+(+S.Wc||0),G=asGroups(S);
@@ -54,7 +54,7 @@ function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)s
  const so=(a,b)=>asSo=='pl'?(b.ubp??-1e9)-(a.ubp??-1e9):asSo=='w'?(b.w??-1)-(a.w??-1):asSo=='stop'?(b.sd??-1e9)-(a.sd??-1e9):asSo=='v'?((a.vd?VR[a.vd.cls]??2:9)-(b.vd?VR[b.vd.cls]??2:9))||(b.mv||0)-(a.mv||0):(b.mv||0)-(a.mv||0);
  for(const r of L){const T=r.ac=='a'?asThesisOf(S,r.c):null;let k,l;
   if(asG=='st'){if(r.ac=='p'){k='~p';l='🛡️ 被動（依配置）'}else if(T&&stStrat(S,T.sid)){const st=stStrat(S,T.sid);k=st.id;l='🧭 '+st.id+' '+st.name}else{k='~u';l='⚡ 主動・未分類'}}
-  else if(asG=='tag'){if(r.ac=='p'){k='~p';l='🛡️ 被動'}else{const t=((S.tags||{})[r.c]||[])[0]||(typeof indOf=='function'?indOf(r.c):'');k=t?'t'+t:'~u';l=t?'🏷️ '+t:'⚡ 主動・未加標籤'}}
+  else if(asG=='tag'){if(r.ac=='p'){k='~p';l='🛡️ 被動'}else{const G=stGrpOf(S,r.c),t=G[0];r.also=G.slice(1);k=t=='未分類'?'~u':'t'+t;l=t=='未分類'?'⚡ 主動・未分類':'🏷️ '+t}}
   else if(asG=='no'){k='0';l='全部持股'}
   else{k=r.ac=='p'?'1':'2';l=r.ac=='p'?'🛡️ 被動':'⚡ 主動'}
   (grp[k]=grp[k]||{l,L:[]}).L.push(r)}
@@ -74,7 +74,7 @@ function asRow(r,tot,E){const T=r.ac=='a'?asThesisOf(S,r.c):null,st=T?stStrat(S,
  if(T&&num(T.tgtPx)!=null&&r.px!=null&&r.px>=num(T.tgtPx))fl.push('🎯 達到目標價 '+T.tgtPx);
  if(r.ac=='a'&&r.open&&E.tot>0){const p=(E.by[r.c]||0)/E.tot*100,cap=stCapStock(S,r.c);if(p>cap)fl.push(`⚠️ 占主動 ${p.toFixed(1)}%，超過上限 ${cap}%`)}
  const w=r.ac=='a'?(E.tot>0&&E.by[r.c]?E.by[r.c]/E.tot*100:null):(r.mv!=null&&tot>0?r.mv/tot*100:null),wl=r.ac=='a'?'占主動':'占被動';
- return`<div class=asr onclick="asStock('${r.c}','${r.ac}')"><div class=a1><span><b>${esc(r.c)}</b> ${esc(nameOf(r.c))}${T?` <span class="thc on">${T.id}${st?'·'+st.id:''}</span>`:r.ac=='a'&&r.open?' <span class=thc>未分類</span>':''}${r.vd&&(r.vd.cls=='ok'||r.vd.cls=='bad')?` <small class="${r.vd.cls=='ok'?'ok':'bad'}">${r.vd.cls=='ok'?'✅ 可'+(T&&T.status=='plan'?'買':'加碼'):'⛔ 不買'}</small>`:''}</span><span class="${asC(r.open?r.ub:r.realB+r.div)}">${r.open?(r.ub!=null?asY(r.ub)+' <small>'+asPct(r.ubp)+'</small>':'<small class=wn>需現價</small>'):'已出清 '+asY(r.realB+r.div)}</span></div>
+ return`<div class=asr onclick="asStock('${r.c}','${r.ac}')"><div class=a1><span><b>${esc(r.c)}</b> ${esc(nameOf(r.c))}${T?` <span class="thc on">${T.id}${st?'·'+st.id:''}</span>`:r.ac=='a'&&r.open?' <span class=thc>未分類</span>':''}${asG=='tag'&&r.also&&r.also.length?` <small class=h>也算在 ${esc(r.also.join('、'))}</small>`:''}${r.vd&&(r.vd.cls=='ok'||r.vd.cls=='bad')?` <small class="${r.vd.cls=='ok'?'ok':'bad'}">${r.vd.cls=='ok'?'✅ 可'+(T&&T.status=='plan'?'買':'加碼'):'⛔ 不買'}</small>`:''}</span><span class="${asC(r.open?r.ub:r.realB+r.div)}">${r.open?(r.ub!=null?asY(r.ub)+' <small>'+asPct(r.ubp)+'</small>':'<small class=wn>需現價</small>'):'已出清 '+asY(r.realB+r.div)}</span></div>
  <div class=a2><span>${r.open?R(r.q)+' 股｜均 '+(r.avgB!=null?r.avgB.toFixed(2):'—'):'0 股'}</span><span>${r.px!=null?'現 '+r.px+' <small>'+(r.auto?'收盤 ':'手填 ')+asD(r.pxd)+'</small>':''}</span></div>
  ${r.open?`<div class=a2><span>市值 ${r.mv!=null?W2(r.mv)+' 萬':'—'}${w!=null?'｜'+wl+' '+w.toFixed(1)+'%':''}</span><span>${r.un!=null&&asPostOn()&&asHasPost(r)?'撥款後 <span class="'+asC(r.un)+'">'+asY(r.un)+'</span>':''}${r.div?'｜股利 '+R(r.div):''}${r.noC0?' <small class=wn>未填原始成本</small>':''}</span></div>`:''}
  ${fl.length?`<div class="a2 wn">${fl.join('　')}</div>`:''}</div>`}

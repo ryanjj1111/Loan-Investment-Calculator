@@ -96,7 +96,7 @@ button.lk{border:0;background:none;color:var(--pri);padding:0 2px;font-size:12px
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;vertical-align:baseline}
 .ash{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap}.ash .seg{margin:0}.ash .ck{margin:0}
 .seg.sm button{padding:4px 8px;font-size:12px}
-.asgs{display:flex;gap:6px;flex-wrap:wrap;font-size:12.5px}.asgs select{padding:3px 4px;font-size:12.5px}.asflt{margin:4px 0}.asflt button{padding:3px 8px;font-size:12px}.ckmb{padding:1px 6px;font-size:11.5px;margin-left:4px}.ckrec{margin:4px 0;font-size:12.5px}.ckrec>summary{cursor:pointer}
+.asgs{display:flex;gap:6px;flex-wrap:wrap;font-size:12.5px}.asgs select{padding:3px 4px;font-size:12.5px}.asflt{margin:4px 0}.asflt button{padding:3px 8px;font-size:12px}.ckmb{padding:1px 6px;font-size:11.5px;margin-left:4px}.ckfx{margin:3px 0 2px 22px;padding:4px 6px;border-left:3px solid #f59e0b;background:#fffbeb;border-radius:4px;font-size:12.5px}.ckfx button{padding:2px 8px;font-size:12px;margin:1px 2px}.ckfx input{padding:3px 5px;font-size:12.5px;margin:2px 0}.ckfx.ckhi{outline:2px solid #f59e0b}.asfx{background:#fffbeb;border-color:#fcd34d}.asfx>summary{cursor:pointer}.ckto{margin:3px 0;font-size:13px}.ckto button{padding:2px 8px;font-size:12px;margin:1px 2px}.ckrec{margin:4px 0;font-size:12.5px}.ckrec>summary{cursor:pointer}
 .asgh{display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin:10px 0 2px;padding-bottom:2px;border-bottom:1px solid var(--line)}
 .asr{border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:5px 0;background:#fff;cursor:pointer}.asr:hover{border-color:var(--pri)}
 .asr .a1,.asr .a2{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}.asr .a1{font-size:13.5px}.asr .a2{font-size:12px;color:#475569;margin-top:2px}.asr .a2.wn{color:var(--bad)}
@@ -198,6 +198,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <div id="pgA" class="asw">
  <div class="p" id="asTop"></div>
  <div id="asAl"></div>
+ <div id="asFix"></div>
  <div class="p" id="asAlloc"></div>
  <div class="p"><div class="ash"><b>📦 庫存</b><div class="asgs" id="asGrp"></div><label class="ck"><input type="checkbox" id="asClosed" onchange="asShowClosed(this.checked)">顯示已出清</label></div><div class="chips asflt" id="asFlt"></div>
   <div id="asList"></div>
@@ -267,7 +268,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li><b>📅 撥款後績效</b>（和信貸頁一致）：從撥款日起算，撥款前持股用撥款日收盤價。可以按「隱藏」關掉；信貸金額是 0 時預設不顯示。會再拆成「撥款後有買賣的」和「撥款前持股（之後沒有再買賣）」兩部分；庫存與個股頁的「撥款後」損益只顯示撥款後有買賣的股票。<b>vs 0050</b>＝同樣的錢在同樣的時間點改買基準 ETF，現在會多賺或少賺多少；「主動」那一格回答「自己選股有沒有贏 0050」。下面一行是信貸的 A／C。</li>
 <li><b>提醒列</b>：可以直接處理。營收、財報 → 一鍵「✅ 仍成立／⚠️ 有疑慮」；除息等事件到期 →「記配息」或「✓ 完成」；論點有待確認的條件 →「確認」；已出場還沒選原因 →「補填」。</li>
 <li><b>配置</b>：被動／主動／現金的實際比例與目標，以及各族群占主動部位的比例。</li>
-<li><b>📦 庫存</b>：上方「分組」選部位、策略、族群或不分組（族群沒填時用產業別），「排序」選市值、損益 %、占比、離停損或判斷結果；下面的按鈕可以只看「✅ 可以買／加碼」「⛔ 不買」「⚠️ 有提醒」；選過的會記住。可顯示已出清的股票。每一檔：股數、均價、現價（「收盤 11/05」＝自動，「手填」＝自己改過）、市值、占比、預估損益、撥款後損益、股利、論點標籤（T001·S01 或「未分類」）。跌破停損、達到目標價、超過個股上限會標示。</li>
+<li><b>📦 庫存</b>：上方「分組」選部位、策略、族群或不分組（族群＝族群標籤；沒填標籤用個股頁的「所屬主題」，再沒有用產業別），「排序」選市值、損益 %、占比、離停損或判斷結果；下面的按鈕可以只看「✅ 可以買／加碼」「⛔ 不買」「⚠️ 有提醒」；選過的會記住。可顯示已出清的股票。每一檔：股數、均價、現價（「收盤 11/05」＝自動，「手填」＝自己改過）、市值、占比、預估損益、撥款後損益、股利、論點標籤（T001·S01 或「未分類」）。跌破停損、達到目標價、超過個股上限會標示。</li>
 <li><b>點一檔股票＝個股頁</b>：最上方是論點（當初符合的策略條件、待確認的條件、接下來的事件、為什麼買、什麼情況代表我錯了、停損、目標價，可直接修改；「✅ 論點仍成立／⚠️ 有疑慮」）；下面是損益拆解、＋買進／－賣出／💰配息、交易時間軸（🤖＝從 AI 匯入，✎ 可修改或刪除）、過去的論點。沒有論點的主動持股，選一個策略就會建立，原本的交易與期初持股一起歸入。</li>
 <li><b>自動現價</b>：每個交易日收盤後（約 14:47、16:17、18:47、21:17）自動抓證交所、櫃買中心的全市場收盤價（公開資料，不含你的持股），打開 App 就帶入，也可以按「🔄 更新」。<b>盤中不會有即時價格</b>（資料來源不允許網頁直接讀取），盤中顯示前一個交易日收盤價，需要時在持股明細表手動修改。每筆交易當天的 0050 價格也會自動帶入。</li>
 <li><b>📋 持股明細表</b>：逐檔的成本、現價（可手動修改）、配置目標與還差。<b>📒 交易紀錄</b>：見「記交易」。</li></ul></details>
@@ -297,7 +298,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li><b>📌 論點</b>：所有論點的完整表單。狀態依股數自動（沒買過＝規劃中、有股數＝持有中並顯示第幾批、歸零＝已出場）；條件區和個股頁的「📋 今日條件檢核」一樣：自動判斷得出來的只顯示結果，要自己判斷的條件才有「確認符合」按鈕；買進時記下的條件收在「買進時記錄」；分批計畫、預計期間、目標估值收在「更多」。</li>
 <li><b>策略的寫法</b>：每個策略照同樣的段落寫：【選什麼】→【何時買】（可以再分【進場訊號：至少 N 項】）→【不買】（任何一條成立就不買，不算買進理由）→【買多少】→ 何時賣。條件前面可以標〔基〕〔技〕〔籌〕〔盤〕，會顯示成小標籤。一個條件裡可以寫「3 項中至少 2 項：A；B；C」（用「；」分開）。策略還可以設定：<b>期別</b>（短 1～8 週／中 2～12 個月／長 1 年以上，記交易時先選期別再選策略）、<b>技術停損</b>（跌破 20 日最低、月線、季線 −5%、近一年最低、突破點 −5%，和固定 % 一起算、取比較近的）、<b>賺賠比檢查</b>（目標＝近一年最高收盤，低於 2 會提醒）、<b>策略合計上限</b>。</li>
 <li><b>🔭 前瞻資料與股票屬性</b>（個股頁）：股票屬性（結構性成長、景氣循環、產業龍頭、所屬主題）每檔確認一次；法人 EPS 預估（年度、EPS、來源、日期）、最近一次法說指引（下一季營收、毛利率方向）。策略裡寫「法人預估明年 EPS 年增 ≥ 15%」「近 3 個月法人 EPS 預估持平或上修」「最近一次法說營收與毛利率展望不低於持平」就會用這些資料自動判斷；超過 120 天顯示 ❔ 提醒更新。還沒有 3 個月前的預估紀錄時，先用月營收判斷。<b>🧭 主題指標</b>（📚 策略庫最上方）：例如「AI 伺服器」看雲端業者資本支出、「記憶體」看 DRAM 報價，一個主題套用到很多檔股票。</li>
-<li><b>📋 自動檢核</b>：策略條件裡有公開數字可以判斷的（均線、RSI、MACD、成交量、20 日高低點、投信／外資買賣超、融資餘額、月營收年增率、加權指數、千張大戶持股比例；每季的毛利率、EPS、負債比、現金流；本益比與近 5 年中位數、股價淨值比在近 10 年的位置、殖利率與配息率），每個交易日收盤後會自動判斷，在條件旁標「✅ 自動」或「❌ 自動」，並寫出用到的數字。記交易選策略時，今天自動符合的條件會先幫你勾好（可以取消）；個股頁有「📋 今日條件檢核」，依序加碼的策略會標出已買的批次和下一批（👉）；論點標題顯示依策略的判斷（例如「第 2 批：條件符合，可以加碼」「…但上一批 11/06 才買，約 11/13 後再看」）。<b>盤中價試算</b>：個股頁的現價改成盤中價（或網頁抓到比檢核資料新的收盤價）時，和價格有關的條件（均線、52 週高點、乖離、賺賠比）改用這個價格試算並標示；RSI、MACD、法人、融資、營收仍用檢核資料。看不懂或需要判斷的條件按「確認符合」，條件後面寫「（手動）」就一定不自動判斷。<b>寫法要像策略範本</b>，例如「收盤價在季線 ±3% 內」「投信近 5 日合計買超」「融資餘額近 10 日減少 ≥ 5%」；月線＝20 日、季線＝60 日、半年線＝120 日均線（收盤價、未還原除權息）。資料：證交所、櫃買中心、公開資訊觀測站、集保結算所的公開資料；三大法人約下午 4 點、融資約晚上 10 點、股權分散表每週六更新。</li>
+<li><b>📋 自動檢核</b>：策略條件裡有公開數字可以判斷的（均線、RSI、MACD、成交量、20 日高低點、投信／外資買賣超、融資餘額、月營收年增率、加權指數、千張大戶持股比例；每季的毛利率、EPS、負債比、現金流；本益比與近 5 年中位數、股價淨值比在近 10 年的位置、殖利率與配息率），每個交易日收盤後會自動判斷，在條件旁標「✅ 自動」或「❌ 自動」，並寫出用到的數字。記交易選策略時，今天自動符合的條件會先幫你勾好（可以取消）；個股頁有「📋 今日條件檢核」，依序加碼的策略會標出已買的批次和下一批（👉）；論點標題顯示依策略的判斷（例如「第 2 批：條件符合，可以加碼」「…但上一批 11/06 才買，約 11/13 後再看」）。<b>盤中價試算</b>：個股頁的現價改成盤中價（或網頁抓到比檢核資料新的收盤價）時，和價格有關的條件（均線、52 週高點、乖離、賺賠比）改用這個價格試算並標示；RSI、MACD、法人、融資、營收仍用檢核資料。<b>✏️ 要補資料</b>：條件缺股票屬性、法人 EPS 預估、法說指引或主題狀態時，條件下面直接出現填寫的地方；資產頁的「✏️ 待補資料」一次列出所有持股缺什麼（🔄＝舊了要更新：超過 4 個月、財報期限或法說會之後還沒更新；💡＝補了判斷更準），按「填寫」直接跳到那個欄位，「🤖 請 AI 幫我找」會複製一段請求給 AI。<b>⏳ 等資料累積</b>：例如千張大戶要累積 2 週，不用做事。看不懂或需要判斷的條件按「確認符合」，條件後面寫「（手動）」就一定不自動判斷。<b>寫法要像策略範本</b>，例如「收盤價在季線 ±3% 內」「投信近 5 日合計買超」「融資餘額近 10 日減少 ≥ 5%」；月線＝20 日、季線＝60 日、半年線＝120 日均線（收盤價、未還原除權息）。資料：證交所、櫃買中心、公開資訊觀測站、集保結算所的公開資料；三大法人約下午 4 點、融資約晚上 10 點、股權分散表每週六更新。</li>
 <li><b>提醒</b>（🧭 策略按鈕上的紅色數字，資產頁也會顯示）：個股或族群超過上限、持有超過預計期間、跌破停損價、達到目標價、已出場還沒選原因、條件待確認、事件到期；每月 11 日起檢查上月營收（月營收於次月 10 日前公告）；財報公布後檢查（一般產業：第一季 5/15、第二季 8/14、第三季 11/14、年報 3/31 前）。</li></ul></details>
 
 <details class="gds" id="g5"><summary>💰 信貸（試算、風險、結算）</summary>
@@ -363,17 +364,17 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <button style="margin-top:8px" onclick="closeGd()">我知道了</button></div></div>
 
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261106g"></script>
-<script src="data/stocks.js?v=20261106g"></script>
-<script src="js/engine.js?v=20261106g"></script>
-<script src="js/ui.js?v=20261106g"></script>
-<script src="js/strategy-engine.js?v=20261106g"></script>
-<script src="js/asset-engine.js?v=20261106g"></script>
-<script src="js/prices.js?v=20261106g"></script>
-<script src="js/check.js?v=20261106g"></script>
-<script src="js/outlook.js?v=20261106g"></script>
-<script src="js/strategy-ui.js?v=20261106g"></script>
-<script src="js/asset-ui.js?v=20261106g"></script>
-<script src="js/ai-import.js?v=20261106g"></script>
-<script src="js/main.js?v=20261106g"></script>
+<script src="data/etf-ref.js?v=20261106h"></script>
+<script src="data/stocks.js?v=20261106h"></script>
+<script src="js/engine.js?v=20261106h"></script>
+<script src="js/ui.js?v=20261106h"></script>
+<script src="js/strategy-engine.js?v=20261106h"></script>
+<script src="js/asset-engine.js?v=20261106h"></script>
+<script src="js/prices.js?v=20261106h"></script>
+<script src="js/check.js?v=20261106h"></script>
+<script src="js/outlook.js?v=20261106h"></script>
+<script src="js/strategy-ui.js?v=20261106h"></script>
+<script src="js/asset-ui.js?v=20261106h"></script>
+<script src="js/ai-import.js?v=20261106h"></script>
+<script src="js/main.js?v=20261106h"></script>
 </body></html>

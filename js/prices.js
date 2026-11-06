@@ -7,7 +7,8 @@ const PX_TWSE='https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY_ALL?respons
 let PXL={},PXU='',pxBusy=0,pxErr='',IND={};
 // 產業別（證交所、櫃買中心月營收公開資料裡的「產業別」），新論點沒有族群標籤時自動帶入
 const indOf=c=>IND[cU(c)]||'';
-function asTagDef(c){c=cU(c);if(!c||((S.tags||{})[c]||[]).length||!indOf(c))return;S.tags=S.tags||{};S.tags[c]=[indOf(c)]}const PXH={},pxMon=new Set();
+// 族群標籤空白時，族群自動用所屬主題、再來是產業別（stGrpOf），所以新論點不再自動寫入標籤
+function asTagDef(c){}const PXH={},pxMon=new Set();
 const pxTw=()=>new Date(Date.now()+8*36e5);
 const pxRoc=s=>{s=String(s).replace(/\D/g,'');if(s.length<7)return'';return(+s.slice(0,s.length-4)+1911)+'-'+s.slice(-4,-2)+'-'+s.slice(-2)};
 async function pxGet(path){for(const b of PX_BASE){if(!b.startsWith('http')&&location.protocol=='file:')continue;try{const r=await fetch(b+path+(b.startsWith('http')?'?t='+Math.floor(Date.now()/3e5):''),{cache:'no-cache'});if(r.ok)return await r.json()}catch(e){}}return null}
