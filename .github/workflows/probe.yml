@@ -1,0 +1,22 @@
+# 一次性測試資料來源（分支用）
+name: 資料來源測試
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['tools/probe-fund.mjs']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node tools/probe-fund.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          git add -A data && git commit -qm "資料來源測試 [skip ci]" && for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done
