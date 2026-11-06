@@ -120,6 +120,8 @@ function stAlerts(S){const A=[],E=stExposure(S),nm=c=>c+(typeof nameOf=='functio
 
   if(since<=rd&&!(T.reviews||[]).some(r=>r.kind=='營收'&&r.date>=rd))A.push({k:'rev',lv:'wn',th:T.id,t:`${T.id} ${nm(c)}：請檢查上月營收是否仍支持論點`});
   if(fd&&since<=fd.d&&!(T.reviews||[]).some(r=>r.kind=='財報'&&r.date>fd.d))A.push({k:'fin',lv:'wn',th:T.id,t:`${T.id} ${nm(c)}：${fd.n}財報已公布（${fd.d} 前），請檢查論點是否仍成立`})}
+ for(const e of S.events||[])if(!e.done&&e.date&&e.date<=TODAY)A.push({k:'ev',lv:'',ev:e.id,et:e.type,t:`${e.date.slice(5).replace('-','/')} ${nm(e.code)} ${e.type}${e.note?'：'+e.note:''}`});
+ for(const T of S.theses||[])if(T.status!='exit'&&(T.pend||[]).length)A.push({k:'pend',lv:'',th:T.id,t:`${T.id} ${nm(cU(T.code))}：${T.pend.length} 項策略條件待確認（${T.pend.slice(0,2).join('；')}${T.pend.length>2?'…':''}）`});
  for(const T of S.theses||[])if(T.status=='exit'&&!(T.exit&&T.exit.reason))A.push({k:'exr',lv:'wn',th:T.id,t:`${T.id} ${nm(cU(T.code))} 已出場，還沒選出場原因與有沒有照規則做`});
  return A}
 

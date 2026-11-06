@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#7c3aed"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="投資帳本">
 <title>投資帳本｜資產・策略・信貸</title>
 <style>
 :root{--bg:#f5f7fa;--card:#fff;--soft:#f8fafc;--line:#e2e8f0;--tx:#1e293b;--mut:#64748b;--pri:#7c3aed;--ok:#16a34a;--bad:#dc2626;--warn:#d97706;--acc:#2563eb}
@@ -113,6 +113,8 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 .cdd>summary{font-size:13px;font-weight:700;margin:6px 0 0;cursor:pointer}body.simple .cdd>summary{display:none}
 .r-in .w-c0{width:100%}
 @media(max-width:560px){.r-in{grid-template-columns:1fr 1fr 1fr}}
+.aii{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:5px 0;background:#fff;font-size:12.5px;line-height:1.55;cursor:pointer}.aii input{margin-top:3px;width:auto}.aii.aie{background:#fef2f2;border-color:#fca5a5}.aii.aid{background:#fffbeb;border-color:#fcd34d}.aii .bad{color:var(--bad)}
+#iosHint{font-size:12px;margin-top:6px}
 </style></head><body>
 <div class="hdr"><h2>投資帳本 <small style="font-size:12px;font-weight:600;color:var(--mut)">資產・策略・信貸</small></h2><div class="seg"><button id="uiS" onclick="setUi('simple')">簡易</button><button id="uiP" onclick="setUi('pro')">專業</button></div></div>
 <div class="seg pro wsw"><button id="wsAS" onclick="setWs('as')">📊 資產</button><button id="wsST" onclick="setWs('st')">🧭 策略<span id="stBadge"></span></button><button id="wsLN" onclick="setWs('loan')">💰 信貸</button></div>
@@ -193,7 +195,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
  <div class="p" id="asAlloc"></div>
  <div class="p"><div class="ash"><b>📦 庫存</b><div class="seg sm" id="asGrp"></div><label class="ck"><input type="checkbox" id="asClosed" onchange="asShowClosed(this.checked)">顯示已出清</label></div>
   <div id="asList"></div>
-  <div class="asbtn"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="pxRefresh()">🔄 更新現價</button><button onclick="setWs('loan');tab('S')">🎯 去結算</button></div>
+  <div class="asbtn"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button class="pri" onclick="aiOpen()">📥 從 AI 貼上</button><button onclick="pxRefresh()">🔄 更新現價</button><button onclick="setWs('loan');tab('S')">🎯 去結算</button></div>
   <div class="h" style="margin-top:4px">點一檔股票看當初為什麼買、損益拆解與每一筆交易。</div></div>
  <div class="p"><details class="trw" id="trWrap"><summary>📒 交易紀錄 <span class="h" id="trHead"></span></summary>
   <div class="h" style="margin:4px 0">撥款後的每一筆買進、賣出與配息（金額單位：元）。同一天的交易歸在一組；手續費與證交稅依試算頁「稅費與手續費」自動計算，點「✎」可改成成交回報上的實際金額、改日期或加備註。結算時「本期淨買進」會自動加總兩次結算之間的交易。</div>
@@ -220,7 +222,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 </div>
 
 <div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="exp()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button></div>
-<div class="h" style="margin-top:6px">資料只存在這個瀏覽器。每次修改或結算後，請按「⬇️ 匯出設定檔」存到雲端硬碟或電腦；換手機、換電腦時用「⬆️ 匯入」還原。<span id="bkS"></span><br>本工具僅供試算，非投資或稅務建議。</div></div>
+<div class="h" style="margin-top:6px">資料只存在這個瀏覽器。每次修改或結算後，請按「⬇️ 匯出設定檔」存到雲端硬碟或電腦；換手機、換電腦時用「⬆️ 匯入」還原。<span id="bkS"></span><br>本工具僅供試算，非投資或稅務建議。</div><div id="iosHint" class="stal" style="display:none"></div></div>
 
 <div id="toast"><span id="toastT"></span><button onclick="undo()">復原</button></div>
 
@@ -342,6 +344,15 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li><b>＋記交易</b>：第一次買主動股票時點一個策略，勾選現在符合的策略條件（＝買進理由，條件不夠時會提醒），就會自動建立論點；「什麼情況代表我錯了」帶入策略的理由失效規則、分批計畫依策略的「分 N 批」建立、族群依產業別帶入；停損價依策略的「預設停損 %」自動算，並建議最多買幾股（每筆最多虧主動部位 × 策略的「每筆風險 %」）與買進後占比；加碼自動歸到原論點；賣出時畫面會顯示當初的理由與目前損益，點選賣出依據，股數歸零自動標記「已出場」。</li>
 <li><b>自動現價</b>：每個交易日收盤後（約 14:47、16:17、18:47、21:17），網站會自動抓證交所、櫃買中心的全市場收盤價（公開資料，不含任何個人持股）；打開網頁就帶入，也可以按「🔄 更新」。盤中價格的來源不允許網頁直接讀取，所以盤中會顯示前一個交易日的收盤價，需要時可以手動修改。每筆交易當天的 0050 價格也會自動帶入，用來算「vs 0050」。</li>
 <li>「📒 交易紀錄」與「📋 持股明細表」也移到資產頁；結算時現價直接用資產頁的，結算頁只要填日期、現金與修正。</li></ul>
+<h3>📥 從 AI 對話貼上紀錄（專業版）</h3>
+<ul><li>在分析股票的對話裡，請 AI「用投資帳本 v1 格式輸出」今天的成交、新論點、事件（除息、財報），也可以附券商 App 庫存截圖請 AI 一起輸出庫存核對。格式說明在專案文件〈工具說明與結算流程〉。</li>
+<li>在 📊 資產按「📥 從 AI 貼上」，把整段回覆貼上（工具會自己找出 JSON）→「解析並預覽」。每一筆都可以取消勾選；可能重複（同日期、代號、買賣、股數、價格、部位）的預設不勾；價格超過前一日收盤 ±10%、買進後超過上限、策略條件未達門檻都會提醒；格式錯誤會告訴你是第幾行、缺什麼欄位。</li>
+<li>匯入是「加進去」，不會取代原本的資料；匯入前會自動存還原點（只存在這台裝置的瀏覽器，最近 10 份，不會放進匯出的設定檔）。「📜 匯入紀錄」可以整批復原，「🛟 還原點」可以回到匯入前的樣子。匯入後會問要不要匯出備份，可以關掉。</li>
+<li>事件到期會出現在提醒：除息可以一鍵「記配息」，財報可以記檢查；論點裡「待確認」的條件也會提醒你確認。</li>
+<li>「⬆️ 匯入 JSON」會整份取代，所以匯入前也會存還原點；檔案比瀏覽器裡的資料舊時會先警告。</li></ul>
+<h3>📱 加入主畫面</h3>
+<ul><li>Android（Chrome）：右上「⋮」→「加入主畫面」或「安裝應用程式」，之後從主畫面的「投資帳本」圖示打開；資料和 Chrome 是同一份。</li>
+<li>iPhone（Safari）：下方「分享」→「加入主畫面」。主畫面的 App 和 Safari 是分開的儲存空間：第一次請先在 Safari「⬇️ 匯出設定檔」，再到主畫面 App「⬆️ 匯入」，之後只用主畫面 App。Safari 裡的網站資料在一段時間沒打開時可能被清除，加入主畫面後正常使用不會；仍建議定期匯出備份。</li></ul>
 <h3>🧭 策略（專業版）</h3>
 <ul><li><b>📈 績效</b>：最上方是「主動部位有沒有贏 0050」；下面依策略列出論點數、勝率、平均賺賠比、超額報酬、最大回撤與照規則出場的比例，「未分類（主動）」「期初持股」「被動（依配置）」分開列。勝率要累積 20 筆以上已出場的論點才有參考價值。</li>
 <li><b>📚 策略庫</b>：每個策略分成「選什麼／何時買／買多少／何時賣」，另有預計持有期間、單一個股與族群上限、預設停損 %、每筆風險 %。小地方改「儲存為小修正」；邏輯或規則改變「建立新版本」並寫原因，舊版本保留。</li>
@@ -358,14 +369,15 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <button style="margin-top:8px" onclick="closeGd()">我知道了</button></div></div>
 
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261105e"></script>
-<script src="data/stocks.js?v=20261105e"></script>
-<script src="js/engine.js?v=20261105e"></script>
-<script src="js/ui.js?v=20261105e"></script>
-<script src="js/strategy-engine.js?v=20261105e"></script>
-<script src="js/asset-engine.js?v=20261105e"></script>
-<script src="js/prices.js?v=20261105e"></script>
-<script src="js/strategy-ui.js?v=20261105e"></script>
-<script src="js/asset-ui.js?v=20261105e"></script>
-<script src="js/main.js?v=20261105e"></script>
+<script src="data/etf-ref.js?v=20261106a"></script>
+<script src="data/stocks.js?v=20261106a"></script>
+<script src="js/engine.js?v=20261106a"></script>
+<script src="js/ui.js?v=20261106a"></script>
+<script src="js/strategy-engine.js?v=20261106a"></script>
+<script src="js/asset-engine.js?v=20261106a"></script>
+<script src="js/prices.js?v=20261106a"></script>
+<script src="js/strategy-ui.js?v=20261106a"></script>
+<script src="js/asset-ui.js?v=20261106a"></script>
+<script src="js/ai-import.js?v=20261106a"></script>
+<script src="js/main.js?v=20261106a"></script>
 </body></html>
