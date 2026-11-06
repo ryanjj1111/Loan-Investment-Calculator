@@ -6,7 +6,7 @@
 const ST_CAP={stock:20,group:40};
 const ST_STATUS=[['plan','規劃中'],['hold','持有中'],['exit','已出場']];
 const ST_EXIT=[['invalid','理由失效'],['target','達到估值目標'],['stop','停損'],['timeout','超過持有期限'],['other','其他']];
-const ST_FIELDS=['name','logic','term','screen','entry','exit','holdMin','holdMax','capStock','capGroup','capStrat','stopPct','stopTech','riskPct','rr'];
+const ST_FIELDS=['name','logic','term','screen','entry','exit','holdMin','holdMax','capStock','capGroup','capStrat','stopPct','stopTech','riskPct','rr','addDays','addPx','addPxPct','addHalt'];
 // 期別：買之前先決定打算持有多久，再選對應的策略
 const ST_TERM=[['短','短期（1～8 週）'],['中','中期（2～12 個月）'],['長','長期（1 年以上）']];
 const stTermN=k=>(ST_TERM.find(x=>x[0]==k)||['',''])[1];
@@ -79,6 +79,19 @@ function stThesisEvents(S,T,B){const c=cU(T.code),ev=[];if(B===undefined)B=stBas
   else if(!x.thesisId&&x.k=='div'&&x.ac=='a')ev.push({d:x.dt,k:'divU',x})}
  return ev}
 function stPerf(S,T,opt){const B=stBase(S,T),r=stRun(S,cU(T.code),stThesisEvents(S,T,B),Object.assign({exitDate:T.status=='exit'&&T.exit&&T.exit.date?T.exit.date:null},opt||{}));r.base=B&&B.px!=null?B:null;return r}
+// 交易日（只扣週末，國定假日不扣）：a 之後到 b 有幾個交易日；a 加 n 個交易日是哪天
+function stTD(a,b){let n=0;const d=new Date(a+'T00:00:00Z'),e=new Date(b+'T00:00:00Z');while(d<e){d.setUTCDate(d.getUTCDate()+1);const w=d.getUTCDay();if(w&&w<6)n++}return n}
+function stTDAdd(a,n){const d=new Date(a+'T00:00:00Z');while(n>0){d.setUTCDate(d.getUTCDate()+1);const w=d.getUTCDay();if(w&&w<6)n--}return d.toISOString().slice(0,10)}
+const stMD=d=>d?String(d).slice(5).replace('-','/'):'';
+// 加碼的限制：間隔幾個交易日、比上一批低或高幾 %、跌破第 1 批買價 −N% 暫停加碼
+// 回傳 {wait:'還不能加碼的原因', halt:'暫停加碼的原因'}，都沒有＝null
+function stAddGate(S,T,st){if(!st||T.status!='hold')return null;const B=(S.trades||[]).filter(x=>x.thesisId==T.id&&x.k=='buy'&&x.dt&&num(x.px)!=null).sort((a,b)=>a.dt<b.dt?-1:a.dt>b.dt?1:0),bs=stBase(S,T);
+ const first=B.length?{d:B[0].dt,px:num(B[0].px),lb:'第 1 批'}:bs&&bs.px!=null?{d:bs.d,px:bs.px,lb:'起算價'}:null,last=B.length?{d:B[B.length-1].dt,px:num(B[B.length-1].px),lb:'上一批'}:first;
+ if(!last)return null;const px=num((S.px||{})[cU(T.code)]),o={},nd=num(st.addDays),pp=num(st.addPxPct),hp=num(st.addHalt),lb=last.lb=='起算價'?'起算日':'上一批';
+ if(nd){const n=stTD(last.d,TODAY);if(n<nd)o.wait=`${lb} ${stMD(last.d)} ${n?`買（隔 ${n} 個交易日）`:'才買'}，要隔 ${nd} 個交易日，約 ${stMD(stTDAdd(last.d,nd))} 後再看`}
+ if(!o.wait&&pp&&(st.addPx=='down'||st.addPx=='up')&&px!=null&&last.px){const dn=st.addPx=='down',th=last.px*(dn?1-pp/100:1+pp/100);if(dn?px>th:px<th)o.wait=`要比${lb=='起算日'?'起算價':'上一批買價'} ${last.px} ${dn?'低':'高'} ${pp}% 以上（${dn?'≤':'≥'} ${th.toFixed(1)}），現價 ${px}`}
+ if(hp&&px!=null&&first&&first.px){const th=first.px*(1-hp/100);if(px<th)o.halt=`跌破${first.lb=='起算價'?'起算價':'第 1 批買價'} ${first.px} −${hp}%（${th.toFixed(1)}）`}
+ return o.wait||o.halt?o:null}
 // 起算日的收盤價抓到後寫進論點，之後就固定
 function stBaseFix(S){let ch=0;for(const T of S.theses||[]){const B=stBase(S,T);if(!B||B.src!='收盤'||num(T.basePx)===B.px)continue;T.basePx=B.px;T.baseAuto=B.d+'|'+B.px;T.baseD=T.baseD||B.d;ch++}return ch}
 
