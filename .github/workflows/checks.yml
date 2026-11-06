@@ -1,9 +1,21 @@
-# 自動檢核卡：每個交易日抓全市場的法人買賣超、融資、月營收、股權分散與成交量（公開資料，不含任何個人持股）
+# 自動檢核卡：每個交易日抓全市場的成交量、三大法人、融資、月營收、股權分散表，算好指標存到 data/chk.json
+# 只抓公開資料，不含任何個人持股或觀察名單；和「收盤價」流程分開，不影響收盤價
 name: 檢核資料
 on:
+  schedule:
+    - cron: '37 7 * * 1-5'    # 台灣 15:37（三大法人）
+    - cron: '37 9 * * 1-5'    # 台灣 17:37
+    - cron: '57 13 * * 1-5'   # 台灣 21:57（融資融券）
+    - cron: '27 15 * * 1-5'   # 台灣 23:27
+    - cron: '7 2 * * 6'       # 台灣週六 10:07（股權分散表每週更新）
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: '這次最多跑幾分鐘（預設 12）'
+        required: false
   push:
     branches: ['claude/**']
-    paths: ['tools/probe-checks.mjs', 'tools/fetch-checks.mjs', '.github/workflows/checks.yml']
+    paths: ['tools/fetch-checks.mjs', '.github/workflows/checks.yml']
 permissions:
   contents: write
 concurrency:
@@ -12,19 +24,20 @@ concurrency:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: 測試資料來源
-        run: node tools/probe-checks.mjs
+      - name: 抓檢核資料
+        # 中途出錯也先把已經抓到的存起來，最後再標示失敗
+        run: node tools/fetch-checks.mjs "${{ github.event_name == 'push' && '45' || inputs.minutes || '12' }}" || touch /tmp/ckfail
       - name: 存檔
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
           git add -A data
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "檢核資料測試 [skip ci]"
-          for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done; exit 1
+          if git diff --cached --quiet; then echo "沒有新資料"; test ! -f /tmp/ckfail; exit $?; fi
+          git commit -m "檢核資料 $(TZ=Asia/Taipei date +%F' '%H:%M) [skip ci]"
+          for i in 1 2 3; do git pull --rebase -q && git push && { test ! -f /tmp/ckfail; exit $?; }; sleep 5; done; exit 1
