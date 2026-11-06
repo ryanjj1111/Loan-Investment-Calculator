@@ -102,6 +102,47 @@ if(left()>40e3){const t=await get('https://opendata.tdcc.com.tw/getOD.ashx?id=1-
  if(dt&&Object.keys(o).length>500){BH[dt]=o;say(`股權分散表 ${dt}：${Object.keys(o).length} 檔`)}}
  const w=Object.keys(BH).sort();for(const d of w.slice(0,-12))delete BH[d];fs.writeFileSync('data/ck/tdcc.json',JSON.stringify(BH))}
 
+// ---------- 估值（證交所 BWIBBU_d、櫃買中心 peQryDate：本益比、股價淨值比、殖利率、每股股利）；每月一個樣本，近 10 年
+const N_VAL=121;fs.mkdirSync('data/ck/val',{recursive:true});
+async function valDay(d){const a=await get(`https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d?date=${d.replace(/-/g,'')}&selectType=ALL&response=json`);if(!a||a.stat!='OK'||!(a.data||[]).length)return null;
+ const s={},F=a.fields||[],I=k=>F.indexOf(k),ic=I('證券代號'),ip=I('收盤價'),iy=I('殖利率(%)'),idy=I('股利年度'),ie=I('本益比'),ib=I('股價淨值比');
+ for(const r of a.data){const c=String(r[ic]).trim();if(!keep(c))continue;const px=ip>=0?nz(r[ip]):null,y=nz(r[iy]);s[c]=[nz(r[ie]),nz(r[ib]),px&&y!=null?Math.round(px*y)/100:null,idy>=0?nz(r[idy]):null]}
+ const b=await get(`https://www.tpex.org.tw/www/zh-tw/afterTrading/peQryDate?date=${d.replace(/-/g,'/')}&response=json`),T=b&&(b.tables||[])[0];
+ if(T&&(T.data||[]).length){const F2=(T.fields||[]).map(x=>String(x).trim()),J=k=>F2.indexOf(k),ic2=J('股票代號'),ie2=J('本益比'),id2=J('每股股利'),iy2=J('股利年度'),ib2=J('股價淨值比');
+  for(const r of T.data){const c=String(r[ic2]).trim();if(!keep(c))continue;s[c]=[nz(r[ie2]),nz(r[ib2]),nz(r[id2]),nz(r[iy2])]}}
+ return s}
+{const months=monthsBack(N_VAL-1),cur=months[months.length-1];let nv=0;
+ // 這個月：每次更新成最近一個交易日
+ const dl=CAL.filter(d=>d<=today).slice(-1)[0];const fc=`data/ck/val/${cur}.json`,oc=rd(fc);if(dl&&(!oc||oc.d<dl)&&left()>60e3){const s=await valDay(dl);nv++;if(s){fs.writeFileSync(fc,JSON.stringify({d:dl,s}));say(`估值 ${dl}：${Object.keys(s).length} 檔`)}}
+ for(const m of months.slice(0,-1).reverse()){if(left()<90e3)break;const f=`data/ck/val/${m}.json`;if(fs.existsSync(f)||failed('v|'+m))continue;
+  const[y,mm]=m.split('-').map(Number);let s=null,dd='';for(let k=0;k<8&&!s;k++){const t=new Date(Date.UTC(y,mm,0-k)),wd=t.getUTCDay();if(wd==0||wd==6)continue;dd=t.toISOString().slice(0,10);s=await valDay(dd);nv++}
+  if(s){fs.writeFileSync(f,JSON.stringify({d:dd,s}));delete ST.fail['v|'+m]}else fail('v|'+m)}
+ for(const f of fs.readdirSync('data/ck/val'))if(f.slice(0,7)<months[0])fs.unlinkSync('data/ck/val/'+f);
+ say(`估值：${nv} 次請求，已有 ${fs.readdirSync('data/ck/val').length} 個月`)}
+
+// ---------- 財報（公開資訊觀測站彙總報表：綜合損益表、資產負債表、現金流量表；單位千元）
+// 公布期限：第一季 5/15、第二季 8/14、第三季 11/14、年報隔年 3/31；期限前每天重抓一次，之後不再重抓
+const FIN=rd('data/ck/fin.json')||{};ST.finAt=ST.finAt||{};
+const finDue=(y,s)=>{const Y=y+1911;return s==1?`${Y}-05-20`:s==2?`${Y}-08-19`:s==3?`${Y}-11-19`:`${Y+1}-04-05`};
+const finOpen=(y,s)=>{const Y=y+1911;return s==1?`${Y}-04-01`:s==2?`${Y}-07-01`:s==3?`${Y}-10-01`:`${Y+1}-01-01`};
+const SEAS=(()=>{const L=[];const t=twNow();let y=t.getUTCFullYear()-1911,s=Math.floor(t.getUTCMonth()/3);if(s==0){y--;s=4}for(let k=0;k<9;k++){L.push([y,s]);s--;if(s==0){y--;s=4}}return L})();
+const NEEDF=new Set();{const [y0]=SEAS[0];for(const [y,s] of SEAS.slice(0,7))NEEDF.add(y+'-'+s);for(const y of[y0-1,y0-2,y0-3])NEEDF.add(y+'-4')}
+// 資產負債表只要最近 2 季；現金流量表要最近 2 季、去年同季與去年年報（算近 4 季）
+const FNEED={sb05:new Set(SEAS.slice(0,2).map(([y,s])=>y+'-'+s)),sb20:new Set(SEAS.slice(0,2).flatMap(([y,s])=>[y+'-'+s,(y-1)+'-'+s,(y-1)+'-4']))};
+async function mops(kind,y,s,ty){const u=`https://mopsov.twse.com.tw/mops/web/ajax_t163${kind}`,body=`encodeURIComponent=1&step=1&firstin=1&off=1&isQuery=Y&TYPEK=${ty}&year=${y}&season=${String(s).padStart(2,'0')}`;
+ for(let k=0;k<2;k++){const w=(last.mops||0)+4000-Date.now();if(w>0)await sleep(w);last.mops=Date.now();try{const r=await fetch(u,{method:'POST',headers:Object.assign({},UA,{'Content-Type':'application/x-www-form-urlencoded'}),body,signal:AbortSignal.timeout(Math.max(30e3,Math.min(220e3,left()-20e3)))});if(r.ok)return await r.text();say(`  HTTP ${r.status} ${kind} ${y}/${s} ${ty}`)}catch(e){say(`  失敗 ${kind} ${y}/${s} ${ty}：${e.message}`)}if(left()<120e3)break;await sleep(5000)}return null}
+const cellT=x=>x.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').trim();
+function mopsRows(h,cols){const out={};for(const tb of h.match(/<table[^>]*>[\s\S]*?<\/table>/gi)||[]){const th=[...tb.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi)].map(m=>cellT(m[1]));const ic=th.indexOf('公司代號');if(ic<0)continue;
+  const ix=cols.map(alts=>{for(const a of alts){const i=th.indexOf(a);if(i>=0)return i}return-1});
+  for(const tr of tb.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi)||[]){const td=[...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>cellT(m[1]));if(td.length<th.length-1)continue;const c=td[ic];if(!keep(c))continue;out[c]=ix.map(i=>i>=0?nz(td[i]):null)}}return out}
+const FCOL={sb04:[['營業收入'],['營業毛利（毛損）淨額','營業毛利（毛損）'],['基本每股盈餘（元）']],sb05:[['資產總計','資產總額'],['負債總計','負債總額']],sb20:[['營業活動之淨現金流入（流出）'],['投資活動之淨現金流入（流出）']]};
+{let nf=0;const ALLF=[...new Set([...NEEDF,...FNEED.sb20])].map(k=>k.split('-').map(Number)).sort((a,b)=>b[0]-a[0]||b[1]-a[1]);for(const [y,s] of ALLF){const key=y+'-'+s;const T=FIN[key]=FIN[key]||{};const open=today>=finOpen(y,s),closed=today>finDue(y,s);if(!open)continue;
+  for(const kind of['sb04','sb05','sb20']){if(!(FNEED[kind]||NEEDF).has(key))continue;if(left()<150e3)break;
+   const k2=kind+'|'+key,done=T[kind]&&(closed?T[kind+'_c']:ST.finAt[k2]==today);if(done||failed('f|'+k2))continue;let ok=0;const o=T[kind]||{};
+   for(const ty of['sii','otc']){if(left()<150e3)break;const h=await mops(kind,y,s,ty);nf++;if(!h)continue;const R=mopsRows(h,FCOL[kind]);if(Object.keys(R).length>20){Object.assign(o,R);ok++}}
+   if(ok==2){T[kind]=o;ST.finAt[k2]=today;if(closed)T[kind+'_c']=1;say(`財報 ${kind} ${y}/${s}：${Object.keys(o).length} 家`)}else if(closed)fail('f|'+k2);else if(ok)T[kind]=o}}
+ for(const k in FIN)if(!ALLF.some(([y,s])=>y+'-'+s==k))delete FIN[k];fs.writeFileSync('data/ck/fin.json',JSON.stringify(FIN));say(`財報：${nf} 次請求`)}
+
 // ---------- 刪掉太舊的籌碼資料
 for(const dir of['data/ck/fi','data/ck/it','data/ck/mg','data/ck/vol']){if(!fs.existsSync(dir))continue;const keepM=new Set(CAL.slice(-(dir.endsWith('vol')?N_PX:N_CH)-25).map(d=>d.slice(0,7)));for(const f of fs.readdirSync(dir))if(!keepM.has(f.slice(0,7)))fs.unlinkSync(`${dir}/${f}`)}
 fs.writeFileSync('data/ck/market.json',JSON.stringify(MK));ST.upd=new Date().toISOString();fs.writeFileSync('data/ck/state.json',JSON.stringify(ST));
@@ -113,6 +154,8 @@ const sma=(a,n,end=a.length)=>end>=n?avg(a.slice(end-n,end)):null;
 function rsiSeries(c,n=14){const out=new Array(c.length).fill(null);if(c.length<=n)return out;let g=0,l=0;for(let i=1;i<=n;i++){const d=c[i]-c[i-1];d>0?g+=d:l-=d}g/=n;l/=n;out[n]=l==0?100:100-100/(1+g/l);
  for(let i=n+1;i<c.length;i++){const d=c[i]-c[i-1];g=(g*(n-1)+(d>0?d:0))/n;l=(l*(n-1)+(d<0?-d:0))/n;out[i]=l==0?100:100-100/(1+g/l)}return out}
 const ema=(a,n)=>{const k=2/(n+1),o=[];let e=null;for(const x of a){e=e==null?x:x*k+e*(1-k);o.push(e)}return o};
+// 連幾日沒有創 20 日新低（收盤高於前 20 日最低收盤）
+const dNL=c=>{let k=0;for(let i=c.length-1;i>=20&&k<20;i--){if(c[i]>Math.min(...c.slice(i-20,i)))k++;else break}return k};
 function macdHist(c){if(c.length<35)return[];const e12=ema(c,12),e26=ema(c,26),dif=c.map((_,i)=>e12[i]-e26[i]),sig=ema(dif,9);return dif.map((x,i)=>x-sig[i])}
 // 收盤價：data/px（收盤價流程）＋ 補抓的較早月份
 const PD=CAL.filter(d=>d<=today).slice(-N_PX);const pxS=series('data/px',PD),vS=series('data/ck/vol',PD);
@@ -122,7 +165,35 @@ const iP=Math.max(lastWith('data/px',PD,TSE_P),lastWith('data/px',PD,OTC_P)),iC=
 const dP=PD[iP]||'',dC=CH[iC]||'',dM=CH[iM]||'';
 const codes=new Set();for(const m of new Set(PD.slice(-5).map(d=>d.slice(0,7))))for(const c of arc('data/px',m).codes)codes.add(c);
 const RM=Object.keys(RV).sort(),BW=Object.keys(BH).sort().slice(-3);
-const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag'];
+// 估值、財報的衍生指標
+const VM=fs.existsSync('data/ck/val')?fs.readdirSync('data/ck/val').filter(f=>/\.json$/.test(f)).sort().map(f=>rd('data/ck/val/'+f)):[];const VL=VM[VM.length-1]||null;
+const med=a=>{a=a.slice().sort((x,y)=>x-y);if(!a.length)return null;const k=a.length>>1;return a.length%2?a[k]:(a[k-1]+a[k])/2};
+const FK=Object.keys(FIN).filter(k=>FIN[k].sb04).sort((a,b)=>{const[p,q]=a.split('-').map(Number),[r,s]=b.split('-').map(Number);return p-r||q-s});
+const fv=(k,c,i)=>{const t=FIN[k]&&FIN[k].sb04&&FIN[k].sb04[c];return t?t[i]:null};
+function finOf(c){// 季資料：每季的營收、毛利（累計數相減）
+ const Q=[];for(const k of FK){const[y,s]=k.split('-').map(Number);const r=fv(k,c,0),g=fv(k,c,1),e=fv(k,c,2);if(r==null&&e==null)continue;let rq=r,gq=g,eq=e;
+  if(s>1){const p=y+'-'+(s-1);const r0=fv(p,c,0),g0=fv(p,c,1),e0=fv(p,c,2);if(!FIN[p]||(r!=null&&r0==null)){rq=gq=null;eq=e0==null?null:eq}else{rq=r!=null&&r0!=null?r-r0:null;gq=g!=null&&g0!=null?g-g0:null;eq=e!=null&&e0!=null?e-e0:null}}
+  Q.push({k,y,s,rq,gq,eq,cum:e})}
+ const gm=Q.filter(q=>q.rq>0&&q.gq!=null).slice(-4).map(q=>r1(q.gq/q.rq*100));
+ // 近 4 季 EPS：最新一季累計＋去年年報－去年同季累計
+ let eps4=null;const L=Q.filter(q=>q.cum!=null).slice(-1)[0];if(L){if(L.s==4)eps4=L.cum;else{const a=fv((L.y-1)+'-4',c,2),b=fv((L.y-1)+'-'+L.s,c,2);if(a!=null&&b!=null)eps4=r2(L.cum+a-b)}}
+ const Y4=FK.filter(k=>k.endsWith('-4')).map(k=>+k.split('-')[0]).sort((a,b)=>a-b).slice(-3),epsY=Y4.length==3?Y4.map(y=>fv(y+'-4',c,2)):null;
+ let debt=null;for(const k of FK.slice().reverse()){const b=FIN[k].sb05&&FIN[k].sb05[c];if(b&&b[0]){debt=r1(b[1]/b[0]*100);break}}
+ let fcf=null;for(const k of FK.slice().reverse()){const t=FIN[k].sb20&&FIN[k].sb20[c];if(!t)continue;const[y,s]=k.split('-').map(Number),cf=x=>x?(x[0]??0)+(x[1]??0):null,now=cf(t);
+  if(s==4){fcf=now;break}const a=FIN[(y-1)+'-4'],b=FIN[(y-1)+'-'+s];const A=a&&a.sb20&&a.sb20[c],B=b&&b.sb20&&b.sb20[c];if(A&&B){fcf=now+cf(A)-cf(B);break}}
+ return{gm:gm.length?gm:null,eps4,epsY:epsY&&epsY.every(v=>v!=null)?epsY:null,debt,fcf,Y4}}
+function valOf(c,f){const cur=VL&&VL.s[c];const pe=cur?cur[0]:null,pb=cur?cur[1]:null;
+ const P5=VM.slice(-61,-1).map(v=>v.s[c]&&v.s[c][0]).filter(x=>x>0),B10=VM.slice(-121).map(v=>v.s[c]&&v.s[c][1]).filter(x=>x>0);
+ const peMed5=P5.length>=24?r1(med(P5)):null,pbPct10=pb>0&&B10.length>=36?r2(B10.filter(x=>x<pb).length/B10.length):null;
+ // 每股現金股利（依股利年度，取最新一個樣本）
+ const D={};for(const v of VM){const x=v.s[c];if(x&&x[3]!=null&&x[2]!=null)D[x[3]]=x[2]}const dy=Object.keys(D).map(Number).sort((a,b)=>a-b).slice(-3);
+ const dps3=dy.length==3?r2((D[dy[0]]+D[dy[1]]+D[dy[2]])/3):null;
+ let pay3=null;if(dy.length==3&&f.epsY){const E={};f.Y4.forEach((y,i)=>E[y]=f.epsY[i]);const P=dy.map(y=>E[y]>0?D[y]/E[y]*100:null);if(P.every(x=>x!=null))pay3=r1((P[0]+P[1]+P[2])/3)}
+ return{pe,pb,peMed5,pbPct10,dps3,pay3}}
+// 同產業月營收年增率中位數（近 4 個月）
+const INDF=rd('data/industry.json'),IND2=INDF?INDF.ind:{},INDM={};{const ms=Object.keys(RV).sort().slice(-4),G={};for(const c in IND2){(G[IND2[c]]=G[IND2[c]]||[]).push(c)}
+ for(const g in G){const a=ms.map(m=>{const L=G[g].map(c=>RV[m][c]&&RV[m][c][1]).filter(x=>x!=null);return L.length>=5?r1(med(L)):null});if(a.every(x=>x!=null))INDM[g]=a}}
+const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag','lo20','hi20','lo250','dNL','pe','pb','peMed5','pbPct10','dps3','pay3','gm','eps4','epsY','debt','fcf'];
 const out={};
 for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[],vl=[];raw.forEach((x,i)=>{if(x!=null){cl.push(x);vl.push(vv[i])}});if(!cl.length||raw[iP]==null)continue;
  const n=cl.length,cur=cl[n-1],rs=rsiSeries(cl),mh=macdHist(cl),vols=vl.filter(x=>x!=null);
@@ -130,13 +201,16 @@ for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[
  const mgV=k=>mgA.length>k?mgA[mgA.length-1-k]:null;
  let ry=null,rHi=null,rN=0,rLag=null;if(RM.length){const s=RM.map(m=>RV[m][c]||null);rN=s.filter(Boolean).length;const lastI=s.map(Boolean).lastIndexOf(true);if(lastI>=0){rLag=RM.length-1-lastI;ry=s.slice(Math.max(0,lastI-5),lastI+1).map(x=>x?x[1]:null);const rev=s.slice(0,lastI+1).filter(Boolean).map(x=>x[0]);rHi=rev[rev.length-1]>=Math.max(...rev)?1:0}}
  const bh=BW.length?BW.map(d=>BH[d][c]??null):null;
+ const fn=finOf(c),fd=valOf(c,fn);
  out[c]=[cur,r2(sma(cl,20)),r2(sma(cl,60)),r2(sma(cl,120)),r2(sma(cl,20,n-5)),r2(sma(cl,60,n-5)),r1(rs[n-1]),r1(Math.min(...rs.slice(-20).filter(x=>x!=null))),r2(mh[n-1]),r2(mh.length>3?Math.min(...mh.slice(-4,-1)):null),
   n>1?Math.max(...cl.slice(Math.max(0,n-61),n-1)):null,Math.max(...cl.slice(-250)),n,vl[n-1],vols.length>1?Math.round(avg(vl.slice(Math.max(0,n-21),n-1).filter(x=>x!=null))||0):null,
-  fi.some(x=>x!=null)?fi:null,it.some(x=>x!=null)?it:null,mgA.length?[mgV(0),mgV(10),mgV(20)]:null,ry,rHi,rN,bh&&bh.some(x=>x!=null)?bh:null,rLag]}
+  fi.some(x=>x!=null)?fi:null,it.some(x=>x!=null)?it:null,mgA.length?[mgV(0),mgV(10),mgV(20)]:null,ry,rHi,rN,bh&&bh.some(x=>x!=null)?bh:null,rLag,
+  n>1?Math.min(...cl.slice(Math.max(0,n-21),n-1)):null,n>1?Math.max(...cl.slice(Math.max(0,n-21),n-1)):null,Math.min(...cl.slice(-250)),dNL(cl),
+  fd.pe,fd.pb,fd.peMed5,fd.pbPct10,fd.dps3,fd.pay3,fn.gm,fn.eps4,fn.epsY,fn.debt,fn.fcf]}
 const tx=CAL.filter(d=>d<=today).map(d=>MK.taiex[d]),fxD=Object.keys(MK.fx).sort(),fxL=fxD.slice(-250).map(d=>MK.fx[d]),fxT=fxL[fxL.length-1];
-const mkt={d:CAL.filter(d=>d<=today).slice(-1)[0],taiex:{c:tx[tx.length-1],m20:r2(sma(tx,20)),hi250:Math.max(...tx.slice(-250)),n:tx.length},
+const mkt={d:CAL.filter(d=>d<=today).slice(-1)[0],taiex:{c:tx[tx.length-1],m20:r2(sma(tx,20)),m60:r2(sma(tx,60)),hi250:Math.max(...tx.slice(-250)),n:tx.length},
  fx:fxL.length?{d:fxD[fxD.length-1],v:fxT,rank:fxL.filter(x=>x<fxT).length+1,n:fxL.length}:null};
-const J={upd:new Date().toISOString(),d:dP,dC,dM,rM:RM[RM.length-1]||'',rFrom:RM[0]||'',bW:BW,mkt,f:F,s:out,
+const J={upd:new Date().toISOString(),d:dP,dC,dM,rM:RM[RM.length-1]||'',rFrom:RM[0]||'',bW:BW,vD:VL?VL.d:'',fQ:FK.slice(-1)[0]||'',ind:INDM,mkt,f:F,s:out,
  src:'證交所 www.twse.com.tw、櫃買中心 www.tpex.org.tw、公開資訊觀測站 mopsov.twse.com.tw、集保結算所 opendata.tdcc.com.tw 公開資料'};
 fs.writeFileSync('data/chk.json',JSON.stringify(J));
 say(`寫入 data/chk.json：${Object.keys(out).length} 檔；收盤 ${dP}、法人 ${dC}、融資 ${dM}、月營收 ${J.rFrom}～${J.rM}、股權分散 ${BW.join('、')||'無'}；檔案 ${Math.round(fs.statSync('data/chk.json').size/1024)} KB；耗時 ${Math.round((Date.now()-T0)/1000)} 秒`);
