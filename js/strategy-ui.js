@@ -107,7 +107,9 @@ function stCalc(){if(!$('pgST'))return;if(stSync(S))save();const A=stAlerts(S),b
  const cnt={all:0};ST_STATUS.forEach(([k])=>cnt[k]=0);for(const T of S.theses||[]){cnt.all++;cnt[T.status]=(cnt[T.status]||0)+1;
   const el=document.querySelector(`details[data-th="${T.id}"]`);if(el)el.style.display=stFilter=='all'||T.status==stFilter?'':'none';
   const p=stPerf(S,T),st=stStrat(S,T.sid),c=cU(T.code),tg=((S.tags||{})[c]||[]).join('、');
-  const h=$('sth_'+T.id);if(h)h.innerHTML=`<b>${esc(T.id)}</b> ${esc(c)} ${esc(nameOf(c))}｜${st?esc(st.id)+' v'+(T.sver||1):'未指定策略'}｜<span class="stS ${T.status}">${stStatusN(T.status)}</span>${tg?'｜'+esc(tg):''}${(()=>{const k=typeof ckCount=='function'?ckCount(T):null;return k?` <span class=h>｜今日自動 ✅${k.ok} ❌${k.no}</span>`:''})()}`;
+  const h=$('sth_'+T.id);if(h)h.innerHTML=`<b>${esc(T.id)}</b> ${esc(c)} ${esc(nameOf(c))}｜${st?esc(st.id)+' v'+(T.sver||1):'未指定策略'}｜<span class="stS ${T.status}">${stStatusN(T.status)}</span>${tg?'｜'+esc(tg):''}${(()=>{const p=stPerf(S,T),px=p.px,sp=num(T.stop),A=stAlerts(S).filter(a=>a.th==T.id),v=typeof ckVerdict=='function'?ckVerdict(T):null,o=[];
+  if(p.first&&p.ret!=null)o.push(`<span class="${stCls(p.pl)}">${stPct(p.ret)}</span>`);if(px!=null&&sp!=null&&T.status!='exit')o.push(`離停損 ${((sp/px-1)*100).toFixed(1)}%`);if(A.length)o.push(`⚠️${A.length}`);
+  return(o.length?' <span class=h>｜'+o.join('｜')+'</span>':'')+(v?`<div class="stv1 ${v.cls}">依 ${esc(st?st.id:'')}：${esc(v.t)}</div>`:'')})()}`;
   const m=$('stm_'+T.id);if(m)m.innerHTML=stMet(p)}
  for(const k in cnt){const e=$('stc_'+k);if(e)e.innerText=cnt[k]||''}
  for(const st of S.strategies||[]){const e=$('stdy_'+st.id);if(e)e.innerText=stDirty(st)?'● 有修改尚未存成版本':''}

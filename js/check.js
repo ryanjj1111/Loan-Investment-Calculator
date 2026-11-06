@@ -140,3 +140,19 @@ function ckCardHtml(T,st){if(!st)return'';const c=cU(T.code);if(!stConds(st).som
   <div class=h style="margin-top:4px">自動檢核只看公開資料，僅供參考，不是投資建議。</div></div>`}
 // 檢核資料讀到後，重畫用得到的地方
 function ckRefresh(){try{if(typeof stCalc=='function')stCalc();if(typeof AT!='undefined'&&AT&&typeof asTh=='function'){const b=$('asOvB'),h=b?b.scrollTop:0;asTh();if(b)b.scrollTop=h}else if(typeof asCur!='undefined'&&asCur&&typeof asStock=='function'){const b=$('asOvB'),h=b?b.scrollTop:0;asStock(asCur.c,asCur.ac);if(b)b.scrollTop=h}}catch(e){}}
+// 依策略的結論：可以買或加碼／還差幾項／不買條件成立／已達上限
+// 自動判斷的看 ✅❌❔；要自己判斷的看論點有沒有勾；「依序加碼」看下一批的條件
+function ckVerdict(T){const st=stStrat(S,T.sid);if(!st||!CK||T.status=='exit')return null;const c=cU(T.code),M=new Set(T.met||[]),done=(T.plan||[]).filter(r=>r.tid).length;
+ let need=0,unk=0,man=0;const nb=[];
+ const one=i=>i.r?(i.r.v===true?1:i.r.v===false?0:-1):(M.has(i.t)?1:-2);
+ for(const g of ckGroups(st,c)){
+  if(g.need=='none'){for(const i of g.items)if(i.r&&i.r.v===true)nb.push(i.t.replace(/〔.〕/g,''));continue}
+  if(/依序/.test(g.rule||'')){if(done>=g.items.length)continue;const s=one(g.items[done]);if(s==0)need++;else if(s==-1)unk++;else if(s==-2)man++;continue}
+  const n=g.need=='all'?g.items.length:(+g.need||0);if(!n)continue;const L=g.items.map(one),ok=L.filter(x=>x==1).length;if(ok>=n)continue;
+  let lack=n-ok;const u=L.filter(x=>x==-1).length,m=L.filter(x=>x==-2).length;const a=Math.min(lack,m);man+=a;lack-=a;const b=Math.min(lack,u);unk+=b;lack-=b;need+=lack}
+ const verb=T.status=='plan'?'買':'加碼',E=stExposure(S),p=E.tot>0?(E.by[c]||0)/E.tot*100:0,cap=stCapStock(S,c);
+ if(nb.length)return{t:'⛔ 不買：'+nb[0],cls:'bad'};
+ const parts=[need?`還差 ${need} 項`:'',man?`${man} 項要自己確認`:'',unk?`${unk} 項資料不足`:''].filter(Boolean);
+ if(parts.length)return{t:parts.join('、'),cls:need?'h':'wn'};
+ if(p>=cap)return{t:`條件符合，但已達個股上限 ${cap}%`,cls:'wn'};
+ return{t:`✅ 條件符合，可以${verb}`,cls:'ok'}}
