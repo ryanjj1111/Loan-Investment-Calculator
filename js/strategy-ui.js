@@ -53,7 +53,7 @@ function stThCard(T){const i=stTi(T.id),c=cU(T.code),st=stStrat(S,T.sid),sopt=[[
  return`<details class=stc data-th="${T.id}" data-st="${T.status}" ${stOpen.has(T.id)?'open':''}><summary id="sth_${T.id}"></summary><div class=stm id="stm_${T.id}"></div>
  <div class=g>
   <label>股票代號${inp(`theses.${i}.code`,T.code,'s','autocomplete=off placeholder="例如 2301"')}<span class=h id="stn_${T.id}">${esc(nameOf(c))}</span></label>
-  <label>族群標籤（套用到這檔股票，用「、」分隔）<input data-tag="${esc(c)}" value="${esc(((S.tags||{})[c]||[]).join('、'))}" placeholder="例如 AI 硬體" ${c?'':'disabled'}></label>
+  <label>族群標籤（套用到這檔股票，用「、」分隔）<input data-tag="${esc(c)}" value="${esc(((S.tags||{})[c]||[]).join('、'))}" placeholder="${c?esc('空白＝用「'+stGrpOf(S,c)[0]+'」'):'例如 AI 硬體'}" ${c?'':'disabled'}><span class=h>空白時用所屬主題，沒有主題用產業別；要同時算進好幾個族群才需要填</span></label>
   <label>所屬策略${stSel(`theses.${i}.sid`,T.sid,sopt)}<span class=h>跟隨 v${T.sver||1}${st&&st.ver>(T.sver||1)?` <button onclick="stUpVer('${T.id}')">改用 v${st.ver}</button>`:''}</span></label>
   <label>狀態<span style="padding:5px 0">${stStatusN(T.status)}${stPlanProg(T)?'｜'+stPlanProg(T):''} <span class=h>（依股數自動）</span></span></label>
   <label>停損價(元)${inp(`theses.${i}.stop`,T.stop,'o')}</label>

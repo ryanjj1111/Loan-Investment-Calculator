@@ -21,7 +21,8 @@ const ckN=s=>String(s||'').replace(/〔[^〕]*〕/g,'').replace(/（[^）]*）|\
 const f1=x=>x==null?'—':(Math.round(x*10)/10).toLocaleString(),f2=x=>x==null?'—':(+x).toLocaleString(undefined,{maximumFractionDigits:2}),pc=x=>(x>=0?'+':'')+(Math.round(x*10)/10)+'%';
 const ckSum=(a,n)=>a&&a.length>=n&&a.slice(-n).every(x=>x!=null)?a.slice(-n).reduce((s,x)=>s+x,0):null;
 const R_=(v,why,miss)=>({v,why:why||'',miss:miss||''});
-const NA=miss=>R_(null,'',miss);
+// fix：資料不足時要補什麼（attr:growth／attr:theme／eps／guide／theme:名稱）；沒有 fix＝要等資料累積
+const NA=(miss,fix)=>Object.assign(R_(null,'',miss),fix?{fix:[fix]}:{});
 // 每個寫法：[正規表示式, (比對結果)=>(指標 m, 大盤 k)=>結果]
 const CK_ATOMS=[
  [/^符合上面條件$/,()=>()=>({skip:1})],
@@ -88,26 +89,31 @@ const CK_ATOMS=[
  [/^景氣循環產業$/,x=>m=>ckAttr('cyc',1,'景氣循環股')],
  [/^產業龍頭或寡占$/,x=>m=>ckAttr('lead',1,'產業龍頭')],
  // ---------- 前瞻資料（法人預估、法說指引、主題指標；資料超過 120 天顯示 ❔）
- [/^法人預估明年EPS年增≥(\d+)%$/,x=>m=>{const o=ckOut(CKX.c),y0=+TODAY.slice(0,4),a=o.med(y0),b=o.med(y0+1);if(a==null||b==null)return NA(`前瞻資料沒有 ${y0}、${y0+1} 年的 EPS 預估`);if(a<=0)return NA(`${y0} 年 EPS 預估 ≤ 0`);
-  const g=(b/a-1)*100;return R_(g>=+x[1],`${y0+1} 年 EPS 預估 ${f2(b)} ÷ ${y0} 年 ${f2(a)}，年增 ${f1(g)}%（${o.src(y0+1)}）`)}],
+ [/^法人預估明年EPS年增≥(\d+)%$/,x=>m=>{const o=ckOut(CKX.c),y0=+TODAY.slice(0,4),a=o.lat(y0),b=o.lat(y0+1);if(a==null||b==null)return NA(o.old(y0)||o.old(y0+1)?`EPS 預估超過 4 個月，請更新（${y0}、${y0+1} 年）`:`前瞻資料沒有 ${y0}、${y0+1} 年的 EPS 預估`,'eps');if(a<=0)return NA(`${y0} 年 EPS 預估 ≤ 0`);
+  const g=(b/a-1)*100;return R_(g>=+x[1],`${y0+1} 年 EPS 預估 ${f2(b)} ÷ ${y0} 年 ${f2(a)}，年增 ${f1(g)}%（${o.srcL(y0+1)}）`)}],
  [/^近3個月法人EPS預估(持平或上修|沒有下修)$/,x=>m=>{const o=ckOut(CKX.c),y=+TODAY.slice(0,4)+1,now=o.med(y,0,45),old=o.med(y,60,150);
   if(now!=null&&old!=null){const d=(now/old-1)*100;return R_(d>=-2,`${y} 年 EPS 預估 ${f2(old)} → ${f2(now)}（${pc(d)}）`)}
-  const r=m.ry;if(!r||r.length<6||r.some(v=>v==null))return NA('還沒有 3 個月前的預估紀錄，月營收資料也不足');const a=(r[0]+r[1]+r[2])/3,b=(r[3]+r[4]+r[5])/3;
+  const r=m.ry;if(!r||r.length<6||r.some(v=>v==null))return NA(o.med(y,0,45)==null?'前瞻資料沒有最近的 EPS 預估，月營收資料也不足':'還沒有 3 個月前的預估紀錄，月營收資料也不足',o.med(y,0,45)==null?'eps':'');const a=(r[0]+r[1]+r[2])/3,b=(r[3]+r[4]+r[5])/3;
   return R_(b>=a,`近 3 個月營收年增率平均 ${f1(b)}%，前 3 個月 ${f1(a)}%`,'（還沒有 3 個月前的預估紀錄，先用月營收判斷）')}],
- [/^最近一次法說(?:的)?營收與毛利率展望不低於持平$/,x=>m=>{const g=ckOut(CKX.c).guide;if(!g||!g.d)return NA('前瞻資料沒有法說指引');if(!g.rev||!g.gm)return NA('法說指引缺營收或毛利率的方向');if(dDays(g.d,TODAY)>120)return NA(`法說指引是 ${g.d} 的，超過 4 個月，請更新`);
+ [/^最近一次法說(?:的)?營收與毛利率展望不低於持平$/,x=>m=>{const g=ckOut(CKX.c).guide;if(!g||!g.d)return NA('前瞻資料沒有法說指引','guide');if(!g.rev||!g.gm)return NA('法說指引缺營收或毛利率的方向','guide');if(dDays(g.d,TODAY)>120)return NA(`法說指引是 ${g.d} 的，超過 4 個月，請更新`,'guide');
   return R_(g.rev!='down'&&g.gm!='down',`${g.d} 法說：營收${CK_DIR[g.rev]||'—'}、毛利率${CK_DIR[g.gm]||'—'}${g.src?'（'+g.src+'）':''}`)}],
- [/^(?:產業報價止跌|所屬主題需求展望不是向下)$/,x=>m=>{const a=(S.attr||{})[CKX.c]||{},th=a.theme&&(S.themes||{})[a.theme];if(!a.theme)return NA('股票屬性還沒有填主題');if(!th||!th.d)return NA(`主題「${a.theme}」還沒有指標`);if(dDays(th.d,TODAY)>120)return NA(`主題「${a.theme}」的指標是 ${th.d} 的，請更新`);
+ [/^(?:產業報價止跌|所屬主題需求展望不是向下)$/,x=>m=>{const a=(S.attr||{})[CKX.c]||{},th=a.theme&&(S.themes||{})[a.theme];if(!a.theme)return NA('股票屬性還沒有填主題','attr:theme');if(!th||!th.d||!th.st)return NA(`主題「${a.theme}」還沒有狀態`,'theme:'+a.theme);if(dDays(th.d,TODAY)>120)return NA(`主題「${a.theme}」的指標是 ${th.d} 的，請更新`,'theme:'+a.theme);
   return R_(th.st!='down',`主題「${a.theme}」${CK_DIR[th.st]||'—'}（${th.d}${th.note?'：'+th.note:''}）`)}]
 ];
 const CK_DIR={up:'向上',flat:'持平',down:'向下'};
 let CKX={c:'',st:null};
 // 股票屬性：1＝是、0＝否、沒填＝待確認
-function ckAttr(k,want,lb){const a=(S.attr||{})[CKX.c]||{};if(a[k]==null||a[k]==='')return NA(`股票屬性「${lb}」還沒確認`);return R_(+a[k]===want,`股票屬性：${+a[k]?'是':'不是'}${lb}${a.d?'（'+a.d+' 確認）':''}`)}
+function ckAttr(k,want,lb){const a=(S.attr||{})[CKX.c]||{};if(a[k]==null||a[k]==='')return NA(`股票屬性「${lb}」還沒確認`,'attr:'+k);return R_(+a[k]===want,`股票屬性：${+a[k]?'是':'不是'}${lb}${a.d?'（'+a.d+' 確認）':''}`)}
 // 前瞻資料：某年度 EPS 預估的中位數（只取 a～b 天前記錄的，預設 120 天內）
 function ckOut(c){const o=(S.outlook||{})[cU(c)]||{},E=o.eps||[];const pick=(y,a=0,b=120)=>E.filter(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)>=a&&dDays(e.d,TODAY)<=b).map(e=>+e.v).filter(isFinite);
  const med=(y,a,b)=>{const L=pick(y,a,b).sort((p,q)=>p-q);if(!L.length)return null;const k=L.length>>1;return L.length%2?L[k]:(L[k-1]+L[k])/2};
  const src=y=>{const L=E.filter(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)<=120);return L.length?L.map(e=>e.src||'未註明').slice(0,3).join('、')+(L.length>3?' 等 '+L.length+' 家':'')+'，'+L.map(e=>e.d).sort().pop():''};
- return{med,src,guide:o.guide||null}}
+ // 最近一批：120 天內最新的日期往前 45 天內的紀錄（避免新舊預估混在一起算中位數）
+ const latL=y=>{const L=E.filter(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)<=120);if(!L.length)return[];const dm=L.map(e=>e.d).sort().pop();return L.filter(e=>dDays(e.d,dm)<=45)};
+ const lat=y=>{const L=latL(y).map(e=>+e.v).filter(isFinite).sort((p,q)=>p-q);if(!L.length)return null;const k=L.length>>1;return L.length%2?L[k]:(L[k-1]+L[k])/2};
+ const srcL=y=>{const L=latL(y);return L.length?[...new Set(L.map(e=>e.src||'未註明'))].slice(0,3).join('、')+(L.length>3?' 等 '+L.length+' 筆':'')+'，'+L.map(e=>e.d).sort().pop():''};
+ const old=y=>E.some(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)>120);
+ return{med,src,lat,srcL,old,guide:o.guide||null}}
 const CKC={};
 // 一個片段 → 判斷函式（看不懂＝null）
 function ckAtom(s){for(const[re,mk]of CK_ATOMS){const x=s.match(re);if(x)return mk(x)}return null}
@@ -122,14 +128,15 @@ const ckAuto=t=>!/（手動）|\(手動\)/.test(t)&&!!ckParse(t);
 function ckEval(c,t,st){if(!CK||!ckAuto(t))return null;CKX={c:cU(c),st:st||null};const P=ckParse(t),m=ckM(c),k=CK.mkt;if(!m)return{v:null,why:'',miss:'沒有這檔的資料',auto:1};
  const o=ckRun(P,m,k);return o?Object.assign(o,{auto:1}):null}
 function ckRun(P,m,k){if(!P)return null;if(typeof P=='function'){const o=P(m,k);return o.skip?null:o}
+ const fx=new Set(),add=o=>{if(o&&o.v==null&&o.fix)o.fix.forEach(f=>fx.add(f))};
  // 至少 N 項：每項分開判斷
- if(P.kof){let ok=0,u=0;const W=[],Ms=[];for(const p of P.parts){const o=ckRun(p.P,m,k);if(!o){u++;continue}if(o.v===true)ok++;else if(o.v==null)u++;W.push((o.v===true?'✓':o.v===false?'✗':'?')+' '+(o.why||o.miss||''))}
-  const v=ok>=P.kof?true:ok+u>=P.kof?null:false;return{v,why:`${P.parts.length} 項中符合 ${ok} 項（需要 ${P.kof} 項）：${W.join('；')}`,miss:u&&v==null?`${u} 項判斷不了`:''}}
+ if(P.kof){let ok=0,u=0;const W=[];for(const p of P.parts){const o=ckRun(p.P,m,k);if(!o){u++;continue}if(o.v===true)ok++;else if(o.v==null){u++;add(o)}W.push((o.v===true?'✓':o.v===false?'✗':'?')+' '+(o.why||o.miss||''))}
+  const v=ok>=P.kof?true:ok+u>=P.kof?null:false;return Object.assign({v,why:`${P.parts.length} 項中符合 ${ok} 項（需要 ${P.kof} 項）：${W.join('；')}`,miss:u&&v==null?`${u} 項判斷不了`:''},v==null&&fx.size?{fix:[...fx]}:{})}
  // 或：有一段成立就成立；且：有一段不成立就不成立
  let any=false,unk=false,whys=[],miss=[],man=false;
- for(const fs of P.or){if(!fs){man=true;continue}let ok=true,u=false;for(const f of fs){const o=ckRun(f,m,k);if(!o)continue;if(o.why)whys.push(o.why);if(o.miss)miss.push(o.miss);if(o.v===false)ok=false;else if(o.v==null)u=true}
+ for(const fs of P.or){if(!fs){man=true;continue}let ok=true,u=false;for(const f of fs){const o=ckRun(f,m,k);if(!o)continue;if(o.why)whys.push(o.why);if(o.miss)miss.push(o.miss);if(o.v===false)ok=false;else if(o.v==null){u=true;add(o)}}
   if(ok&&!u){any=true}else if(ok&&u)unk=true}
- const v=any?true:(unk||man)?null:false;return{v,why:whys.join('；'),miss:miss.join('；')+(man&&!any?'（有一部分要自己判斷）':'')}}
+ const v=any?true:(unk||man)?null:false;return Object.assign({v,why:whys.join('；'),miss:miss.join('；')+(man&&!any?'（有一部分要自己判斷）':'')},v==null&&fx.size?{fix:[...fx]}:{})}
 // 策略的每一組條件，加上自動判斷結果
 function ckGroups(st,c){return stConds(st).map(g=>({sec:g.sec,need:g.need,rule:g.rule,items:g.items.map(t=>({t,r:ckEval(c,t,st)}))}))}
 // 條件文字：〔基〕〔技〕〔籌〕〔盤〕顯示成小標籤
@@ -147,10 +154,10 @@ function ckCardHtml(T,st){if(!st)return'';const c=cU(T.code),C=stConds(st);if(!C
  if(!CK)return`<div class="asck ckc"><b>📋 今日條件檢核</b><div class=h>${ckErr?'讀不到自動檢核資料（離線，或網站還沒有資料）。':'資料讀取中…'}</div></div>`;
  const M=new Set(T.met||[]),D=ckDone(T),G=ckGroups(st,c),m=ckM(c),lv=ckLive(m);
  const why=r=>`<div class=h>${esc(r.why)}${r.miss?' <i>'+esc(r.miss)+'</i>':''}</div>`;
- const row=(i,gi,ii,pre)=>i.r?`<div class=ckl>${i.r.v===true?'✅':i.r.v===false?'❌':'❔'} ${pre||''}${ckT(i.t)}${why(i.r)}</div>`
+ const row=(i,gi,ii,pre)=>i.r?`<div class=ckl>${i.r.v===true?'✅':i.r.v===false?'❌':ckFixable(i.r)?'✏️':'⏳'} ${pre||''}${ckT(i.t)}${why(i.r)}${i.r.v==null&&ckFixable(i.r)?ckFixHtml(c,i.r.fix):''}</div>`
   :`<div class=ckl>${M.has(i.t)?'☑️':'❔'} ${pre||''}${ckT(i.t)} <button class=ckmb onclick="ckMetTog('${T.id}',${gi},${ii})">${M.has(i.t)?'取消確認':'確認符合'}</button><div class=h>${M.has(i.t)?'你確認過符合':'要自己判斷，符合就按「確認符合」'}</div></div>`;
- return`<div class="asck ckc"><b>📋 今日條件檢核</b> <span class=h>${esc(ckAsOf())}</span>${lv?`<div class=wn style="font-size:12.5px">${esc(lv)}</div>`:''}${G.map((g,gi)=>{
-  if(g.need=='none')return`<div style="margin-top:4px"><b>⛔ ${esc(g.sec)}</b> <span class=h>任何一項成立就不買</span>${g.items.map(i=>i.r?`<div class=ckl>${i.r.v===true?'⛔ 成立':i.r.v===false?'✓ 沒有':'❔'} ${ckT(i.t)}${why(i.r)}</div>`:`<div class=ckl>❔ ${ckT(i.t)}<div class=h>要自己判斷</div></div>`).join('')}</div>`;
+ return`<div class="asck ckc"><b>📋 今日條件檢核</b> <span class=h>${esc(ckAsOf())}</span><div class=h style="font-size:11.5px">✅ 符合　❌ 不符合　✏️ 要補資料（在下面直接填）　⏳ 等資料累積（不用做事）　❔ 要自己判斷</div>${lv?`<div class=wn style="font-size:12.5px">${esc(lv)}</div>`:''}${G.map((g,gi)=>{
+  if(g.need=='none')return`<div style="margin-top:4px"><b>⛔ ${esc(g.sec)}</b> <span class=h>任何一項成立就不買</span>${g.items.map(i=>i.r?`<div class=ckl>${i.r.v===true?'⛔ 成立':i.r.v===false?'✓ 沒有':ckFixable(i.r)?'✏️':'⏳'} ${ckT(i.t)}${why(i.r)}${i.r.v==null&&ckFixable(i.r)?ckFixHtml(c,i.r.fix):''}</div>`:`<div class=ckl>❔ ${ckT(i.t)}<div class=h>要自己判斷</div></div>`).join('')}</div>`;
   if(/依序/.test(g.rule||''))return`<div style="margin-top:4px"><b>${esc(g.sec)}</b> <span class=h>依序加碼，已買 ${Math.min(D.n,g.items.length)}／${g.items.length} 批</span>${g.items.map((i,ii)=>ii<D.n?`<div class="ckl h">🟢 已買${D.d[ii]?' '+ckMD(D.d[ii]):''}　${ckT(i.t)}</div>`:row(i,gi,ii,ii==D.n?'👉 ':'')).join('')}</div>`;
   const A=g.items.filter(i=>i.r),ok=A.filter(i=>i.r.v===true).length,mn=g.items.filter(i=>!i.r),mk=mn.filter(i=>M.has(i.t)).length;
   return`<div style="margin-top:4px"><b>${esc(g.sec)}</b> <span class=h>${A.length?`自動符合 ${ok}／${A.length} 項`:''}${mn.length?`${A.length?'，':''}自己確認 ${mk}／${mn.length} 項`:''}${g.need?'（需要 '+(g.need=='all'||g.need>=g.items.length?'全部':g.need+' 項')+'）':''}</span>${g.items.map((i,ii)=>row(i,gi,ii)).join('')}</div>`}).join('')}
@@ -158,26 +165,92 @@ function ckCardHtml(T,st){if(!st)return'';const c=cU(T.code),C=stConds(st);if(!C
 // 買進時記下的條件（收起來，點開才看）
 function ckMetRec(T,st){const L=T.met||[];if(!L.length)return'';const cur=new Set(st?stConds(st).flatMap(g=>g.items):[]),old=L.filter(t=>!cur.has(t));
  return`<details class=ckrec><summary class=h>買進時（${esc(T.metAt||T.created||'')}）記錄符合 ${L.length} 項${old.length?`，其中 ${old.length} 項是舊版本的條件`:''}</summary>${L.map(t=>`<div class=h>✓ ${ckT(t)}${(T.metNote||{})[t]?' <i>（'+esc(T.metNote[t])+'）</i>':''}</div>`).join('')}</details>`}
+// ---------- 要補資料：在條件下面直接填
+const ckFixable=r=>!!(r&&r.v==null&&r.fix&&r.fix.length);
+const CK_ATTR={growth:'產業有 2 年以上結構性成長',cyc:'景氣循環股',lead:'產業龍頭或寡占'};
+function ckFixHtml(c,F){c=cU(c);const y=+TODAY.slice(0,4),dir=(f,on)=>(typeof OL_DIR!='undefined'?OL_DIR:[['up','向上'],['flat','持平'],['down','向下']]).map(([v,l])=>`<button onclick="${on.replace('$V',v)}">${l}</button>`).join('');
+ return[...new Set(F)].map(f=>{
+  if(f.startsWith('attr:')&&f!='attr:theme'){const k=f.slice(5);return`<div class=ckfx data-k="${f}">✏️ ${CK_ATTR[k]||k}？<button onclick="ckFix.attr('${c}','${k}',1)">是</button><button onclick="ckFix.attr('${c}','${k}',0)">否</button></div>`}
+  if(f=='attr:theme')return`<div class=ckfx data-k="attr:theme">✏️ 所屬主題 <input list=ckThL placeholder="例如 AI 伺服器" style="width:140px"><datalist id=ckThL>${Object.keys(S.themes||{}).map(n=>`<option value="${esc(n)}">`).join('')}</datalist><button onclick="ckFix.theme(this,'${c}')">儲存</button></div>`;
+  if(f.startsWith('theme:')){const n=f.slice(6);return`<div class=ckfx data-k="theme" data-n="${esc(n)}">✏️ 主題「${esc(n)}」現在 ${dir('',`ckFix.th(this,'$V')`)}<div class=h>日期記今天；來源和重點可以到「🧭 策略 → 📚 策略庫 → 🧭 主題指標」補</div></div>`}
+  if(f=='eps')return`<div class=ckfx data-k="eps">✏️ 法人 EPS 預估：${y} 年 <input type=number step=any class=e1 style="width:72px"> ${y+1} 年 <input type=number step=any class=e2 style="width:72px"><br><input class=es placeholder="來源，例如 FactSet 中位數、元大投顧" style="width:190px"> <input type=date class=ed value="${TODAY}" style="width:135px"> <button onclick="ckFix.eps(this,'${c}')">新增</button><div class=h>今年和明年都要填；不知道去哪找，可以按資產頁「✏️ 待補資料」裡的「🤖 請 AI 幫我找」</div></div>`;
+  if(f=='guide')return`<div class=ckfx data-k="guide">✏️ 最近一次法說：下一季營收 ${dir('',`ckFix.guide(this,'${c}','rev','$V')`)}　毛利率 ${dir('',`ckFix.guide(this,'${c}','gm','$V')`)}<br>法說日期 <input type=date class=gd value="${TODAY}" style="width:135px"> <input class=gs placeholder="來源" style="width:110px"></div>`;
+  return''}).join('')}
+const ckFixRe=()=>{if(typeof olRe=='function')olRe();else{save();ckRefresh()}};
+window.ckFix={
+ attr:(c,k,v)=>{S.attr=S.attr||{};const a=S.attr[c]=S.attr[c]||{};a[k]=+v;a.d=TODAY;ckFixRe()},
+ theme:(el,c)=>{const v=el.parentNode.querySelector('input').value.trim();if(!v){toast('請填主題名稱',0);return}S.attr=S.attr||{};const a=S.attr[c]=S.attr[c]||{};a.theme=v;a.d=TODAY;S.themes=S.themes||{};if(!S.themes[v])S.themes[v]={st:'',d:'',src:'',note:''};ckFixRe()},
+ th:(el,v)=>{const n=el.closest('[data-n]').dataset.n;S.themes=S.themes||{};const t=S.themes[n]=S.themes[n]||{};t.st=v;t.d=TODAY;if(!t.src)t.src='自己判斷';ckFixRe()},
+ eps:(el,c)=>{const w=el.closest('.ckfx'),q=s=>w.querySelector(s).value,a=num(q('.e1')),b=num(q('.e2')),src=q('.es').trim(),d=q('.ed')||TODAY,y=+TODAY.slice(0,4);if(a==null&&b==null){toast('請至少填一個年度的 EPS',0);return}
+  S.outlook=S.outlook||{};const o=S.outlook[c]=S.outlook[c]||{};o.eps=o.eps||[];if(a!=null)o.eps.push({y,v:a,src,d});if(b!=null)o.eps.push({y:y+1,v:b,src,d});if(!src)toast('已新增；記得補上來源，之後才知道數字從哪裡來',0);ckFixRe()},
+ guide:(el,c,f,v)=>{const w=el.closest('.ckfx'),d=w.querySelector('.gd').value||TODAY,src=w.querySelector('.gs').value.trim();S.outlook=S.outlook||{};const o=S.outlook[c]=S.outlook[c]||{},g=o.guide=o.guide||{};if(g.d!=d){g.rev=g.rev&&g.d==d?g.rev:'';g.gm=g.gm&&g.d==d?g.gm:''}g[f]=v;g.d=d;if(src)g.src=src;ckFixRe()}};
+
+// ---------- 待補資料清單（資產頁）：✏️ 要補資料＋🔄 要更新；只列策略用得到的
+// 財報季：每季財報期限前約一個月開始公布；資料日期早於這一季開始、而期限已過＝要更新
+function ckSeason(d){const y=+TODAY.slice(0,4),L=[];for(const yy of[y-1,y])L.push([yy+'-01-15',yy+'-03-31'],[yy+'-04-15',yy+'-05-15'],[yy+'-07-15',yy+'-08-14'],[yy+'-10-15',yy+'-11-14']);const s=L.filter(([a,b])=>d<a&&b<=TODAY).pop();return s?s[1]:''}
+function ckStaleWhy(c,d){if(!d)return'';if(dDays(d,TODAY)>120)return`是 ${ckMD(d)} 的，超過 4 個月`;const s=ckSeason(d);if(s)return`是 ${ckMD(d)} 的，${ckMD(s)} 財報期限過後還沒更新`;
+ const ev=(S.events||[]).filter(e=>e.code==c&&/法說/.test(e.type||'')&&e.date>d&&e.date<=TODAY).sort((a,b)=>a.date<b.date?1:-1)[0];return ev?`是 ${ckMD(d)} 的，${ckMD(ev.date)} 法說會後還沒更新`:''}
+function ckTodo(){if(!CK)return[];const L=[],key=new Set(),push=o=>{const k=o.k+'|'+(o.n||o.c);if(key.has(k)){const x=L.find(z=>z.k+'|'+(z.n||z.c)==k);if(x&&o.c&&!x.cs.includes(o.c))x.cs.push(o.c);return}key.add(k);o.cs=o.c?[o.c]:[];L.push(o)};
+ for(const T of S.theses||[]){if(T.status=='exit')continue;const st=stStrat(S,T.sid);if(!st)continue;const c=cU(T.code),done=ckDone(T).n,use={eps:0,guide:0,theme:0};
+  for(const g of ckGroups(st,c)){const items=/依序/.test(g.rule||'')?g.items.slice(done,done+1):g.items;
+   for(const i of items){const t=ckN(i.t);if(/EPS預估/.test(t))use.eps=1;if(/法說/.test(t))use.guide=1;if(/主題|產業報價/.test(t))use.theme=1;
+    if(!i.r)continue;if(ckFixable(i.r))for(const f of i.r.fix){if(f.startsWith('theme:'))push({k:'fix',f:'theme',n:f.slice(6),c});else push({k:'fix',f,c:c,n:c+f})}
+    else if(i.r.miss&&/先用月營收判斷/.test(i.r.miss))push({k:'soft',f:'eps',c,n:c+'soft'})}}
+  const o=(S.outlook||{})[c]||{};
+  if(use.eps&&(o.eps||[]).length){const d=o.eps.map(e=>e.d).filter(Boolean).sort().pop(),w=ckStaleWhy(c,d);if(w&&!key.has('fix|'+c+'eps'))push({k:'old',f:'eps',c,n:c+'oldeps',w})}
+  if(use.guide&&o.guide&&o.guide.d){const w=ckStaleWhy(c,o.guide.d);if(w&&!key.has('fix|'+c+'guide'))push({k:'old',f:'guide',c,n:c+'oldguide',w})}
+  if(use.theme){const n=((S.attr||{})[c]||{}).theme,t=n&&(S.themes||{})[n];if(t&&t.d&&t.st&&dDays(t.d,TODAY)>120)push({k:'old',f:'theme',n,c,w:`是 ${ckMD(t.d)} 的，超過 4 個月`})}}
+ L.forEach(o=>{if(o.k=='soft'&&key.has('fix|'+o.c+'eps'))o.skip=1});return L.filter(o=>!o.skip).sort((a,b)=>({fix:0,old:1,soft:2})[a.k]-({fix:0,old:1,soft:2})[b.k])}
+function ckTodoHtml(){const L=ckTodo();if(!L.length)return'';const nm=c=>esc(c+' '+nameOf(c)),dir=n=>(typeof OL_DIR!='undefined'?OL_DIR:[]).map(([v,l])=>`<button data-n="${esc(n)}" onclick="ckFix.th(this,'${v}')">${l}</button>`).join('');
+ const row=o=>{if(o.f=='theme')return`<div class=ckto data-n="${esc(o.n)}">${o.k=='old'?'🔄':'✏️'} 主題「${esc(o.n)}」${o.k=='old'?o.w:'還沒有狀態'}（${o.cs.map(nm).join('、')}）：${dir(o.n)}</div>`;
+  if(o.f.startsWith('attr:')&&o.f!='attr:theme'){const k=o.f.slice(5);return`<div class=ckto>✏️ ${nm(o.c)}：${CK_ATTR[k]}？<button onclick="ckFix.attr('${o.c}','${k}',1)">是</button><button onclick="ckFix.attr('${o.c}','${k}',0)">否</button></div>`}
+  const lb={'attr:theme':'所屬主題',eps:'法人 EPS 預估（'+TODAY.slice(0,4)+'、'+(+TODAY.slice(0,4)+1)+'）',guide:'最近一次法說指引'}[o.f]||o.f;
+  return`<div class=ckto>${o.k=='old'?'🔄':o.k=='soft'?'💡':'✏️'} ${nm(o.c)}：${lb}${o.k=='old'?' '+esc(o.w):o.k=='soft'?'（現在先用月營收代替判斷，補了更準）':''} <button onclick="ckGo('${o.c}','${o.f}',${o.k=='old'?1:0})">${o.k=='old'?'更新':'填寫'}</button></div>`};
+ const n=L.filter(o=>o.k!='soft').length;
+ return`<details class="stal asfx" ${ls('lcfx')=='0'?'':'open'} ontoggle="ls('lcfx',this.open?'1':'0')"><summary><b>✏️ 待補資料（${n}）</b> <span class=h>補了之後，條件會自動重新判斷</span></summary>${L.map(row).join('')}
+  <div class=h style="margin-top:4px">✏️ 缺的資料　🔄 舊了要更新（超過 4 個月、財報期限或法說會之後）　💡 補了判斷更準</div><div class=asbtn><button onclick="ckAiAsk()">🤖 請 AI 幫我找（複製請求）</button></div></details>`}
+// 跳到個股頁的填寫位置
+window.ckGo=(c,f,old)=>{asStock(c,'a');setTimeout(()=>{const b=$('asOvB');if(!b)return;let el=!old&&b.querySelector(`.ckfx[data-k="${f}"]`);
+ if(!el){const d=b.querySelector('details.olc');if(d){d.open=true;el=f=='eps'?b.querySelector('#olV'):f=='guide'?d.querySelector('.olf input[type=date]'):d}}
+ if(el){el.scrollIntoView({block:'center'});const i=el.matches&&el.matches('input')?el:el.querySelector&&el.querySelector('input');if(i)i.focus();(el.closest('.ckfx')||el).classList.add('ckhi')}},60)};
+// 複製一段請求給 AI：列出缺的與要更新的資料，要求附來源、用投資帳本 v1 輸出
+window.ckAiAsk=()=>{const L=ckTodo(),y=+TODAY.slice(0,4),nm=c=>c+' '+nameOf(c),by=f=>L.filter(o=>o.f==f),uniq=a=>[...new Set(a)];
+ const eps=uniq(by('eps').map(o=>nm(o.c))),gd=uniq(by('guide').map(o=>nm(o.c))),th=by('theme').map(o=>`${o.n}（${o.cs.map(nm).join('、')}）`),at=L.filter(o=>o.f.startsWith('attr:')).map(o=>nm(o.c)+'：'+(o.f=='attr:theme'?'所屬主題':CK_ATTR[o.f.slice(5)]));
+ const t=`請幫我收集以下台股資料（今天是 ${TODAY}）。只用公開網頁上寫明「哪家機構、哪一天、多少」的數字，每筆附來源與日期；找不到就說找不到，不要推算或自己湊數字。
+${eps.length?`
+1. 法人 EPS 預估（${y} 年、${y+1} 年）：${eps.join('、')}
+   可以的話用同一個來源（例如 FactSet 分析師中位數）的最新一次和約 3 個月前那一次，兩筆都列。
+`:''}${gd.length?`
+2. 最近一次法說會對下一季營收、毛利率的展望（向上／持平／向下）與法說日期：${gd.join('、')}
+`:''}${th.length?`
+3. 主題（產業）現在的狀態（向上／持平／向下＋一句重點）：${th.join('；')}
+`:''}${at.length?`
+4. 股票屬性：${at.join('；')}
+`:''}
+最後請用「投資帳本 v1」格式輸出一個 json（只放有找到的），例如：
+{"format":"投資帳本 v1","outlook":[{"code":"2301","eps":[{"year":${y},"eps":11.19,"src":"FactSet 中位數（鉅亨網）","date":"${TODAY}"}],"guide":{"rev":"up","gm":"flat","date":"${TODAY}","src":"法說會","note":"一句重點"},"attr":{"growth":true,"cyc":false,"lead":true,"theme":"AI 伺服器"}}],"themes":[{"name":"PC","status":"down","date":"${TODAY}","src":"IDC","note":"一句重點"}]}`;
+ asOvOpen(`<div class=ovh><button onclick="asClose()">✕</button><b>🤖 請 AI 幫我找</b></div><div class=h>按「複製」後貼到任何 AI 對話；拿到結果後，用「📥 從 AI 貼上」匯入，可以先預覽、也可以整批復原。</div><textarea id=ckAiT rows=14 style="width:100%;font-size:12.5px">${esc(t)}</textarea><div class=asbtn><button class=pri onclick="ckAiCopy()">📋 複製</button><button onclick="asClose()">關閉</button></div>`)};
+window.ckAiCopy=()=>{const e=$('ckAiT');e.select();const ok=()=>toast('已複製，貼到 AI 對話就可以',0);if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(e.value).then(ok,()=>{document.execCommand('copy');ok()});else{document.execCommand('copy');ok()}};
 window.ckMetTog=(id,gi,ii)=>{const T=stThesis(S,id),st=T&&stStrat(S,T.sid),g=st&&stConds(st)[gi],t=g&&g.items[ii];if(!t)return;const on=!(T.met||[]).includes(t);stMetT(id,t,on);ckRefresh()};
 // 檢核資料讀到後，重畫用得到的地方
-function ckRefresh(){try{if(typeof stCalc=='function')stCalc();if(typeof AT!='undefined'&&AT&&typeof asTh=='function'){const b=$('asOvB'),h=b?b.scrollTop:0;asTh();if(b)b.scrollTop=h}else if(typeof asCur!='undefined'&&asCur&&typeof asStock=='function'){const b=$('asOvB'),h=b?b.scrollTop:0;asStock(asCur.c,asCur.ac);if(b)b.scrollTop=h}}catch(e){}}
+function ckRefresh(){try{if(typeof stCalc=='function')stCalc();if(typeof asCalc=='function')asCalc();if(typeof AT!='undefined'&&AT&&typeof asTh=='function'){const b=$('asOvB'),h=b?b.scrollTop:0;asTh();if(b)b.scrollTop=h}else if(typeof asCur!='undefined'&&asCur&&typeof asStock=='function'){const b=$('asOvB'),h=b?b.scrollTop:0;asStock(asCur.c,asCur.ac);if(b)b.scrollTop=h}}catch(e){}}
 // 依策略的結論：可以買或加碼／還差幾項／不買條件成立／已達上限
 // 自動判斷的看 ✅❌❔；要自己判斷的看論點有沒有勾；「依序加碼」看下一批的條件
 // 依策略的結論：可以買或加碼／還差幾項／不買條件成立／已達上限／加碼間隔還沒到
 // 自動判斷的看 ✅❌❔；要自己判斷的看有沒有按「確認符合」；「依序加碼」看下一批的條件
 function ckVerdict(T){const st=stStrat(S,T.sid);if(!st||!CK||T.status=='exit')return null;const c=cU(T.code),M=new Set(T.met||[]),done=ckDone(T).n;
  let need=0,unk=0,man=0,bl='',fin=0;const nb=[];
- const one=i=>i.r?(i.r.v===true?1:i.r.v===false?0:-1):(M.has(i.t)?1:-2);
+ let wt=0;const one=i=>i.r?(i.r.v===true?1:i.r.v===false?0:ckFixable(i.r)?-1:-3):(M.has(i.t)?1:-2);
  for(const g of ckGroups(st,c)){
   if(g.need=='none'){for(const i of g.items)if(i.r&&i.r.v===true)nb.push(i.t.replace(/〔.〕/g,''));continue}
-  if(/依序/.test(g.rule||'')){if(done>=g.items.length){fin=g.items.length;continue}bl=`第 ${done+1} 批`;const s=one(g.items[done]);if(s==0)need++;else if(s==-1)unk++;else if(s==-2)man++;continue}
+  if(/依序/.test(g.rule||'')){if(done>=g.items.length){fin=g.items.length;continue}bl=`第 ${done+1} 批`;const s=one(g.items[done]);if(s==0)need++;else if(s==-1)unk++;else if(s==-2)man++;else if(s==-3)wt++;continue}
   const n=g.need=='all'?g.items.length:(+g.need||0);if(!n)continue;const L=g.items.map(one),ok=L.filter(x=>x==1).length;if(ok>=n)continue;
-  let lack=n-ok;const u=L.filter(x=>x==-1).length,m=L.filter(x=>x==-2).length;const a=Math.min(lack,m);man+=a;lack-=a;const b=Math.min(lack,u);unk+=b;lack-=b;need+=lack}
+  let lack=n-ok;const u=L.filter(x=>x==-1).length,m=L.filter(x=>x==-2).length,w=L.filter(x=>x==-3).length;const a=Math.min(lack,m);man+=a;lack-=a;const b=Math.min(lack,u);unk+=b;lack-=b;const ww=Math.min(lack,w);wt+=ww;lack-=ww;need+=lack}
  const verb=T.status=='plan'?'買':'加碼',E=stExposure(S),p=E.tot>0?(E.by[c]||0)/E.tot*100:0,cap=stCapStock(S,c);
  if(nb.length)return{t:'⛔ 不買：'+nb[0],cls:'bad'};
  if(fin&&!bl)return{t:`${fin} 批都買完了，不再加碼`,cls:'h'};
  const pre=bl?bl+'：':'',G=typeof stAddGate=='function'?stAddGate(S,T,st):null,hl=G&&G.halt?`⏸ 暫停加碼（${G.halt}）`:'';
- const parts=[need?`還差 ${need} 項`:'',man?`${man} 項要自己確認`:'',unk?`${unk} 項資料不足`:''].filter(Boolean);
+ const parts=[need?`還差 ${need} 項`:'',unk?`${unk} 項要補資料 ✏️`:'',man?`${man} 項要自己確認`:'',wt?`${wt} 項等資料累積`:''].filter(Boolean);
  if(parts.length)return{t:(hl?hl+'；':'')+pre+parts.join('、'),cls:hl?'wn':need?'h':'wn'};
  if(G&&G.wait)return{t:`${pre}條件符合，但${G.wait}`,cls:'wn'};
  if(p>=cap)return{t:`${pre}條件符合，但已達個股上限 ${cap}%`,cls:'wn'};

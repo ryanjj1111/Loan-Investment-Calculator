@@ -8,7 +8,7 @@ const olDirN=k=>(OL_DIR.find(x=>x[0]==k)||['','—'])[1];
 // AI 或手動填的方向文字 → up／flat／down
 const olDir=v=>{const s=String(v??'').trim().toLowerCase();if(!s)return'';if(/^(up|上|向上|上升|成長|增|季增|年增|樂觀|轉強|回升|漲)/.test(s))return'up';if(/^(flat|持平|平|穩|維持|止跌)/.test(s))return'flat';if(/^(down|下|向下|下滑|衰退|減|季減|年減|保守|轉弱|跌)/.test(s))return'down';return''};
 const olOld=d=>!d||dDays(d,TODAY)>OL_STALE;
-function olRe(){save();if(typeof asCur!='undefined'&&asCur){const b=$('asOvB'),h=b?b.scrollTop:0;asStock(asCur.c,asCur.ac);const b2=$('asOvB');if(b2)b2.scrollTop=h}if(typeof stBuild=='function')stBuild()}
+function olRe(){save();if(typeof asCalc=='function')asCalc();if(typeof asCur!='undefined'&&asCur){const b=$('asOvB'),h=b?b.scrollTop:0;asStock(asCur.c,asCur.ac);const b2=$('asOvB');if(b2)b2.scrollTop=h}if(typeof stBuild=='function')stBuild()}
 
 // 個股頁：前瞻資料卡
 function olHtml(c){c=cU(c);const a=(S.attr||{})[c]||{},o=(S.outlook||{})[c]||{},E=(o.eps||[]).map((e,i)=>({e,i})).sort((p,q)=>(q.e.d||'')>(p.e.d||'')?1:-1),g=o.guide||{},th=a.theme&&(S.themes||{})[a.theme];

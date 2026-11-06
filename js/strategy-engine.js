@@ -129,10 +129,12 @@ function stMDD(S,theses){const pts=[];for(const s of(S.snaps||[]).slice().sort((
 // 主動部位曝險：各檔市值（有現價用現價，沒有用成本）、族群合計
 function stExposure(S){const H=holdings(S).filter(o=>o.ac=='a'&&o.q>0);let tot=0;const by={},noPx=[];
  for(const o of H){const c=cU(o.n),px=num((S.px||{})[c]),v=px!=null?o.q*px:o.cost;if(px==null)noPx.push(c);by[c]=(by[c]||0)+v;tot+=v}
- const grp={};for(const c in by){const T=(S.tags||{})[c]||[],G=T.length?T:[(typeof indOf=='function'&&indOf(c))||'未分類'];for(const g of G)grp[g]=(grp[g]||0)+by[c]}return{tot,by,grp,noPx}}
+ const grp={};for(const c in by){for(const g of stGrpOf(S,c))grp[g]=(grp[g]||0)+by[c]}return{tot,by,grp,noPx}}
 // 上限：這檔股票有進行中的論點時，取所屬策略中最嚴格的；沒有就用預設 20% / 40%
 function stCapStock(S,c){let v=null;for(const T of S.theses||[]){if(T.status=='exit'||cU(T.code)!=c)continue;const st=stStrat(S,T.sid);if(st&&num(st.capStock)!=null)v=Math.min(v??Infinity,num(st.capStock))}return v??ST_CAP.stock}
-function stCapGroup(S,g){let v=null;for(const T of S.theses||[]){if(T.status=='exit')continue;if(!((S.tags||{})[cU(T.code)]||[]).includes(g))continue;const st=stStrat(S,T.sid);if(st&&num(st.capGroup)!=null)v=Math.min(v??Infinity,num(st.capGroup))}return v??ST_CAP.group}
+// 一檔股票屬於哪些族群：族群標籤 → 所屬主題（股票屬性）→ 產業別 → 未分類
+function stGrpOf(S,c){c=cU(c);const T=((S.tags||{})[c]||[]).filter(Boolean);if(T.length)return T;const th=((S.attr||{})[c]||{}).theme;if(th)return[th];const i=typeof indOf=='function'?indOf(c):'';return[i||'未分類']}
+function stCapGroup(S,g){let v=null;for(const T of S.theses||[]){if(T.status=='exit')continue;if(!stGrpOf(S,T.code).includes(g))continue;const st=stStrat(S,T.sid);if(st&&num(st.capGroup)!=null)v=Math.min(v??Infinity,num(st.capGroup))}return v??ST_CAP.group}
 
 // 檢查時點：月營收（次月 10 日前公告 → 每月 11 日起）；財報（一般產業 Q1 5/15、Q2 8/14、Q3 11/14、年報 3/31 前 → 截止日隔天起）
 function stRevDue(t){const y=+t.slice(0,4),m=+t.slice(5,7),d=+t.slice(8,10);const p=d>=11?[y,m]:(m==1?[y-1,12]:[y,m-1]);return p[0]+'-'+String(p[1]).padStart(2,'0')+'-11'}
