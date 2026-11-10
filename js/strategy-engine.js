@@ -127,9 +127,13 @@ function stMDD(S,theses){const pts=[];for(const s of(S.snaps||[]).slice().sort((
  if(ser.length<2)return null;let pk=-Infinity,m=0;for(const v of ser){pk=Math.max(pk,v);m=Math.max(m,pk-v)}return m}
 
 // 主動部位曝險：各檔市值（有現價用現價，沒有用成本）、族群合計
-function stExposure(S){const H=holdings(S).filter(o=>o.ac=='a'&&o.q>0);let tot=0;const by={},noPx=[];
- for(const o of H){const c=cU(o.n),px=num((S.px||{})[c]),v=px!=null?o.q*px:o.cost;if(px==null)noPx.push(c);by[c]=(by[c]||0)+v;tot+=v}
- const grp={};for(const c in by){for(const g of stGrpOf(S,c))grp[g]=(grp[g]||0)+by[c]}return{tot,by,grp,noPx}}
+// 分母（主動資本）＝主動持股市值＋主動帳戶現金（推算到今天）；還沒填主動現金時用 max(市值, 主動預算 Wa)
+// 上限提醒、建議股數、未平倉風險都用同一個分母；after(add)＝再買 add 元之後的分母（有現金時不變）
+function stExposure(S){const H=holdings(S).filter(o=>o.ac=='a'&&o.q>0);let mv=0;const by={},noPx=[];
+ for(const o of H){const c=cU(o.n),px=num((S.px||{})[c]),v=px!=null?o.q*px:o.cost;if(px==null)noPx.push(c);by[c]=(by[c]||0)+v;mv+=v}
+ const grp={};for(const c in by){for(const g of stGrpOf(S,c))grp[g]=(grp[g]||0)+by[c]}
+ const C=typeof cashAt=='function'?cashAt(S):null,cashA=C?Math.max(0,C.a):null,wa=(+S.Wa||0)*1e4,tot=cashA!=null?mv+cashA:Math.max(mv,wa);
+ return{tot,mv,cashA,by,grp,noPx,baseSrc:cashA!=null?'市值＋主動現金':(wa>mv?'主動預算':'市值'),after:add=>cashA!=null?tot:Math.max(mv+(add||0),wa)}}
 // 上限：這檔股票有進行中的論點時，取所屬策略中最嚴格的；沒有就用預設 20% / 40%
 function stCapStock(S,c){let v=null;for(const T of S.theses||[]){if(T.status=='exit'||cU(T.code)!=c)continue;const st=stStrat(S,T.sid);if(st&&num(st.capStock)!=null)v=Math.min(v??Infinity,num(st.capStock))}return v??ST_CAP.stock}
 // 一檔股票屬於哪些族群：族群標籤 → 所屬主題（股票屬性）→ 產業別 → 未分類
@@ -150,12 +154,15 @@ function stAlerts(S){const A=[],E=stExposure(S),nm=c=>c+(typeof nameOf=='functio
  for(const T of S.theses||[]){if(T.status=='exit'||T.status=='plan')continue;const p=stPerf(S,T),st=stStrat(S,T.sid),c=cU(T.code),since=p.first||T.created||TODAY;
   const mo=num(T.expectM)??(st?num(st.holdMax):null);if(p.first&&mo){const due=addMon(p.first,mo);if(TODAY>due)A.push({k:'due',lv:'wn',th:T.id,t:`${T.id} ${nm(c)} 已持有 ${(dDays(p.first,TODAY)/30.44).toFixed(1)} 個月，超過預計 ${mo} 個月`})}
   if(p.px!=null&&num(T.stop)!=null&&p.px<=num(T.stop))A.push({k:'stop',lv:'bad',th:T.id,t:`${T.id} ${nm(c)} 現價 ${p.px} 已跌破停損價 ${T.stop}`});
+  if(T.status=='hold'&&typeof exEval=='function'){const sh=p.px!=null&&num(T.stop)!=null&&p.px<=num(T.stop);for(const x of exEval(T)){if(!x.r||x.r.v!==true||(T.exAck||{})[x.key])continue;if(/停損/.test(x.lb)&&sh)continue;
+   const w=String(x.hit||x.r.why||'').split('；')[0];A.push({k:'exit',lv:x.frac===1?'bad':'wn',th:T.id,key:x.key,t:`${T.id} ${nm(c)}：${x.lb||'出場條件'}成立 → ${x.act||'照規則處理'}${w?'（'+(w.length>36?w.slice(0,36)+'…':w)+'）':''}`})}}
   if(p.px!=null&&num(T.tgtPx)!=null&&p.px>=num(T.tgtPx))A.push({k:'tgt',lv:'ok',th:T.id,t:`${T.id} ${nm(c)} 現價 ${p.px} 已達目標價 ${T.tgtPx}`});
 
   if(since<=rd&&!(T.reviews||[]).some(r=>r.kind=='營收'&&r.date>=rd))A.push({k:'rev',lv:'wn',th:T.id,t:`${T.id} ${nm(c)}：請檢查上月營收是否仍支持論點`});
   if(fd&&since<=fd.d&&!(T.reviews||[]).some(r=>r.kind=='財報'&&r.date>fd.d))A.push({k:'fin',lv:'wn',th:T.id,t:`${T.id} ${nm(c)}：${fd.n}財報已公布（${fd.d} 前），請檢查論點是否仍成立`})}
  for(const e of S.events||[])if(!e.done&&e.date&&e.date<=TODAY)A.push({k:'ev',lv:'',ev:e.id,et:e.type,t:`${e.date.slice(5).replace('-','/')} ${nm(e.code)} ${e.type}${e.note?'：'+e.note:''}`});
  for(const T of S.theses||[])if(T.status!='exit'&&(T.pend||[]).length)A.push({k:'pend',lv:'',th:T.id,t:`${T.id} ${nm(cU(T.code))}：${T.pend.length} 項策略條件待確認（${T.pend.slice(0,2).join('；')}${T.pend.length>2?'…':''}）`});
+ if(num(S.heatCap)!=null&&typeof asOpenRisk=='function'){const R=asOpenRisk(S);if(R.pct!=null&&R.pct>num(S.heatCap))A.push({k:'heat',lv:'bad',t:`未平倉風險占主動資本 ${R.pct.toFixed(1)}%，超過你設的上限 ${num(S.heatCap)}%：先降風險再加碼`})}
  for(const T of S.theses||[])if(T.status=='exit'&&!(T.exit&&T.exit.reason))A.push({k:'exr',lv:'wn',th:T.id,t:`${T.id} ${nm(cU(T.code))} 已出場，還沒選出場原因與有沒有照規則做`});
  return A}
 
@@ -188,4 +195,14 @@ function stRR(c,px,stop){const m=typeof ckM=='function'?ckM(c):null;px=num(px);s
 function stThDefaults(S,T,px){const st=stStrat(S,T.sid);if(!st)return T;if(!T.wrongIf)T.wrongIf=stWrongDef(st);if(!(T.plan&&T.plan.length))T.plan=stPlanDef(st);if(num(T.stop)==null&&num(px)){const s=stStopCalc(st,T.code,px);if(s)T.stop=s.v}return T}
 // 狀態自動：沒買過＝規劃中、有股數＝持有中、股數歸零＝已出場（手動標記的已出場不會改回）
 function stSync(S){let ch=stBaseFix(S);for(const T of S.theses||[]){if(T.status=='exit')continue;const p=stPerf(S,T),s=!p.first?'plan':p.open?'hold':'exit';
- if(s!=T.status){T.status=s;if(s=='exit'){T.exit=T.exit||{};if(!T.exit.date)T.exit.date=p.end||TODAY}ch++}}return ch}
+ if(s!=T.status){T.status=s;if(s=='exit'){T.exit=T.exit||{};if(!T.exit.date)T.exit.date=p.end||TODAY}ch++}
+ if(T.status=='hold'){ch+=stEntryRec(S,T,p);if(typeof exRearm=='function')ch+=exRearm(T)}}return ch}
+// 第一次持有時記下：進場時的停損價（之後改停損不影響，用來算 R 倍數）、進場價、每股風險，以及 52 週高點、融資餘額（出場條件用）
+// 之前就持有的論點用「第一次看到」的值補記，標示 rec0='補記'
+function stEntryRec(S,T,p){let ch=0;const c=cU(T.code);
+ if(T.stop0===undefined){const B=(S.trades||[]).filter(x=>x.thesisId==T.id&&x.k=='buy'&&x.dt&&num(x.px)!=null).sort((a,b)=>a.dt<b.dt?-1:1)[0],bs=stBase(S,T),px0=B?num(B.px):bs&&bs.px!=null?bs.px:(p.q>0?+(p.cost/p.q).toFixed(2):null);
+  T.stop0=num(T.stop)??'';T.px0=px0??'';T.risk0=px0&&num(T.stop)!=null&&num(T.stop)<px0?+((px0-num(T.stop))/px0*100).toFixed(2):'';T.rec0=p.first&&p.first>=TODAY?'進場':'補記';T.rec0d=TODAY;ch++}
+ if(T.hi0===undefined&&typeof CK!='undefined'&&CK&&typeof ckM0=='function'){const m=ckM0(c);if(m){T.hi0=m.hi250??'';T.mg0=m.mg&&m.mg[0]!=null?m.mg[0]:'';ch++}}
+ return ch}
+// R 倍數：（報酬率）÷（進場時的每股風險 %）；沒有記到進場停損的回傳 null
+const stRmul=(T,ret)=>{const r=num(T.risk0);return r&&ret!=null?ret/r:null};

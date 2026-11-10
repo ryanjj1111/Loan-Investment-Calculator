@@ -53,4 +53,35 @@ function asGroups(S){const E=stExposure(S),L=[];for(const g in E.grp)L.push({g,v
 
 // 依停損距離算建議股數：每筆最多虧主動部位 × 風險 %
 function asSizeHint(S,px,stopPct,riskPct){px=num(px);stopPct=num(stopPct);riskPct=num(riskPct);if(!px||!stopPct||!riskPct)return null;
- const base=Math.max((+S.Wa||0)*1e4,stExposure(S).tot);if(!base)return null;const loss=base*riskPct/100,q=Math.floor(loss/(px*stopPct/100));return{base,loss,q}}
+ const base=stExposure(S).tot;if(!base)return null;const loss=base*riskPct/100,q=Math.floor(loss/(px*stopPct/100));return{base,loss,q}}
+
+// ================= 風險：未平倉風險、槓桿、離虧損上限 =================
+// 沒設停損的部位用回測 v4（2013～2026，科技股）各策略「持有期間最大跌幅」最差 10% 估計；沒歸類的用 20%
+const AS_STRESS={S01:13,S02:12,S03:10,S04:23,S05:10,S06:41,S07:18},AS_STRESS_DEF=20;
+function asOpenRisk(S){const E=stExposure(S),L=[];let tot=0,noStop=0;
+ for(const r of asRows(S)){if(r.ac!='a'||!r.open||r.px==null)continue;const T=asThesisOf(S,r.c),st=T?num(T.stop):null;let v,how;
+  if(st!=null&&st<r.px){v=r.q*(r.px-st);how=`停損 ${st}`}else if(st!=null){v=0;how=`已跌破停損 ${st}`}else{const p=T?(AS_STRESS[T.sid]??AS_STRESS_DEF):AS_STRESS_DEF;v=r.q*r.px*p/100;how=`沒設停損，用 −${p}% 估${T?'（'+T.sid+' 回測最差 10%）':''}`;noStop++}
+  tot+=v;L.push({c:r.c,v,how,th:T?T.id:''})}
+ return{tot,pct:E.tot>0?tot/E.tot*100:null,base:E.tot,baseSrc:E.baseSrc,L:L.sort((a,b)=>b.v-a.v),noStop}}
+
+// ================= 資產趨勢：每天收盤的持股市值、現金、真實淨資產、同金流 0050 =================
+// 收盤價來自網站的每月收盤價檔（撥款日起）；現金用最近一次填的現金依交易推算；真實淨資產用和結算相同的公式
+function asTrend(S){if(!S.dd||typeof PXH=='undefined')return null;const D=Object.keys(PXH).filter(d=>d>=S.dd&&d<=TODAY).sort();if(D.length<2)return null;
+ const bm=bmC(S),last={},out=[],hasCash=!!cashLast(S),bd=stBmDivs(S);
+ // 同金流 0050：撥款日的期初持股、每筆買賣的金額，同一天改買（賣）0050
+ const fl=[];if(hasInit(S))for(const r of S.init){const v=(+r.q||0)*(+r.px||0);if(v>0)fl.push({d:S.dd,v})}
+ for(const x of S.trades||[]){if(!x.dt||!cU(x.n)||(x.k!='buy'&&x.k!='sell'))continue;const m=tradeAmt(S,x);if(m.cash)fl.push({d:x.dt,v:-m.cash})}
+ fl.sort((a,b)=>a.d<b.d?-1:1);let u=0,bc=0,fi=0,bi=0,miss=0,bmOk=true;
+ const tr=new Set((S.trades||[]).filter(x=>x.dt&&(x.k=='buy'||x.k=='sell')).map(x=>x.dt));
+ for(const d of D){const P=PXH[d];for(const c in P)if(num(P[c])!=null)last[c]=num(P[c]);
+  while(bi<bd.length&&bd[bi].d<=d){bc+=u*bd[bi].dps;bi++}
+  while(fi<fl.length&&fl[fi].d<=d){const b=last[bm];if(b){const q=fl[fi].v/b;if(q>=0)u+=q;else{const sv=Math.min(u,-q);u-=sv;bc+=sv*b}}else bmOk=false;fi++}
+  const mv=marketVals(S,last,d);if(mv.miss.length){miss++;continue}
+  const C=hasCash?cashAt(S,d):null,cash=C?C.t:null;let real=null,nw0=null;
+  if(C&&typeof settle=='function'){try{const pa=pendAt(S,d),nl=nleAt(S,last,d),r=settle(S,{dt:d,p:mv.p/1e4,a:mv.a/1e4,c:(cash-pa.adj)/1e4,nleS:nl.miss.length?'':nl.v/1e4});if(r)real=r.real}catch(e){}}
+  out.push({d,p:mv.p,a:mv.a,mv:mv.p+mv.a,cash,tot:mv.p+mv.a+(cash??0),real,bm:bmOk&&last[bm]?u*last[bm]+bc:null,tr:tr.has(d)})}
+ if(out.length<2)return null;
+ // 每日回撤（持股，時間加權：扣掉當天買賣的金額）
+ let idx=1,pk=1,mdd=0,cur=0;const nb={};for(const x of S.trades||[]){if(!x.dt||(x.k!='buy'&&x.k!='sell')||!cU(x.n))continue;nb[x.dt]=(nb[x.dt]||0)-tradeAmt(S,x).cash}
+ for(let i=1;i<out.length;i++){const a=out[i-1].mv,b=out[i].mv-(nb[out[i].d]||0);if(a>0){idx*=b/a;pk=Math.max(pk,idx);cur=idx/pk-1;mdd=Math.min(mdd,cur)}out[i].twr=idx}
+ out[0].twr=1;return{pts:out,mdd,cur,twr:idx-1,base0:(S.sv0+S.sc0)*1e4,hasCash,miss}}

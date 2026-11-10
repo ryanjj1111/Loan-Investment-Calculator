@@ -131,5 +131,5 @@ function stPerfRender(){if($('stPerfTop')&&typeof asVsBm=='function'){const v=as
 
 // 論點的策略條件勾選（＝買進理由）
 // 完整論點的條件：和個股頁的「📋 今日條件檢核」相同；自動判斷得出來的只顯示結果，要自己判斷的才有「確認符合」
-function stCondBox(T,st){if(!st||!stConds(st).length)return'';return`<div class=sub>策略條件</div>${typeof ckCardHtml=='function'?ckCardHtml(T,st):''}${typeof ckMetRec=='function'?ckMetRec(T,st):''}`}
+function stCondBox(T,st){if(!st||!stConds(st).length)return'';return`<div class=sub>策略條件</div>${typeof ckExitHtml=='function'?ckExitHtml(T,st):''}${typeof ckCardHtml=='function'?ckCardHtml(T,st):''}${typeof ckMetRec=='function'?ckMetRec(T,st):''}`}
 window.stMetT=(id,t,on)=>{const T=stThesis(S,id);if(!T)return;T.met=(T.met||[]).filter(x=>x!=t);if(on)T.met.push(t);T.pend=(T.pend||[]).filter(x=>x!=t);if(!T.metAt)T.metAt=TODAY;stBuild();upd()};

@@ -84,7 +84,7 @@ function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],sg:[],ck:null,gl
   // 歸屬論點
   const tr=String(o.thesis||'').trim();if(ac=='a'&&(k=='buy'||k=='sell')&&c){if(tr&&refs[tr])it.ref=tr;else if(/^T\d+$/i.test(tr)){const T=stThesis(S,tr.toUpperCase());if(T)it.tid=T.id;else it.err.push(`${lb}：找不到論點 ${tr}`)}else{const h=P.th.find(z=>z.c==c&&!z.err.length);if(h)it.ref=h.ref;else{const T=asThesisOf(S,c);if(T)it.tid=T.id}if(tr&&!it.ref&&!it.tid)it.warn.push(`thesis「${tr}」對不到，這筆會是未分類`)}}});
  // 買進後占比（依預覽裡勾選的買進累加）
- {const E=stExposure(S),by=Object.assign({},E.by);let tot=E.tot;for(const it of P.tr){if(it.err.length||it.x.k!='buy'||it.x.ac!='a'||it.dup)continue;const v=it.x.q*it.x.px;by[it.x.n]=(by[it.x.n]||0)+v;tot+=v;const w=by[it.x.n]/tot*100,cap=stCapStock(S,it.x.n);it.info.push(`買進後占主動部位 ${w.toFixed(1)}%（上限 ${cap}%）`);if(w>cap)it.warn.push(`買進後超過個股上限 ${cap}%`)}}
+ {const E=stExposure(S),by=Object.assign({},E.by);let add=0;for(const it of P.tr){if(it.err.length||it.x.k!='buy'||it.x.ac!='a'||it.dup)continue;const v=it.x.q*it.x.px;by[it.x.n]=(by[it.x.n]||0)+v;add+=v;const tot=E.after(add),w=by[it.x.n]/tot*100,cap=stCapStock(S,it.x.n);it.info.push(`買進後占主動部位 ${w.toFixed(1)}%（上限 ${cap}%）`);if(w>cap)it.warn.push(`買進後超過個股上限 ${cap}%`)}}
  // 修改既有論點
  arr('updates').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},lb=`updates 第 ${i+1} 筆`;P.up.push(it);const T=stThesis(S,String(o.thesis||'').trim().toUpperCase());
   if(!T){it.err.push(o.thesis?`${lb}：找不到論點 ${o.thesis}`:`${lb} 缺 thesis（論點編號，例如 T001）`);return}it.T=T;it.diff=aiDiff(T,o);if(!it.diff.length){it.warn.push('沒有要改的欄位或內容相同，略過');it.on=0}});
