@@ -23,7 +23,9 @@ function pxApply(){let ch=0;S.px=S.px||{};S.pxd=S.pxd||{};S.pxa=S.pxa||{};
   if(typeof asCur!='undefined'&&asCur&&typeof AT!='undefined'&&!AT&&typeof asStock=='function'&&$('asOvB')){const b=$('asOvB'),h=b.scrollTop;asStock(asCur.c,asCur.ac);const b2=$('asOvB');if(b2)b2.scrollTop=h}}return ch}
 // 歷史收盤價（每月一個檔案），用來自動帶入每筆交易當天的基準 ETF 價格
 async function pxHist(){const need=new Set();const add=d=>{if(d&&/^\d{4}-\d{2}/.test(d))need.add(d.slice(0,7))};add(S.dd);for(const x of S.trades||[])if(x.k=='buy'||x.k=='sell')add(x.dt);for(const T of S.theses||[])if(+T.useInit&&num(T.basePx)==null)add(T.baseD||T.created);
- const keep=pxCodes();let got=0;for(const m of need){if(pxMon.has(m))continue;pxMon.add(m);const j=await pxGet('px/'+m+'.json');if(!j||!j.codes||!j.d)continue;
+ // 資產趨勢、出場條件（持有期間最高收盤）：撥款日到這個月的每個月都讀，包含曾經持有、已出清的股票
+ if(S.dd&&/^\d{4}-\d{2}/.test(S.dd)){let m=S.dd.slice(0,7);const e=TODAY.slice(0,7);for(let k=0;k<36&&m<=e;k++){need.add(m);const[y,mo]=m.split('-').map(Number);m=mo==12?(y+1)+'-01':y+'-'+String(mo+1).padStart(2,'0')}}
+ const keep=pxCodes();for(const x of S.trades||[])if(cU(x.n))keep.add(cU(x.n));if(hasInit(S))for(const r of S.init)if(cU(r.n))keep.add(cU(r.n));let got=0;for(const m of need){if(pxMon.has(m))continue;pxMon.add(m);const j=await pxGet('px/'+m+'.json');if(!j||!j.codes||!j.d)continue;
   const ix=[];j.codes.forEach((c,i)=>{if(keep.has(c))ix.push([c,i])});for(const d in j.d){const a=j.d[d],o=PXH[d]||(PXH[d]={});for(const[c,i]of ix)if(a[i]!=null)o[c]=a[i]}got++}
  if(got)calc()}
 // 直接從證交所網站抓上市收盤價（網站允許網頁直接讀取）

@@ -181,19 +181,23 @@ function finOf(c){// 季資料：每季的營收、毛利（累計數相減）
  let debt=null;for(const k of FK.slice().reverse()){const b=FIN[k].sb05&&FIN[k].sb05[c];if(b&&b[0]){debt=r1(b[1]/b[0]*100);break}}
  let fcf=null;for(const k of FK.slice().reverse()){const t=FIN[k].sb20&&FIN[k].sb20[c];if(!t)continue;const[y,s]=k.split('-').map(Number),cf=x=>x?(x[0]??0)+(x[1]??0):null,now=cf(t);
   if(s==4){fcf=now;break}const a=FIN[(y-1)+'-4'],b=FIN[(y-1)+'-'+s];const A=a&&a.sb20&&a.sb20[c],B=b&&b.sb20&&b.sb20[c];if(A&&B){fcf=now+cf(A)-cf(B);break}}
- return{gm:gm.length?gm:null,eps4,epsY:epsY&&epsY.every(v=>v!=null)?epsY:null,debt,fcf,Y4}}
+ // 近 8 季單季 EPS（出場條件「EPS 連 N 季年減」用）
+ const epsQ=Q.slice(-8).map(q=>q.eq==null?null:r2(q.eq));
+ return{gm:gm.length?gm:null,eps4,epsY:epsY&&epsY.every(v=>v!=null)?epsY:null,debt,fcf,Y4,epsQ:epsQ.length>=6&&epsQ.some(v=>v!=null)?epsQ:null}}
 function valOf(c,f){const cur=VL&&VL.s[c];const pe=cur?cur[0]:null,pb=cur?cur[1]:null;
  const P5=VM.slice(-61,-1).map(v=>v.s[c]&&v.s[c][0]).filter(x=>x>0),B10=VM.slice(-121).map(v=>v.s[c]&&v.s[c][1]).filter(x=>x>0);
+ const pct=(a,p)=>{a=a.slice().sort((x,y)=>x-y);if(!a.length)return null;const i=(a.length-1)*p,lo=Math.floor(i),hi=Math.ceil(i);return a[lo]+(a[hi]-a[lo])*(i-lo)};
+ const peHi5=P5.length>=24?r1(pct(P5,0.8)):null;
  const peMed5=P5.length>=24?r1(med(P5)):null,pbPct10=pb>0&&B10.length>=36?r2(B10.filter(x=>x<pb).length/B10.length):null;
  // 每股現金股利（依股利年度，取最新一個樣本）
  const D={};for(const v of VM){const x=v.s[c];if(x&&x[3]!=null&&x[2]!=null)D[x[3]]=x[2]}const dy=Object.keys(D).map(Number).sort((a,b)=>a-b).slice(-3);
  const dps3=dy.length==3?r2((D[dy[0]]+D[dy[1]]+D[dy[2]])/3):null;
  let pay3=null;if(dy.length==3&&f.epsY){const E={};f.Y4.forEach((y,i)=>E[y]=f.epsY[i]);const P=dy.map(y=>E[y]>0?D[y]/E[y]*100:null);if(P.every(x=>x!=null))pay3=r1((P[0]+P[1]+P[2])/3)}
- return{pe,pb,peMed5,pbPct10,dps3,pay3}}
+ return{pe,pb,peMed5,pbPct10,dps3,pay3,peHi5}}
 // 同產業月營收年增率中位數（近 4 個月）
 const INDF=rd('data/industry.json'),IND2=INDF?INDF.ind:{},INDM={};{const ms=Object.keys(RV).sort().slice(-4),G={};for(const c in IND2){(G[IND2[c]]=G[IND2[c]]||[]).push(c)}
  for(const g in G){const a=ms.map(m=>{const L=G[g].map(c=>RV[m][c]&&RV[m][c][1]).filter(x=>x!=null);return L.length>=5?r1(med(L)):null});if(a.every(x=>x!=null))INDM[g]=a}}
-const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag','lo20','hi20','lo250','dNL','pe','pb','peMed5','pbPct10','dps3','pay3','gm','eps4','epsY','debt','fcf'];
+const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag','lo20','hi20','lo250','dNL','pe','pb','peMed5','pbPct10','dps3','pay3','gm','eps4','epsY','debt','fcf','peHi5','epsQ'];
 const out={};
 for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[],vl=[];raw.forEach((x,i)=>{if(x!=null){cl.push(x);vl.push(vv[i])}});if(!cl.length||raw[iP]==null)continue;
  const n=cl.length,cur=cl[n-1],rs=rsiSeries(cl),mh=macdHist(cl),vols=vl.filter(x=>x!=null);
@@ -206,7 +210,7 @@ for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[
   n>1?Math.max(...cl.slice(Math.max(0,n-61),n-1)):null,Math.max(...cl.slice(-250)),n,vl[n-1],vols.length>1?Math.round(avg(vl.slice(Math.max(0,n-21),n-1).filter(x=>x!=null))||0):null,
   fi.some(x=>x!=null)?fi:null,it.some(x=>x!=null)?it:null,mgA.length?[mgV(0),mgV(10),mgV(20)]:null,ry,rHi,rN,bh&&bh.some(x=>x!=null)?bh:null,rLag,
   n>1?Math.min(...cl.slice(Math.max(0,n-21),n-1)):null,n>1?Math.max(...cl.slice(Math.max(0,n-21),n-1)):null,Math.min(...cl.slice(-250)),dNL(cl),
-  fd.pe,fd.pb,fd.peMed5,fd.pbPct10,fd.dps3,fd.pay3,fn.gm,fn.eps4,fn.epsY,fn.debt,fn.fcf]}
+  fd.pe,fd.pb,fd.peMed5,fd.pbPct10,fd.dps3,fd.pay3,fn.gm,fn.eps4,fn.epsY,fn.debt,fn.fcf,fd.peHi5,fn.epsQ]}
 const tx=CAL.filter(d=>d<=today).map(d=>MK.taiex[d]),fxD=Object.keys(MK.fx).sort(),fxL=fxD.slice(-250).map(d=>MK.fx[d]),fxT=fxL[fxL.length-1];
 const mkt={d:CAL.filter(d=>d<=today).slice(-1)[0],taiex:{c:tx[tx.length-1],m20:r2(sma(tx,20)),m60:r2(sma(tx,60)),hi250:Math.max(...tx.slice(-250)),n:tx.length},
  fx:fxL.length?{d:fxD[fxD.length-1],v:fxT,rank:fxL.filter(x=>x<fxT).length+1,n:fxL.length}:null};

@@ -242,4 +242,19 @@ function migrate0(j){j=j||{};let note='';
   note='已轉換為新版格式，請檢查「信貸條件」「撥款前狀態」「資金配置」。'}
  o=up6(up5(o,(j.v==2?j:(j.S||j))));o.hide=o.hide||{};o.lk=o.lk||{Wc:1};o.plan=null;return{o:norm(o),note}}
 
+// ================= 帳戶現金（主動、被動分開）=================
+// 現金（萬）：分主動、被動兩格；舊資料只有合計（c）時，全部當作主動（old=1，畫面上請使用者確認一次）
+function cashOf(o){if(!o)return null;const a=num(o.ca),p=num(o.cp);if(a!=null||p!=null)return{a:a||0,p:p||0,t:(a||0)+(p||0),old:0};const c=num(o.c);return c!=null?{a:c,p:0,t:c,old:1}:null}
+// 最近一次填的現金：這一期結算（含資產頁填的）→ 最近一次儲存的結算
+function cashLast(S){const cur=cashOf(S.cur);if(cur)return Object.assign(cur,{d:S.cashD||sDate(S.cur)||TODAY,src:'cur'});
+ const L=(S.snaps||[]).filter(s=>cashOf(s)).sort((a,b)=>sDate(a)<sDate(b)?1:-1)[0];return L?Object.assign(cashOf(L),{d:sDate(L),src:'snap'}):null}
+// 推算到 asOf 的現金（元）：最近一次填的現金 ＋ 之後每筆買賣的交割款 ＋ 已入帳的配息（填現金那天的交易視為已經算進去）
+// 用「交易日」記帳：填的是交割帳戶餘額，填的那天還沒交割的買賣（T+2）、已除息還沒入帳的配息先補進去；之後依交易日、除息日加減
+function cashAt(S,asOf){asOf=asOf||TODAY;const L=cashLast(S);if(!L)return null;const o={a:L.a*1e4,p:L.p*1e4,d:L.d,old:L.old,est:0};
+ const lo=L.d<asOf?L.d:asOf,hi=L.d<asOf?asOf:L.d,sg=L.d<asOf?1:-1;
+ for(const x of S.trades||[]){if(!x.dt||!cU(x.n)||x.k=='sdiv')continue;const k=x.ac=='a'?'a':'p';
+  const pend=x.k=='div'?(x.dt<=L.d&&L.d<(x.pdt||x.dt)):(x.dt<=L.d&&L.d<addBD(x.dt,2));if(pend){const m=tradeAmt(S,x);o[k]+=m.cash||0}
+  if(!(x.dt>lo&&x.dt<=hi))continue;if(x.k=='div'&&+x.out)continue;const m=tradeAmt(S,x);if(!m.cash)continue;o[k]+=sg*m.cash;o.est=1}
+ o.t=o.a+o.p;return o}
+
 // ================= ETF 歷史參考資料（由 Yahoo Finance 月資料計算，見 ETFREF.src）=================

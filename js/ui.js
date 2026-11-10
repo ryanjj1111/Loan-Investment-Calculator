@@ -54,6 +54,10 @@ const AK=[['Wc','保留現金'],['Wp','被動'],['Wa','主動']];
 const inp=(p,v,t='n',x='')=>`<input ${t=='s'?'':'type=number step=any'} data-p="${p}" data-t="${t}" value="${esc(v)}" ${x}>`;
 const mon=(p,v)=>`<input type=month data-p="${p}" data-t="s" value="${v||''}">`;
 const fld=([k,l,t])=>`<label>${l}${inp(k,S[k],t||'n')}</label>`;
+// 結算的現金：主動、被動兩格，合計自動寫進「追蹤帳戶現金合計」（信貸計算用合計，數字不變）
+function cashIns(){const C=cashOf(S.cur),ph=k=>C&&C.old&&k=='ca'?` placeholder="舊資料合計 ${C.t}"`:'';const f=(k,l)=>`<label>${l}${inp('cur.'+k,S.cur[k],'o').replace('<input','<input'+ph(k))}</label>`;
+ return f('ca','主動帳戶現金(萬)')+f('cp','被動帳戶現金(萬)')+(C&&C.old?`<div class=wn style="grid-column:1/-1;font-size:12px">舊資料只有現金合計 ${C.t} 萬，先全部算在主動帳戶；請分成兩格各填一次。</div>`:'')}
+function cashSync(){const a=num(S.cur.ca),p=num(S.cur.cp);if(a==null&&p==null){if(S.cur.ca===''&&S.cur.cp==='')S.cur.c='';return}S.cur.c=+((a||0)+(p||0)).toFixed(4)}
 const cf_=(k,l,t='o')=>`<label>${l}${inp('cur.'+k,S.cur[k],t)}</label>`;
 const del=(l,i)=>`<button onclick="delRow('${l}',${i})">✕</button>`;
 const tg=(k,l)=>`<label class=ck><input type=checkbox data-p="${k}" data-t="b" ${S[k]?'checked':''}>${l}</label>`;
@@ -104,7 +108,7 @@ function build(){
    <div class=sub>其他</div><div class=tg>${tg('grow','原有部位成長（只影響真實淨資產底線檢查）')}</div><div class=h style="margin-top:4px">市場下跌、收入中斷等壓力測試請到「🛡️ 風險」分頁。</div></details>`+
   `<div style="margin-top:8px"><button onclick="resetPlan()">📌 以目前設定重設「原始計畫」線</button> <span class=h id=pinfo></span></div>`;
  if(op.length)document.querySelectorAll('#ctl details').forEach((d,i)=>{if(i<op.length)d.open=op[i]});
- $('s1').innerHTML=`<label>結算日期${dIn('cur.dt',S.cur.dt,'結算日期')}</label>`+(usePx(S)?`<label>追蹤帳戶現金合計(萬)${inp('cur.c',S.cur.c,'o')}</label>`:`${cf_('x50',bmC(S)+' 價格(元)')}${cf_('p','被動部位市值(萬)')}${cf_('a','主動部位市值(萬)')}<label style="grid-column:span 2">追蹤帳戶現金合計(萬)${inp('cur.c',S.cur.c,'o')}</label>`)+`<label style="grid-column:span 2">備註${inp('cur.note',S.cur.note,'s')}</label>`;
+ $('s1').innerHTML=`<label>結算日期${dIn('cur.dt',S.cur.dt,'結算日期')}</label>`+(usePx(S)?cashIns():`${cf_('x50',bmC(S)+' 價格(元)')}${cf_('p','被動部位市值(萬)')}${cf_('a','主動部位市值(萬)')}`+cashIns())+`<label style="grid-column:span 2">備註${inp('cur.note',S.cur.note,'s')}</label>`;
  $('s1h').innerText=usePx(S)?'現金照券商 App 上的交割帳戶餘額填寫；現價每個交易日收盤後自動帶入（要改到「📊 資產 → 持股明細表」），被動、主動市值自動計算（可在「修正」覆寫）。尚未交割的交易、尚未發放的股利、還沒退回的手續費折讓會自動處理。':'市值與現金照券商 App 抄；尚未交割的交易與尚未發放的股利會自動處理。建議在試算頁「撥款前狀態」改用逐檔明細，結算只要填各檔現價，借錢效果也會更準。';
  $('s3').innerHTML=cf_('rem','剩餘本金(萬)：以銀行為準時才填')+(usePx(S)?cf_('p','被動市值(萬)：漏填現價或有特殊部位時才填')+cf_('a','主動市值(萬)：漏填現價或有特殊部位時才填'):'')+cf_('bp','本期被動淨買進(萬)：沒記交易紀錄時才填')+cf_('ba','本期主動淨買進(萬)：沒記交易紀錄時才填');
  renderTrades();
@@ -217,7 +221,7 @@ function onIn(e){const d=e.target.dataset,el=e.target;
  if(!d.p)return;let v;
  if(d.t=='b')v=el.checked?1:0;else if(d.t=='s')v=el.value;else if(d.t=='o')v=el.value===''?'':+el.value;else{if(el.value==='')return;v=+el.value}
  setP(d.p,v);if(d.p=='dd'&&!v)return;norm(S);if(typeof stOnIn=='function')stOnIn(d.p,v);
- if(d.p=='cur.dt')S.cur.m=String(v).slice(0,7);{const mm=/^ledger\.(\d+)\.dt$/.exec(d.p);if(mm)S.ledger[+mm[1]].m=String(v).slice(0,7)}
+ if(d.p=='cur.dt')S.cur.m=String(v).slice(0,7);if(d.p=='cur.ca'||d.p=='cur.cp')cashSync();{const mm=/^ledger\.(\d+)\.dt$/.exec(d.p);if(mm)S.ledger[+mm[1]].m=String(v).slice(0,7)}
  if(/^trades\.\d+\.(k|dt)$/.test(d.p)){renderTrades()}
  {const mm=/^init\.(\d+)\.n$/.exec(d.p);if(mm){const e=$('inN'+mm[1]);if(e)e.innerText=nameOf(v)}}
  if(d.p=='bm'){const e=$('bmN');if(e)e.innerText=nameOf(v)}
