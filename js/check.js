@@ -104,6 +104,15 @@ const CK_ATOMS=[
 ];
 const CK_DIR={up:'向上',flat:'持平',down:'向下'};
 let CKX={c:'',st:null};
+// 起算前已知（2026-11-11）：理由失效用的落後指標（毛利率連 N 季下滑、月營收年增率轉負連 N 個月、EPS 連 N 季年減），
+// 如果論點起算時資料就已經是這樣（T.kn 記下當時的資料），不算成立，等下一期新資料公布才判斷；
+// 撥款前持股事後歸入策略時，才不會因為建倉前就公布的舊資料立刻亮紅字。照策略進場的部位本來就會被【選什麼】擋掉，不受影響。
+let EXPRE=false;
+const ymAdd=(ym,k)=>{if(!ym)return'';let[y,m]=ym.split('-').map(Number);m+=k;while(m<1){m+=12;y--}while(m>12){m-=12;y++}return y+'-'+String(m).padStart(2,'0')};
+function exSig(m){return m?{gm:(m.gm||[]).join(','),ry:m.ry?ymAdd(CK.rM,-(m.rLag||0)):'',eq:(m.epsQ||[]).join(',')}:null}
+function exSnap(T){if(T.kn||!CK||T.status!='hold')return 0;const m=ckM(cU(T.code));if(!m)return 0;T.kn=Object.assign({d:TODAY},exSig(m));return 1}
+function exPre(r,k,m){const kn=CKX&&CKX.T&&CKX.T.kn;if(!r||r.v!==true||!kn||kn[k]==null)return r;const now=exSig(m)[k];if(now!==kn[k])return r;EXPRE=true;
+ return Object.assign({},r,{v:false,pre:1,why:`${r.why}｜⏸ 論點起算前就已公布的資料（${ckMD(kn.d)} 記下，${k=='ry'?'最新月份 '+now:'之後還沒有新一季'}），不算成立；下一期新資料公布後再判斷`})}
 // 股票屬性：1＝是、0＝否、沒填＝待確認
 function ckAttr(k,want,lb){const a=(S.attr||{})[CKX.c]||{};if(a[k]==null||a[k]==='')return NA(`股票屬性「${lb}」還沒確認`,'attr:'+k);return R_(+a[k]===want,`股票屬性：${+a[k]?'是':'不是'}${lb}${a.d?'（'+a.d+' 確認）':''}`)}
 // 前瞻資料：某年度 EPS 預估的中位數（只取 a～b 天前記錄的，預設 120 天內）
@@ -273,13 +282,13 @@ CK_ATOMS.push(
  [/^(?:從)?(?:持有期間)?(?:的)?最高(?:點|收盤)?回落(\d+(?:\.\d+)?)%(?:時)?$/,x=>m=>{const p=CKX.peak;if(p==null)return NA('要在論點裡判斷（需要持有期間的收盤價）');const th=p*(1-x[1]/100);return R_(m.c<=th,`持有期間最高收盤 ${f2(p)}，回落 ${x[1]}% ＝ ${f2(th)}，收盤 ${f2(m.c)}（${pc((m.c/p-1)*100)}）`)}],
  [/^本益比(?:回)?到(?:近)?5年(?:本益比)?區間(?:的)?上緣$/,x=>m=>m.pe==null?NA('本益比資料不足（可能虧損）'):m.peHi5==null?NA('本益比區間上緣的資料下次更新檢核資料後才有'):R_(m.pe>=m.peHi5,`本益比 ${f1(m.pe)} 倍，近 5 年上緣（第 80 百分位）${f1(m.peHi5)} 倍`)],
  [/^本益比(?:降到|<)(\d+(?:\.\d+)?)倍?以下?$/,x=>m=>m.pe==null?NA('本益比資料不足（可能虧損）'):R_(m.pe>0&&m.pe<+x[1],`本益比 ${f1(m.pe)} 倍`)],
- [/^毛利率連(\d+)季下滑$/,x=>m=>{const n=+x[1],g=(m.gm||[]).filter(v=>v!=null);if(g.length<n+1)return NA('季報資料不足');const L=g.slice(-n-1);return R_(L.every((v,i)=>!i||v<L[i-1]),`近 ${n+1} 季毛利率 ${L.map(v=>v+'%').join(' → ')}`)}],
- [/^月營收年增率?轉負連(\d+)個月$|^(?:月營收)?年增率連(\d+)個月(?:<0%?|為負|轉負)$/,x=>m=>{const n=+(x[1]||x[2]),y=(m.ry||[]).filter(v=>v!=null);if(y.length<n)return NA('月營收資料不足');const L=y.slice(-n);return R_(L.every(v=>v<0),`年增率 ${L.map(v=>v+'%').join(' → ')}`)}],
+ [/^毛利率連(\d+)季下滑$/,x=>m=>{const n=+x[1],g=(m.gm||[]).filter(v=>v!=null);if(g.length<n+1)return NA('季報資料不足');const L=g.slice(-n-1);return exPre(R_(L.every((v,i)=>!i||v<L[i-1]),`近 ${n+1} 季毛利率 ${L.map(v=>v+'%').join(' → ')}`),'gm',m)}],
+ [/^月營收年增率?轉負連(\d+)個月$|^(?:月營收)?年增率連(\d+)個月(?:<0%?|為負|轉負)$/,x=>m=>{const n=+(x[1]||x[2]),y=(m.ry||[]).filter(v=>v!=null);if(y.length<n)return NA('月營收資料不足');const L=y.slice(-n);return exPre(R_(L.every(v=>v<0),`年增率 ${L.map(v=>v+'%').join(' → ')}`),'ry',m)}],
  [/^月營收年增率(?:轉負|<0%?)$/,x=>m=>{const y=(m.ry||[]).filter(v=>v!=null);if(!y.length)return NA('月營收資料不足');const v=y[y.length-1];return R_(v<0,`最新年增率 ${v}%`)}],
  [/^回到前高$/,x=>m=>{const h=CKX.hi0??m.hi250;if(h==null)return NA('資料不足');return R_(m.c>=h,`收盤 ${f2(m.c)}，${CKX.hi0!=null?'進場前 52 週最高':'近一年最高'}收盤 ${f2(h)}`)}],
  [/^股價淨值比到(?:近)?10年區間(?:的)?上1\/3$/,x=>m=>m.pbPct10==null?NA('股價淨值比歷史資料不足'):R_(m.pbPct10>=2/3,`股價淨值比 ${f2(m.pb)}，在近 10 年區間的 ${Math.round(m.pbPct10*100)}% 位置`)],
  [/^持有(?:超過|滿)(\d+)個月.*$/,x=>m=>{const f=CKX.first;if(!f)return NA('要在論點裡判斷（需要第一次買進日）');const mo=dDays(f,TODAY)/30.44;return R_(mo>=+x[1],`${ckMD(f)} 起持有 ${f1(mo)} 個月`)}],
- [/^EPS連(\d+)季年減$/,x=>m=>{const q=m.epsQ,n=+x[1];if(!q||q.length<n+4||q.slice(-n-4).some(v=>v==null))return NA('季 EPS 資料下次更新檢核資料後才有');const L=q.slice(-n).map((v,i)=>[v,q[q.length-n-4+i]]);return R_(L.every(([a,b])=>a<b),`近 ${n} 季 EPS ${L.map(([a,b])=>f2(a)+'（去年同季 '+f2(b)+'）').join('、')}`)}],
+ [/^EPS連(\d+)季年減$/,x=>m=>{const q=m.epsQ,n=+x[1];if(!q||q.length<n+4||q.slice(-n-4).some(v=>v==null))return NA('季 EPS 資料下次更新檢核資料後才有');const L=q.slice(-n).map((v,i)=>[v,q[q.length-n-4+i]]);return exPre(R_(L.every(([a,b])=>a<b),`近 ${n} 季 EPS ${L.map(([a,b])=>f2(a)+'（去年同季 '+f2(b)+'）').join('、')}`),'eq',m)}],
  [/^(?:近3年平均)?配息率(?:降到|<)(\d+)%以下?$/,x=>m=>m.pay3==null?NA('股利資料不足'):R_(m.pay3<+x[1],`近 3 年平均配息率 ${f1(m.pay3)}%`)],
  [/^占主動部位>(\d+)%$/,x=>m=>{const E=stExposure(S),p=E.tot>0?(E.by[CKX.c]||0)/E.tot*100:null;return p==null?NA('沒有主動部位'):R_(p>+x[1],`占主動部位 ${f1(p)}%`)}],
  [/^同產業月營收年增率中位數連(\d+)個月轉弱$/,x=>m=>{const g=typeof indOf=='function'?indOf(CKX.c):'',a=g&&CK.ind?CK.ind[g]:null,n=+x[1];if(!a||a.length<n+1)return NA('產業資料不足');const L=a.slice(-n-1);return R_(L.every((v,i)=>!i||v<L[i-1]),`${g}營收年增率中位數 ${L.map(v=>v+'%').join(' → ')}`)}],
@@ -302,7 +311,7 @@ function exCtx(T){const p=stPerf(S,T),c=cU(T.code),avg=p.q>0?p.cost/p.q:null;let
  if(p.first&&typeof PXH!='undefined')for(const d in PXH){if(d>=p.first&&num(PXH[d][c])!=null)peak=Math.max(peak??-Infinity,num(PXH[d][c]))}
  const px=num((S.px||{})[c]);if(px!=null&&p.first)peak=Math.max(peak??-Infinity,px);return{c,st:stStrat(S,T.sid),T,avg,first:p.first,peak,hi0:num(T.hi0),mg0:num(T.mg0)}}
 function exEval(T){const st=stStrat(S,T.sid);if(!st||!CK)return[];const L=exRules(st);if(!L.length)return[];const c=cU(T.code),m=ckM(c),k=CK.mkt,X=exCtx(T);
- return L.map(x=>{const t=exNorm(x.cond);let r=null,hit='';if(ckAuto(t)){if(!m)r={v:null,why:'',miss:'沒有這檔的資料'};else{CKX=X;r=ckRun(ckParse(t),m,k);
+ return L.map(x=>{const t=exNorm(x.cond);let r=null,hit='';if(ckAuto(t)){if(!m)r={v:null,why:'',miss:'沒有這檔的資料'};else{CKX=X;EXPRE=false;r=ckRun(ckParse(t),m,k);if(r&&r.v!==true&&EXPRE)r=Object.assign({},r,{pre:1});
   // 「或」的條件：找出是哪一段成立，提醒只寫那一段
   if(r&&r.v===true){for(const p of ckN(t).split(/,或者?/)){const P=ckParse(p);if(!P)continue;CKX=X;const o=ckRun(P,m,k);if(o&&o.v===true){hit=o.why;break}}}}}
   return Object.assign({},x,{r,hit})})}
@@ -329,7 +338,7 @@ function ckExitHtml(T,st){if(!st||T.status!='hold')return'';const L=exRules(st);
  if(!CK)return`<div class="asck ckc"><b>🚪 出場條件</b><div class=h>${ckErr?'讀不到自動檢核資料。':'資料讀取中…'}</div></div>`;
  const E=exEval(T),X=exCtx(T);
  const p=stPerf(S,T),rm=typeof stRmul=='function'?stRmul(T,p.ret):null;
- return`<div class="asck ckc"><b>🚪 出場條件</b> <span class=h>策略均價 ${X.avg!=null?f2(X.avg):'—'}${X.peak!=null?`｜持有期間最高 ${f2(X.peak)}`:''}${num(T.risk0)?`｜進場停損 ${f2(num(T.stop0))}（每股風險 ${f1(num(T.risk0))}%${T.rec0=='補記'?'，補記':''}）${rm!=null?`，目前 ${rm>=0?'+':''}${rm.toFixed(2)}R`:''}`:''}</span><div class=h style="font-size:11.5px">🔴 成立（照規則處理）　✓ 沒有成立　⏳ 資料不足　❔ 要自己判斷</div>${E.map(x=>{const r=x.r,ic=(exAckOf(T,x.key)||{}).k=='na'?'🚫':!r?'❔':r.v===true?'🔴':r.v===false?'✓':'⏳';
+ return`<div class="asck ckc"><b>🚪 出場條件</b> <span class=h>策略均價 ${X.avg!=null?f2(X.avg):'—'}${X.peak!=null?`｜持有期間最高 ${f2(X.peak)}`:''}${num(T.risk0)?`｜進場停損 ${f2(num(T.stop0))}（每股風險 ${f1(num(T.risk0))}%${T.rec0=='補記'?'，補記':''}）${rm!=null?`，目前 ${rm>=0?'+':''}${rm.toFixed(2)}R`:''}`:''}</span><div class=h style="font-size:11.5px">🔴 成立（照規則處理）　✓ 沒有成立　⏸ 起算前就已知、等新資料　⏳ 資料不足　❔ 要自己判斷</div>${E.map(x=>{const r=x.r,ic=(exAckOf(T,x.key)||{}).k=='na'?'🚫':!r?'❔':r.v===true?'🔴':r.pre?'⏸':r.v===false?'✓':'⏳';
   return`<div class=ckl>${ic} ${x.lb?`<b>${esc(x.lb)}</b>：`:''}${ckT(x.cond)}${x.act?` → <b>${esc(x.act)}</b>`:''}${r?`<div class=h>${esc(r.why)}${r.miss?' <i>'+esc(r.miss)+'</i>':''}</div>`:'<div class=h>要自己判斷</div>'}${(()=>{const a=exAckOf(T,x.key);if(a&&a.k=='na')return`<div class=h>🚫 ${ckMD(a.d)} 標為不適用${a.n?'：'+esc(a.n):''} <button class=lk onclick="exUndo('${T.id}','${x.key}')">改</button></div>`;if(!(r&&r.v===true))return'';return a?`<div class=h>${ckMD(a.d)} ${EX_KN[a.k]||'已處理'}${a.n?'：'+esc(a.n):''}（條件不成立後自動解除） <button class=lk onclick="exUndo('${T.id}','${x.key}')">改</button></div>`:`<div>${exBtns(T.id,x.key)}</div>`})()}</div>`}).join('')}
   ${exTrigHtml(T)}<div class=h style="margin-top:4px">自動判斷只看公開資料與你記的交易，僅供參考，不是投資建議。</div></div>`}
 

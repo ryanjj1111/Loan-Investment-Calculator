@@ -197,7 +197,7 @@ function stThDefaults(S,T,px){const st=stStrat(S,T.sid);if(!st)return T;if(!T.wr
 // 狀態自動：沒買過＝規劃中、有股數＝持有中、股數歸零＝已出場（手動標記的已出場不會改回）
 function stSync(S){let ch=stBaseFix(S);for(const T of S.theses||[]){if(T.status=='exit')continue;const p=stPerf(S,T),s=!p.first?'plan':p.open?'hold':'exit';
  if(s!=T.status){T.status=s;if(s=='exit'){T.exit=T.exit||{};if(!T.exit.date)T.exit.date=p.end||TODAY}ch++}
- if(T.status=='hold'){ch+=stEntryRec(S,T,p);if(typeof exRearm=='function')ch+=exRearm(T)}}return ch}
+ if(T.status=='hold'){ch+=stEntryRec(S,T,p);if(typeof exSnap=='function')ch+=exSnap(T);if(typeof exRearm=='function')ch+=exRearm(T)}}return ch}
 // 第一次持有時記下：進場時的停損價（之後改停損不影響，用來算 R 倍數）、進場價、每股風險，以及 52 週高點、融資餘額（出場條件用）
 // 之前就持有的論點用「第一次看到」的值補記，標示 rec0='補記'
 function stEntryRec(S,T,p){let ch=0;const c=cU(T.code);
