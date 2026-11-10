@@ -56,13 +56,16 @@ function asSizeHint(S,px,stopPct,riskPct){px=num(px);stopPct=num(stopPct);riskPc
  const base=stExposure(S).tot;if(!base)return null;const loss=base*riskPct/100,q=Math.floor(loss/(px*stopPct/100));return{base,loss,q}}
 
 // ================= 風險：未平倉風險、槓桿、離虧損上限 =================
-// 沒設停損的部位用回測 v4（2013～2026，科技股）各策略「持有期間最大跌幅」最差 10% 估計；沒歸類的用 20%
-const AS_STRESS={S01:13,S02:12,S03:10,S04:23,S05:10,S06:41,S07:18},AS_STRESS_DEF=20;
-function asOpenRisk(S){const E=stExposure(S),L=[];let tot=0,noStop=0;
- for(const r of asRows(S)){if(r.ac!='a'||!r.open||r.px==null)continue;const T=asThesisOf(S,r.c),st=T?num(T.stop):null;let v,how;
-  if(st!=null&&st<r.px){v=r.q*(r.px-st);how=`停損 ${st}`}else if(st!=null){v=0;how=`已跌破停損 ${st}`}else{const p=T?(AS_STRESS[T.sid]??AS_STRESS_DEF):AS_STRESS_DEF;v=r.q*r.px*p/100;how=`沒設停損，用 −${p}% 估${T?'（'+T.sid+' 回測最差 10%）':''}`;noStop++}
+// 沒設停損、或已經跌破停損還沒賣的部位，用回測 v4 各策略「持有期間最大跌幅」最差 10% 估
+// 2026-11-10 審查 v6：已跌破停損不再算 0；離停損再近也至少算 3%（跳空）
+const AS_STRESS={S01:13,S02:12,S03:10,S04:23,S05:10,S06:41,S07:18},AS_STRESS_DEF=20,AS_MIN_GAP=3;
+function asOpenRisk(S){const E=stExposure(S),L=[];let tot=0,noStop=0,broken=0;
+ for(const r of asRows(S)){if(r.ac!='a'||!r.open||r.px==null)continue;const T=asThesisOf(S,r.c),st=T?num(T.stop):null,sp=T?(AS_STRESS[T.sid]??AS_STRESS_DEF):AS_STRESS_DEF;let v,how;
+  if(st!=null&&st<r.px){const g=Math.max(r.px-st,r.px*AS_MIN_GAP/100);v=r.q*g;how=`停損 ${st}（−${((1-st/r.px)*100).toFixed(1)}%）`+(g>r.px-st?`，太近用 −${AS_MIN_GAP}% 算`:'')}
+  else if(st!=null){v=r.q*r.px*sp/100;how=`已跌破停損 ${st} 還沒賣：用 −${sp}% 估`;broken++}
+  else{v=r.q*r.px*sp/100;how=`沒設停損，用 −${sp}% 估${T?'（'+T.sid+' 回測最差 10%）':''}`;noStop++}
   tot+=v;L.push({c:r.c,v,how,th:T?T.id:''})}
- return{tot,pct:E.tot>0?tot/E.tot*100:null,base:E.tot,baseSrc:E.baseSrc,L:L.sort((a,b)=>b.v-a.v),noStop}}
+ return{tot,pct:E.tot>0?tot/E.tot*100:null,base:E.tot,baseSrc:E.baseSrc,L:L.sort((a,b)=>b.v-a.v),noStop,broken}}
 
 // ================= 資產趨勢：每天收盤的持股市值、現金、真實淨資產、同金流 0050 =================
 // 收盤價來自網站的每月收盤價檔（撥款日起）；現金用最近一次填的現金依交易推算；真實淨資產用和結算相同的公式

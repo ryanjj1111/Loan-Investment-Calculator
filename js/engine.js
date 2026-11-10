@@ -9,12 +9,12 @@ const DEF={v:10,pxa:{},feeMode:'now',feeDay:10,strategies:[],theses:[],tags:{},u
  etfs:[{n:'0050',w:100,p:7.9,y:2.9,c:1}],
  tax:20,bf:0.1425,stE:0.1,stS:0.3,
  sv0p:0,sv0a:0,sv0:0,sc0:0,p0050:'',br:6,grow:0,
- rb:10,du:50,pk0:0,pkAcc:1,scSel:1,pin:1,loss:20,lossZ:20,lossTo:'',
+ rb:10,du:50,pk0:0,pkAcc:1,scSel:1,pin:1,loss:20,lossZ:20,lossTo:'',lossRebuyMax:1,stressP:25,
  scen:[{n:'輕度',st:12,dr:20,dn:6,rc:12,ba:1.3,bb:0.3,dc:10,ru:0,il:0,ic:0,icm:0,sh:0,fu:0},
   {n:'中度',st:12,dr:35,dn:12,rc:24,ba:1.3,bb:0.3,dc:20,ru:0.5,il:0,ic:10,icm:12,sh:0,fu:0},
   {n:'嚴重（類2008）',st:12,dr:45,dn:12,rc:36,ba:1.3,bb:0.3,dc:30,ru:1,il:6,ic:0,icm:0,sh:0,fu:0},
   {n:'自訂',st:12,dr:30,dn:6,rc:0,ba:1.3,bb:0.3,dc:0,ru:0,il:0,ic:0,icm:0,sh:0,fu:0}],
- rules:[{k:'loss1',on:1,th:50,a:'停止加碼，保留現金不動用'},{k:'loss2',on:1,th:75,a:'主動部位減半，轉入低風險標的'},{k:'loss3',on:1,th:100,a:'主動部位全部轉入低風險標的（被動先不動）'},{k:'loss4',on:1,th:150,a:'被動部位也轉入低風險標的'},{k:'rebuy',on:1,th:120,a:'買回賣掉的部位，虧損上限從買回時重新起算'},{k:'dd',on:1,th:15,a:'暫停加碼，確認現金足夠'},{k:'cash',on:1,th:6,a:'停止投入，先累積現金'},{k:'lev',on:1,th:60,a:'避免再借，考慮降低部位'},
+ rules:[{k:'loss1',on:1,th:50,a:'停止加碼，保留現金不動用（S04 用原有資金除外）'},{k:'loss2',on:1,th:75,a:'主動部位減半，轉入低風險標的'},{k:'loss3',on:1,th:100,a:'主動部位全部轉入低風險標的（被動先不動）'},{k:'loss4',on:1,th:150,a:'被動部位也轉入低風險標的'},{k:'rebuy',on:1,th:120,a:'買回賣掉的部位，虧損上限從買回時重新起算'},{k:'dd',on:1,th:15,a:'暫停加碼，確認現金足夠'},{k:'cash',on:1,th:6,a:'停止投入，先累積現金'},{k:'liq',on:1,th:6,a:'先補足現金或低風險部位，不再加碼'},{k:'lev',on:1,th:60,a:'避免再借，考慮降低部位'},
   {k:'cneg',on:1,th:2,a:'檢討策略；綁約結束後評估提前清償'},{k:'xirr',on:1,th:2,a:'檢討策略；評估提前清償'},{k:'dip',on:1,th:10,a:'依規則動用保留現金逢低加碼'},{k:'rate',on:1,th:4,a:'評估提前清償或轉貸'}],
  smode:'acct',hold:[],hide:{},cv:'af',er:{k:'tr',d:-1,t:'all',h3:0,open:0},
  cur:{dt:'',m:'',p:'',a:'',c:'',sb:'',x50:'',hi50:'',bp:'',ba:'',rem:'',note:'',d:''},ledger:[],snaps:[],plan:null};
@@ -28,9 +28,14 @@ const bmC=S=>cU(S.bm||'0050')||'0050';
 const usePx=S=>hasInit(S)||(S.initMode=='none'&&(S.trades||[]).some(x=>x.k=='buy'&&x.dt));
 // 期初持股（逐檔明細時，撥款前被動／主動市值由股數×撥款日收盤價自動加總；0050 撥款日價格取明細）
 // 2026-11-10 回測 v5：虧損上限改成分段（75% 主動減半、100% 主動全出、150% 被動才出）＋ 0050 站上半年線買回
-function upLoss(S){if(+S.lossV>=2||!Array.isArray(S.rules))return;const f=k=>S.rules.find(r=>r.k==k),D_=k=>clone(DEF.rules.find(r=>r.k==k));
+function upLoss(S){if(!Array.isArray(S.rules))return;if(!(+S.lossV>=2)){const f=k=>S.rules.find(r=>r.k==k),D_=k=>clone(DEF.rules.find(r=>r.k==k));
  for(const k of['loss2','loss3']){const r=f(k),d=D_(k);if(r){r.th=d.th;r.a=d.a}}const i3=S.rules.findIndex(r=>r.k=='loss3');
  if(!f('loss4'))S.rules.splice(i3>=0?i3+1:S.rules.length,0,D_('loss4'));if(!f('rebuy')){const i4=S.rules.findIndex(r=>r.k=='loss4');S.rules.splice(i4+1,0,D_('rebuy'))}S.lossV=2}
+ // 2026-11-10 審查 v6：月付金保留、買回次數上限（預設 1）、S04 用原有資金不受第 ① 段限制
+ if(+S.lossV<3){const f=k=>S.rules.find(r=>r.k==k),D_=k=>clone(DEF.rules.find(r=>r.k==k));
+  if(!f('liq')){const i=S.rules.findIndex(r=>r.k=='cash');S.rules.splice(i>=0?i+1:S.rules.length,0,D_('liq'))}
+  const l1=f('loss1');if(l1&&l1.a=='停止加碼，保留現金不動用')l1.a=D_('loss1').a;
+  if(S.lossRebuyMax==null||S.lossRebuyMax==='')S.lossRebuyMax=1;if(S.stressP==null||S.stressP==='')S.stressP=25;S.lossV=3}}
 function norm(S){upLoss(S);if(S.initMode=='none'){S.sv0p=0;S.sv0a=0;S.sc0=0}
  if(hasInit(S)){let p=0,a=0;for(const r of S.init){const v=(+r.q||0)*(+r.px||0);if(r.ac=='a')a+=v;else p+=v}S.sv0p=+(p/1e4).toFixed(4);S.sv0a=+(a/1e4).toFixed(4);const z=S.init.find(r=>cU(r.n)==bmC(S)&&+r.px);if(z)S.p0050=+z.px}
  S.sv0=(+S.sv0p||0)+(+S.sv0a||0);return S}

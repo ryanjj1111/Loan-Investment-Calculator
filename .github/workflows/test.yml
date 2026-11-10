@@ -1,0 +1,17 @@
+# 計算核心回歸測試：改到 js/ 或測試檔時，用兩份虛構設定檔確認信貸與結算數字沒有變
+name: 計算回歸測試
+on:
+  pull_request:
+    paths: ['js/**', 'tools/test/**', '.github/workflows/test.yml']
+  push:
+    branches: [main]
+    paths: ['js/**', 'tools/test/**', '.github/workflows/test.yml']
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node tools/test/engine-test.mjs
