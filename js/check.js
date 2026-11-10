@@ -306,16 +306,31 @@ function exEval(T){const st=stStrat(S,T.sid);if(!st||!CK)return[];const L=exRule
   // 「或」的條件：找出是哪一段成立，提醒只寫那一段
   if(r&&r.v===true){for(const p of ckN(t).split(/,或者?/)){const P=ckParse(p);if(!P)continue;CKX=X;const o=ckRun(P,m,k);if(o&&o.v===true){hit=o.why;break}}}}}
   return Object.assign({},x,{r,hit})})}
-// 已處理：條件還成立時不再提醒；條件不成立後自動解除（下一次成立會再提醒）
-window.exAck=(id,key)=>{const T=stThesis(S,id);if(!T)return;T.exAck=T.exAck||{};T.exAck[key]=TODAY;save();upd();if(typeof asCalc=='function')asCalc()};
-function exRearm(T){if(!T.exAck||!CK)return 0;let ch=0;for(const x of exEval(T))if(T.exAck[x.key]&&x.r&&x.r.v===false){delete T.exAck[x.key];ch++}return ch}
+// 出場訊號的決定（2026-11-10 起三選一）：exAck[key]＝{d,k,n}
+//   sell＝照規則賣出（記賣出時自動寫入）；na＝這條不適用（一直有效，不算進照規則比例）；skip＝不照做＋原因
+//   舊版的「✓ 已處理」是日期字串，當成 ack。sell、skip、ack 在條件不成立後自動解除；每次決定另外記在 exLog
+const exAckOf=(T,key)=>{const v=(T.exAck||{})[key];return v==null?null:typeof v=='string'?{d:v,k:'ack',n:''}:v};
+function exMark(T,key,k,n,d){if(!T)return;T.exAck=T.exAck||{};const x=(exRules(stStrat(S,T.sid))||[]).find(z=>z.key==key);T.exAck[key]={d:d||TODAY,k,n:n||''};T.exLog=T.exLog||[];T.exLog.push({d:d||TODAY,key,lb:x?x.lb:'',k,n:n||''})}
+const EX_RS=lb=>/停損/.test(lb)?'sl':/理由失效/.test(lb)?'inv':/期限|事件/.test(lb)?'to':/停利|減碼|高峰|籌碼|趨勢|跌破|移動/.test(lb)?'tp':'adj';
+window.exDecide=(id,key,k)=>{const T=stThesis(S,id);if(!T)return;const x=(exRules(stStrat(S,T.sid))||[]).find(z=>z.key==key)||{lb:'',act:'',frac:1};
+ if(k=='sell'){const c=cU(T.code),h=holdings(S).filter(o=>o.ac=='a'&&cU(o.n)==c).reduce((a,o)=>a+(+o.q||0),0),fr=x.frac||1;
+  if(typeof asTradeOpen!='function')return;asTradeOpen({k:'sell',c,ac:'a'});Object.assign(AT,{q:h?String(fr>=1?h:Math.round(h*fr)):'',rs:EX_RS(x.lb),note:`照規則：${x.lb||'出場條件'}${x.act?' → '+x.act:''}`,sig:id+'|'+key});if(typeof asTh=='function'){asOvOpen(asTradeHtml());asTh();asPrev()}return}
+ let n='';if(k=='skip'){n=prompt('不照做的原因（一句話，之後檢討用）：','');if(n==null)return;n=n.trim();if(!n){alert('請寫一句原因');return}}
+ else if(k=='na'){n=prompt('為什麼這條不適用？（例如「健鼎在上升段，這條是谷底建倉的停損」）','');if(n==null)return;n=n.trim()}
+ exMark(T,key,k,n);save();upd();if(typeof asCalc=='function')asCalc();exReStock()};
+const exReStock=()=>{try{if(typeof asCur!='undefined'&&asCur&&!AT&&$('asOv')&&$('asOv').style.display=='flex'){const b=$('asOvB'),h=b.scrollTop;asStock(asCur.c,asCur.ac);$('asOvB').scrollTop=h}}catch(e){}};
+window.exUndo=(id,key)=>{const T=stThesis(S,id);if(!T||!T.exAck)return;delete T.exAck[key];T.exLog=(T.exLog||[]);for(let i=T.exLog.length-1;i>=0;i--)if(T.exLog[i].key==key){T.exLog.splice(i,1);break}save();upd();if(typeof asCalc=='function')asCalc();exReStock()};
+window.exAck=(id,key)=>exDecide(id,key,'skip');
+function exRearm(T){if(!T.exAck||!CK)return 0;let ch=0;for(const x of exEval(T)){const a=exAckOf(T,x.key);if(a&&a.k!='na'&&x.r&&x.r.v===false){delete T.exAck[x.key];ch++}}return ch}
+const EX_KN={sell:'照規則賣出',na:'這條不適用',skip:'不照做',ack:'已處理'};
+const exBtns=(id,key)=>`<button class=ckmb onclick="exDecide('${id}','${key}','sell')">照規則賣出</button><button class=ckmb onclick="exDecide('${id}','${key}','na')">這條不適用</button><button class=ckmb onclick="exDecide('${id}','${key}','skip')">不照做</button>`;
 // 個股頁、完整論點：出場條件卡
 function ckExitHtml(T,st){if(!st||T.status!='hold')return'';const L=exRules(st);if(!L.length)return'';
  if(!CK)return`<div class="asck ckc"><b>🚪 出場條件</b><div class=h>${ckErr?'讀不到自動檢核資料。':'資料讀取中…'}</div></div>`;
- const E=exEval(T),X=exCtx(T),ack=T.exAck||{};
+ const E=exEval(T),X=exCtx(T);
  const p=stPerf(S,T),rm=typeof stRmul=='function'?stRmul(T,p.ret):null;
- return`<div class="asck ckc"><b>🚪 出場條件</b> <span class=h>策略均價 ${X.avg!=null?f2(X.avg):'—'}${X.peak!=null?`｜持有期間最高 ${f2(X.peak)}`:''}${num(T.risk0)?`｜進場停損 ${f2(num(T.stop0))}（每股風險 ${f1(num(T.risk0))}%${T.rec0=='補記'?'，補記':''}）${rm!=null?`，目前 ${rm>=0?'+':''}${rm.toFixed(2)}R`:''}`:''}</span><div class=h style="font-size:11.5px">🔴 成立（照規則處理）　✓ 沒有成立　⏳ 資料不足　❔ 要自己判斷</div>${E.map(x=>{const r=x.r,ic=!r?'❔':r.v===true?'🔴':r.v===false?'✓':'⏳';
-  return`<div class=ckl>${ic} ${x.lb?`<b>${esc(x.lb)}</b>：`:''}${ckT(x.cond)}${x.act?` → <b>${esc(x.act)}</b>`:''}${r?`<div class=h>${esc(r.why)}${r.miss?' <i>'+esc(r.miss)+'</i>':''}</div>`:'<div class=h>要自己判斷</div>'}${r&&r.v===true?(ack[x.key]?`<div class=h>${ckMD(ack[x.key])} 已處理（條件不成立後會自動解除）</div>`:` <button class=ckmb onclick="exAck('${T.id}','${x.key}')">✓ 已處理</button>`):''}</div>`}).join('')}
+ return`<div class="asck ckc"><b>🚪 出場條件</b> <span class=h>策略均價 ${X.avg!=null?f2(X.avg):'—'}${X.peak!=null?`｜持有期間最高 ${f2(X.peak)}`:''}${num(T.risk0)?`｜進場停損 ${f2(num(T.stop0))}（每股風險 ${f1(num(T.risk0))}%${T.rec0=='補記'?'，補記':''}）${rm!=null?`，目前 ${rm>=0?'+':''}${rm.toFixed(2)}R`:''}`:''}</span><div class=h style="font-size:11.5px">🔴 成立（照規則處理）　✓ 沒有成立　⏳ 資料不足　❔ 要自己判斷</div>${E.map(x=>{const r=x.r,ic=(exAckOf(T,x.key)||{}).k=='na'?'🚫':!r?'❔':r.v===true?'🔴':r.v===false?'✓':'⏳';
+  return`<div class=ckl>${ic} ${x.lb?`<b>${esc(x.lb)}</b>：`:''}${ckT(x.cond)}${x.act?` → <b>${esc(x.act)}</b>`:''}${r?`<div class=h>${esc(r.why)}${r.miss?' <i>'+esc(r.miss)+'</i>':''}</div>`:'<div class=h>要自己判斷</div>'}${(()=>{const a=exAckOf(T,x.key);if(a&&a.k=='na')return`<div class=h>🚫 ${ckMD(a.d)} 標為不適用${a.n?'：'+esc(a.n):''} <button class=lk onclick="exUndo('${T.id}','${x.key}')">改</button></div>`;if(!(r&&r.v===true))return'';return a?`<div class=h>${ckMD(a.d)} ${EX_KN[a.k]||'已處理'}${a.n?'：'+esc(a.n):''}（條件不成立後自動解除） <button class=lk onclick="exUndo('${T.id}','${x.key}')">改</button></div>`:`<div>${exBtns(T.id,x.key)}</div>`})()}</div>`}).join('')}
   ${exTrigHtml(T)}<div class=h style="margin-top:4px">自動判斷只看公開資料與你記的交易，僅供參考，不是投資建議。</div></div>`}
 
 // ---------- 今天的觸發價：和價格有關的出場規則，今天收盤到哪個價位就成立
@@ -323,7 +338,7 @@ function ckExitHtml(T,st){if(!st||T.status!='hold')return'';const L=exRules(st);
 function exTrig(T){const st=stStrat(S,T.sid),c=cU(T.code),m=CK?ckM(c):null,X=exCtx(T),out=[];
  const add=(px,dir,what,act,ap)=>{if(px!=null&&isFinite(px)&&px>0)out.push({px:+px.toFixed(2),dir,what,act,ap:!!ap})};
  if(num(T.stop)!=null)add(num(T.stop),'≤','論點停損價','全部賣出');
- for(const x of exRules(st)){for(const p of ckN(exNorm(x.cond)).split(/,或者?/)){if(/,且/.test(p))continue;let g;
+ for(const x of exRules(st)){if((exAckOf(T,x.key)||{}).k=='na')continue;for(const p of ckN(exNorm(x.cond)).split(/,或者?/)){if(/,且/.test(p))continue;let g;
   if((g=p.match(/^(?:收盤價?|股價)?跌破(月線|季線|半年線)(?:[−-](\d+(?:\.\d+)?)%)?$/))&&m){const ma=m[CK_MA[g[1]][0]];if(ma!=null)add(ma*(1-(+(g[2]||0))/100),'<',`跌破${g[1]}${g[2]?' −'+g[2]+'%':''}`,x.act,1)}
   else if((g=p.match(/^(?:現價|收盤價?|股價)?跌破(?:策略)?均價[−-](\d+(?:\.\d+)?)%$/))&&X.avg!=null)add(X.avg*(1-g[1]/100),'<',`跌破均價 −${g[1]}%`,x.act)
   else if((g=p.match(/^(?:從)?(?:持有期間)?(?:的)?最高(?:點|收盤)?回落(\d+(?:\.\d+)?)%(?:時)?$/))&&X.peak!=null)add(X.peak*(1-g[1]/100),'≤',`從最高點回落 ${g[1]}%`,x.act)

@@ -117,8 +117,8 @@ function stAgg(items){const P=items.filter(o=>o.p&&o.p.inv>0),closed=P.filter(o=
  const inv=P.reduce((a,o)=>a+o.p.inv,0),plOk=P.every(o=>o.p.pl!=null),pl=P.reduce((a,o)=>a+(o.p.pl||0),0);
  const bmOk=P.length&&P.every(o=>o.p.bmRet!=null),bmPl=P.reduce((a,o)=>a+(o.p.bmRet!=null?o.p.bmRet/100*o.p.inv:0),0);
  const fol=closed.filter(o=>o.followed===1||o.followed===0||o.followed==='1'||o.followed==='0');
- const aw=avg(win),al=avg(loss);
- return{n:P.length,open:open.length,closed:closed.length,win:cl.length?win.length/cl.length*100:null,rr:aw!=null&&al!=null&&al!=0?aw/Math.abs(al):null,inv,pl,plOk,ret:inv>0?pl/inv*100:null,ex:bmOk&&inv>0?(pl-bmPl)/inv*100:null,bmPart:!bmOk&&P.some(o=>o.p.bmRet!=null),fol:fol.length?fol.filter(o=>+o.followed===1).length/fol.length*100:null}}
+ const aw=avg(win),al=avg(loss);let sf=0,sn=0;for(const o of items)for(const x of(o.T&&o.T.exLog)||[]){if(x.k=='sell'){sf++;sn++}else if(x.k=='skip')sn++}
+ return{sf,sn,n:P.length,open:open.length,closed:closed.length,win:cl.length?win.length/cl.length*100:null,rr:aw!=null&&al!=null&&al!=0?aw/Math.abs(al):null,inv,pl,plOk,ret:inv>0?pl/inv*100:null,ex:bmOk&&inv>0?(pl-bmPl)/inv*100:null,bmPart:!bmOk&&P.some(o=>o.p.bmRet!=null),fol:fol.length?fol.filter(o=>+o.followed===1).length/fol.length*100:null}}
 function stThesisItems(S,sid){return(S.theses||[]).filter(T=>(sid===undefined||T.sid==sid)&&T.status!='plan').map(T=>({T,p:stPerf(S,T),closed:T.status=='exit',followed:T.exit?T.exit.followed:''}))}
 
 // 最大回撤：以各次結算日（用當時填的現價）＋今天取樣，看合計損益率從高點最多回落幾個百分點
@@ -162,7 +162,8 @@ function stAlerts(S){const A=[],E=stExposure(S),nm=c=>c+(typeof nameOf=='functio
   if(fd&&since<=fd.d&&!(T.reviews||[]).some(r=>r.kind=='財報'&&r.date>fd.d))A.push({k:'fin',lv:'wn',th:T.id,t:`${T.id} ${nm(c)}：${fd.n}財報已公布（${fd.d} 前），請檢查論點是否仍成立`})}
  for(const e of S.events||[])if(!e.done&&e.date&&e.date<=TODAY)A.push({k:'ev',lv:'',ev:e.id,et:e.type,t:`${e.date.slice(5).replace('-','/')} ${nm(e.code)} ${e.type}${e.note?'：'+e.note:''}`});
  for(const T of S.theses||[])if(T.status!='exit'&&(T.pend||[]).length)A.push({k:'pend',lv:'',th:T.id,t:`${T.id} ${nm(cU(T.code))}：${T.pend.length} 項策略條件待確認（${T.pend.slice(0,2).join('；')}${T.pend.length>2?'…':''}）`});
- if(typeof asHeatCap=='function'){const H=asHeatCap(S);if(H.over)A.push({k:'heat',lv:'bad',t:`未平倉風險 ${W2(H.R.tot)} 萬，超過上限 ${W2(H.cap)} 萬（${H.src}）：先降風險再加碼`})}
+ try{const lr=(S.rules||[]).find(x=>x.k=='liq');if(lr&&lr.on&&typeof liqOf=='function'){const q=liqOf(settle(S,curEff()));if(q&&q.m<+lr.th)A.push({k:'liq',lv:'bad',t:`現金只夠付 ${q.m.toFixed(1)} 個月信貸月付金（門檻 ${lr.th} 個月）：先補現金，不再加碼`})}}catch(e){}
+ if(typeof asHeatCap=='function'){const H=asHeatCap(S);if(H.over)A.push({k:'heat',lv:'bad',t:`壓力虧損 ${W2(H.tot)} 萬（只算信貸資金），超過剩下的虧損額度 ${W2(H.cap)} 萬：先降風險再加碼`})}
  for(const T of S.theses||[])if(T.status=='exit'&&!(T.exit&&T.exit.reason))A.push({k:'exr',lv:'wn',th:T.id,t:`${T.id} ${nm(cU(T.code))} 已出場，還沒選出場原因與有沒有照規則做`});
  return A}
 
