@@ -14,7 +14,7 @@ const aiT=s=>{try{const d=new Date(s);return d.toLocaleDateString('sv-SE')+' '+d
 // 「⬆️ 匯入 JSON」之前：檔案比瀏覽器裡的舊就先警告，並存還原點
 function rpGuard(j){const has=(S.trades||[]).length||(S.snaps||[]).length;let m='';
  if(has){if(j&&j.edited&&S.edited&&j.edited<S.edited)m=`這份檔案最後修改是 ${aiT(j.edited)}，比瀏覽器裡的資料（${aiT(S.edited)}）舊。\n`;else if(j&&!j.edited)m='這份檔案是舊版匯出的，沒有修改時間，無法判斷新舊。\n'}
- if(m&&!confirm(m+'匯入會整份取代瀏覽器裡的資料（取代前會自動存還原點，可以在「📥 從 AI 貼上 → 還原點」復原）。確定要匯入嗎？'))return false;rpSave('匯入設定檔前');return true}
+ if(m&&!confirm(m+'匯入會整份取代瀏覽器裡的資料（取代前會自動存還原點，可以在「🤖 AI 討論 → 📥 貼上回覆 → 還原點」復原）。確定要匯入嗎？'))return false;rpSave('匯入設定檔前');return true}
 
 // ---------- 解析
 const AI_SIDE={buy:'buy','買進':'buy','買':'buy',sell:'sell','賣出':'sell','賣':'sell',div:'div','配息':'div',sdiv:'sdiv','配股':'sdiv'};
@@ -40,11 +40,21 @@ function aiPrev(c,dt){let best=null,bd='';if(typeof PXL!='undefined'&&PXL[c]&&PX
 const aiKey=x=>[x.dt,cU(x.n),x.k,num(x.q),num(x.px),x.ac=='a'?'a':'p'].join('|');
 
 // 解析成預覽清單：每一項有 err（擋下）、warn（提醒）、info（說明）
-function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],sg:[],ck:null,glob:[]},refs={},keys=new Set((S.trades||[]).map(aiKey));
+// 匯入項目的影響（2026-11-11）：🎯 會改變自動判斷／🔔 會改變提醒／📝 只是紀錄
+const AI_TG={1:'🎯 改判斷',2:'🔔 改提醒',3:'📝 紀錄'},AI_KNOWN=new Set(['format','ai','q','snap','summary','note','trades','theses','updates','events','outlook','themes','strategies','check','review']);
+const aiNoSrc=s=>!String(s||'').trim()||/未註明|未具名|不具名|市場預估|市場共識$|^法人$|^外資$|^投顧$/.test(String(s).trim());
+function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],sg:[],rv:[],ck:null,glob:[]},refs={},keys=new Set((S.trades||[]).map(aiKey));
  if(!j||typeof j!='object'||Array.isArray(j)){P.glob.push('最外層要是 { … }，裡面放 trades、theses、updates、events、outlook、themes、strategies、check。');return P}
  if(j.format&&!/投資帳本/.test(j.format))P.glob.push(`format 是「${j.format}」，不是「投資帳本 v1」，仍嘗試解析。`);
  for(const k of['trades','theses','updates','events','outlook','themes','strategies'])if(j[k]!=null&&!Array.isArray(j[k]))P.glob.push(`${k} 要是陣列 [ … ]。`);
  const arr=k=>Array.isArray(j[k])?j[k]:[];
+ // 這次回覆的來源：哪個 AI、哪一種問題、複製時的快照編號（App 用來檢查持股與資料有沒有變）
+ const last=typeof aaLast=='function'?aaLast():null;P.meta={ai:String(j.ai||'').trim().slice(0,40),q:String(j.q||'').trim(),snap:String(j.snap||'').trim()};
+ if(!P.meta.q&&last&&last.snap&&last.snap==P.meta.snap)P.meta.q=last.q;if(P.meta.q&&!(typeof AA_Q!='undefined'&&AA_Q[P.meta.q]))P.meta.q='';
+ if(j.summary||j.note)P.sum=String(j.summary||j.note).slice(0,2000);
+ const unk=Object.keys(j).filter(k=>!AI_KNOWN.has(k));if(unk.length)P.glob.push(`⚠️ 認不得的欄位：${unk.join('、')}，不會匯入（可能是 AI 自己加的，或格式寫錯）。`);
+ if(P.meta.snap&&typeof aaSnap=='function'){const now=aaSnap();if(now!=P.meta.snap)P.glob.push(`⚠️ 複製給 AI 之後，持股、停損、策略版本或資料日期已經變了（快照 ${P.meta.snap} → 現在 ${now}）：AI 引用的可能是舊資料。`)}
+ else if(!P.meta.snap)P.glob.push('ℹ️ 這段回覆沒有快照編號，無法確認 AI 看到的是不是最新的資料。');
  // 新論點
  arr('theses').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},lb=`theses 第 ${i+1} 筆`;P.th.push(it);
   const c=cU(o.code||'');if(!c)it.err.push(`${lb} 缺 code（代號）`);const sid=String(o.strategy||'').trim().toUpperCase(),st=sid?stStrat(S,sid):null;
@@ -96,7 +106,7 @@ function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],sg:[],ck:null,gl
  const yn=v=>v===true||v===1||/^(true|1|是|y|yes)$/i.test(String(v??''))?1:v===false||v===0||/^(false|0|否|n|no)$/i.test(String(v??''))?0:null;
  arr('outlook').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},lb=`outlook 第 ${i+1} 筆`,c=cU(o.code||'');P.ol.push(it);it.c=c;if(!c){it.err.push(`${lb} 缺 code`);return}
   const old=((S.outlook||{})[c]||{}).eps||[];it.eps=[];for(const [k,e] of (Array.isArray(o.eps)?o.eps:[]).entries()){const y=aiNum(e.year??e.y),v=aiNum(e.eps??e.v),d=aiDate(e.date??e.d)||'';
-   if(!y||v==null){it.warn.push(`eps 第 ${k+1} 筆缺 year 或 eps，略過`);continue}if(!d)it.warn.push(`eps 第 ${k+1} 筆沒有 date，用今天`);const r={y,v,src:String(e.src||e.source||''),d:d||TODAY};
+   if(!y||v==null){it.warn.push(`eps 第 ${k+1} 筆缺 year 或 eps，略過`);continue}if(!d)it.warn.push(`eps 第 ${k+1} 筆沒有 date，用今天`);const r={y,v,src:String(e.src||e.source||''),d:d||TODAY};if(!d)r.noD=1;
    if(old.some(z=>+z.y==r.y&&+z.v==r.v&&z.d==r.d&&(z.src||'')==r.src)){it.warn.push(`${r.y} 年 ${r.v}（${r.src||'未註明'}）已經有了，略過`);continue}it.eps.push(r)}
   if(o.guide&&typeof o.guide=='object'){const g=o.guide;it.guide={rev:olDir(g.rev),gm:olDir(g.gm),d:aiDate(g.date)||TODAY,src:String(g.src||''),note:String(g.note||'')};if(!it.guide.rev&&!it.guide.gm)it.warn.push('guide 的 rev、gm 看不懂（用 up／flat／down 或 向上／持平／向下）')}
   if(o.attr&&typeof o.attr=='object'){const a=o.attr;it.attr={};for(const k of['growth','cyc','lead']){const v=yn(a[k]);if(v!=null)it.attr[k]=v}if(a.theme)it.attr.theme=String(a.theme).trim()}
@@ -113,44 +123,75 @@ function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],sg:[],ck:null,gl
   it.reason=String(o.reason||'').trim()||'從 AI 匯入';it.up=st&&o.upgradeTheses?(S.theses||[]).filter(T=>T.sid==id&&T.status!='exit'&&(+T.sver||1)<nv).map(T=>T.id):[]});
  // 庫存核對（套用這次的交易後再比）
  if(j.check){const items=Array.isArray(j.check)?j.check:Array.isArray(j.check.items)?j.check.items:[];P.ck={date:aiDate(j.check.date)||TODAY,items};}
- return P}
+ // AI 對出場訊號的看法（只記錄，不改判斷）
+ arr('review').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},lb=`review 第 ${i+1} 筆`;P.rv.push(it);const T=stThesis(S,String(o.thesis||'').trim().toUpperCase());
+  if(!T){it.err.push(o.thesis?`${lb}：找不到論點 ${o.thesis}`:`${lb} 缺 thesis（論點編號）`);return}it.T=T;
+  const v=String(o.view||'').trim(),vv=(typeof AA_VIEW!='undefined'?AA_VIEW:[]).find(x=>v==x)||(typeof AA_VIEW!='undefined'?AA_VIEW:[]).find(x=>v.includes(x));if(!vv)it.warn.push(`view「${v||'（空）'}」不是五種之一，記成「查不到」`);
+  const src=(Array.isArray(o.src)?o.src:o.src?[o.src]:[]).map(z=>typeof z=='string'?z:[z.name,z.date,z.url].filter(Boolean).join('，')).filter(Boolean);if(!src.length)it.warn.push('沒有附來源');
+  it.r={d:TODAY,rule:String(o.rule||'').trim(),view:vv||'查不到',why:String(o.why||'').trim(),src}});
+ aiFlag(P);return P}
+// 每一項標影響等級；🎯 有疑點的預設不勾（沒有來源或日期、超過 45 天、和同年度現有預估差 > 15%、AI 替你勾要自己判斷的條件、停損往下調、出場訊號討論裡的策略修改）
+function aiFlag(P){const sus=(it,why)=>{if(!why.length)return;it.sus=why;if(it.on){it.on=0;it.warn.push('🎯 有疑點，預設不勾：'+why.join('、'))}};
+ for(const it of P.tr)it.tg=1;
+ for(const it of P.th){it.tg=1;const man=it.met.filter(t=>!(typeof ckAuto=='function'&&ckAuto(t)));if(man.length)sus(it,[`AI 替你勾了 ${man.length} 項要自己判斷的條件（${man.slice(0,2).map(t=>t.replace(/〔[^〕]*〕/g,'')).join('、')}${man.length>2?'…':''}）`])}
+ for(const it of P.up){const D=it.diff||[];it.tg=D.some(d=>d.f=='stop')?1:D.some(d=>d.f=='tgtPx')?2:3;const s=D.find(d=>d.f=='stop');if(s&&num(s.old)!=null&&num(s.nw)!=null&&+s.nw<+s.old)sus(it,[`停損價往下調（放寬）${s.old} → ${s.nw}`])}
+ for(const it of P.ev)it.tg=it.e&&/除息|除權/.test(it.e.type)?1:2;
+ for(const it of P.ol){it.tg=1;if(it.err.length)continue;const w=[];
+  for(const e of it.eps||[]){const lb=`${e.y} 年 ${e.v}`;if(aiNoSrc(e.src))w.push(lb+' 沒有寫明機構');if(e.noD)w.push(lb+' 沒有日期');else if(dDays(e.d,TODAY)>45)w.push(lb+` 是 ${e.d} 的（超過 45 天）`);
+   const o=typeof ckOut=='function'?ckOut(it.c):null,cur=o?o.lat(e.y):null;if(cur&&Math.abs(e.v/cur-1)>0.15)w.push(`${lb} 和現有預估 ${f2(cur)} 差 ${((e.v/cur-1)*100).toFixed(0)}%`)}
+  if(it.guide){if(!(it.o.guide&&aiDate(it.o.guide.date)))w.push('法說指引沒有日期');if(aiNoSrc(it.guide.src))w.push('法說指引沒有來源')}
+  sus(it,w)}
+ for(const it of P.tm){it.tg=1;if(!it.err.length&&aiNoSrc(it.t.src))sus(it,['主題狀態沒有來源'])}
+ for(const it of P.sg){it.tg=1;if(P.meta.q=='exit')sus(it,['這是出場訊號的討論；策略修改只在每季檢討時做'])}
+ for(const it of P.rv)it.tg=3}
+const aiTg=it=>it.tg?` <span class="aitg t${it.tg}">${AI_TG[it.tg]}</span>`:'';
 function aiDiff(T,o){const D=[];for(const k in AI_UPD){if(o[k]===undefined||o[k]===null||o[k]==='')continue;const[f,lb]=AI_UPD[k],nv=['stop','tgtPx','expectM'].includes(f)?aiNum(o[k]):String(o[k]);if(nv==null)continue;if(String(T[f]??'')!==String(nv))D.push({f,lb,old:T[f]??'',nw:nv})}return D}
 
 // ---------- 畫面
 let AIP=null,AIR=null,AIX='';
-window.aiOpen=()=>{asOvOpen(aiHtml());aiSide()};
-function aiHtml(){return`<div class=ovh><button onclick="asClose()">✕</button><b>📥 從 AI 對話貼上紀錄</b></div>
- <div class=h>在分析股票的對話裡，請 AI「用投資帳本 v1 格式輸出」今天的成交、新論點與事件。可以選 AI 給的檔案，或把整段回覆複製貼到下面（工具會自己找出 JSON）。格式說明在專案文件〈工具說明與結算流程〉。</div>
- <div class=asbtn style="margin:4px 0 6px"><label class=filebtn>📂 選擇檔案（.txt／.json）<input type=file accept=".txt,.json,.md,text/plain,application/json" onchange="aiFile(this)" style="display:none"></label><span class=h>AI 有整理好檔案就用這個；沒有就把聊天內容複製貼到下面。</span></div>
+// 🤖 AI 討論面板：📋 問 AI（ai-ask.js）｜📥 貼上回覆；記住上次用哪個分頁
+let AITAB=null;
+window.aiOpen=o=>{o=o||{};if(AITAB==null)AITAB=ls('lcaitab')||'paste';if(o.q){AITAB='ask';if(typeof aaInit=='function')aaInit(o)}else if(o.tab)AITAB=o.tab;else if(AITAB=='ask'&&typeof aaInit=='function')aaInit({});
+ asOvOpen(aiHtml());aiSide();if(AITAB=='ask'&&typeof aaRender=='function')aaRender()};
+window.aiTab=t=>{AITAB=t;ls('lcaitab',t);$('aiAsk').style.display=t=='ask'?'':'none';$('aiPaste').style.display=t=='paste'?'':'none';document.querySelectorAll('.aitabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));if(t=='ask'&&typeof aaRender=='function'){if(!$('aiAsk').innerHTML&&typeof aaInit=='function')aaInit({});aaRender()}};
+function aiHtml(){return`<div class=ovh><button onclick="asClose()">✕</button><b>🤖 AI 討論</b></div>
+ <div class=aitabs><button data-t=ask class="${AITAB=='ask'?'on':''}" onclick="aiTab('ask')">📋 問 AI</button><button data-t=paste class="${AITAB=='paste'?'on':''}" onclick="aiTab('paste')">📥 貼上回覆</button></div>
+ <div id=aiAsk style="${AITAB=='ask'?'':'display:none'}"></div>
+ <div id=aiPaste style="${AITAB=='paste'?'':'display:none'}">
+ <div class=asbtn style="margin:4px 0 6px"><label class=filebtn>📂 選擇檔案（.txt／.json）<input type=file accept=".txt,.json,.md,text/plain,application/json" onchange="aiFile(this)" style="display:none"></label><span class=h>AI 有整理好檔案就用這個；沒有就把整段回覆貼到下面（工具會自己找出 JSON）。</span></div>
  <textarea id=aiTx rows=8 style="width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12px" placeholder='{"format":"投資帳本 v1","trades":[…]}'>${esc(AIX)}</textarea>
  <div class=asbtn><button class=pri onclick="aiRun()">解析並預覽</button><button onclick="$('aiTx').value='';AIX='';AIP=null;$('aiPv').innerHTML=''">清除</button></div>
- <div id=aiPv></div><div id=aiSd></div>`}
+ <div class=h>每天記交易：請 AI「用投資帳本 v1 格式輸出」今天的成交；格式說明在專案文件〈工具說明與結算流程〉，或用「📋 問 AI」複製時會自動附上。</div>
+ <div id=aiPv></div><div id=aiSd></div></div>`}
 window.aiFile=el=>{const f=el.files&&el.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{$('aiTx').value=String(rd.result||'');el.value='';aiRun()};rd.onerror=()=>toast('讀不到這個檔案',0);rd.readAsText(f,'utf-8')};
 window.aiRun=()=>{AIX=$('aiTx').value;const r=aiExtract(AIX);if(r.err){AIP=null;$('aiPv').innerHTML=`<div class=stal style="border-color:#fca5a5;background:#fef2f2"><b>❌ 解析失敗</b><div>${esc(r.err)}</div>${r.txt!=null&&r.line?`<div class=h>第 ${r.line} 行：<code>${esc(r.txt)}</code></div>`:''}</div>`;return}AIP=aiPlan(r.j);if(r.fixed=='nl')AIP.glob.push('已自動接回文字中間被拆開的換行（手機複製時常發生）。');else if(r.fixed)AIP.glob.push('已自動修正換行、全形引號或多餘的逗號。');aiPrevRender()};
 const aiMsgs=it=>it.err.map(s=>`<div class=bad>❌ ${esc(s)}</div>`).join('')+it.warn.map(s=>`<div class=wn>⚠️ ${esc(s.replace(/^⚠️ /,''))}</div>`).join('')+it.info.map(s=>`<div class=h>ℹ️ ${esc(s)}</div>`).join('');
 const aiCk=(k,it)=>`<input type=checkbox data-ai="${k}" ${it.on&&!it.err.length?'checked':''} ${it.err.length?'disabled':''} onchange="aiTog('${k}',this.checked)">`;
-window.aiTog=(k,v)=>{const t={t:'tr',h:'th',u:'up',e:'ev',o:'ol',m:'tm',g:'sg'}[k[0]],it=AIP[t][+k.slice(1)];if(it)it.on=v?1:0;aiSum()};
+window.aiTog=(k,v)=>{const t={t:'tr',h:'th',u:'up',e:'ev',o:'ol',m:'tm',g:'sg',r:'rv'}[k[0]],it=AIP[t][+k.slice(1)];if(it)it.on=v?1:0;aiSum()};
 function aiTh(it){if(it.ref&&AIP){const h=AIP.th.find(z=>z.ref==it.ref);if(h)return h.merge?h.merge.id:h.id?h.id+'（新）':'（新論點有錯）'}return it.tid||''}
 function aiPrevRender(){const P=AIP,el=$('aiPv');let h='';
+ h+=`<div class=h>這次回覆：${esc(P.meta.ai||'沒寫是哪個 AI')}｜${esc((typeof AA_Q!='undefined'&&AA_Q[P.meta.q])||'沒寫問題類型')}${P.meta.snap?'｜快照 '+esc(P.meta.snap):''}</div><div class=h>🎯 會改變自動判斷　🔔 會改變提醒　📝 只是紀錄；🎯 有疑點的預設不勾，確認後再勾。</div>`;
  if(P.glob.length)h+=`<div class=stal>${P.glob.map(s=>`<div>· ${esc(s)}</div>`).join('')}</div>`;
- if(P.th.length)h+=`<div class=sub>新論點／更新論點（${P.th.length}）</div>`+P.th.map((it,i)=>{const o=it.o;return`<label class="aii ${it.err.length?'aie':''}">${aiCk('h'+i,it)}<div><b>${it.merge?'更新 '+it.merge.id:(it.id||'—')+' 新論點'}</b>｜${esc(it.c)} ${esc(nameOf(it.c))}｜${esc(it.sid)}${it.st?' '+esc(it.st.name)+' v'+it.ver:''}${it.tags.length?'｜'+esc(it.tags.join('、')):''}
+ if(P.sum)h+=`<details><summary class=h>AI 的摘要</summary><div class=h style="white-space:pre-wrap">${esc(P.sum)}</div></details>`;
+ if(P.rv.length)h+=`<div class=sub>AI 的看法（${P.rv.length}）</div>`+P.rv.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('r'+i,it)}<div><b>${it.T?it.T.id+' '+esc(cU(it.T.code))+' '+esc(nameOf(it.T.code)):'?'}${it.r&&it.r.rule?'｜'+esc(it.r.rule):''}</b>${aiTg(it)}${it.r?`<div><b>${esc(it.r.view)}</b>${it.r.why?'：'+esc(it.r.why):''}</div>${it.r.src.length?`<div class=h>來源：${it.r.src.map(esc).join('；')}</div>`:''}`:''}${aiMsgs(it)}</div></label>`).join('');
+ if(P.th.length)h+=`<div class=sub>新論點／更新論點（${P.th.length}）</div>`+P.th.map((it,i)=>{const o=it.o;return`<label class="aii ${it.err.length?'aie':''}">${aiCk('h'+i,it)}<div><b>${it.merge?'更新 '+it.merge.id:(it.id||'—')+' 新論點'}</b>${aiTg(it)}｜${esc(it.c)} ${esc(nameOf(it.c))}｜${esc(it.sid)}${it.st?' '+esc(it.st.name)+' v'+it.ver:''}${it.tags.length?'｜'+esc(it.tags.join('、')):''}
   <div class=h>符合 ${it.met.length} 項${it.pend.length?'、待確認 '+it.pend.length+' 項':''}${it.no.length?'、不符合 '+it.no.length+' 項':''}｜停損 ${it.stop??'—'}｜目標 ${it.tgt??'—'}｜預計 ${esc(o.expectM??'—')} 個月｜分批 ${it.plan.length||'依策略'}</div>
   ${o.why?`<div class=h>為什麼買：${esc(String(o.why).slice(0,80))}${String(o.why).length>80?'…':''}</div>`:''}
   ${it.diff&&it.diff.length?it.diff.map(d=>`<div class=h>${esc(d.lb)}：${esc(String(d.old)||'（空）')} → <b>${esc(String(d.nw))}</b></div>`).join(''):''}${aiMsgs(it)}</div></label>`}).join('');
- if(P.tr.length)h+=`<div class=sub>交易（${P.tr.length}）</div>`+P.tr.map((it,i)=>{const x=it.x||{},m=it.m;return`<label class="aii ${it.err.length?'aie':''} ${it.dup?'aid':''}">${aiCk('t'+i,it)}<div><b>${esc(x.dt||'?')} ${asKN(x.k)||'?'}</b> ${esc(x.n||'?')} ${esc(nameOf(x.n||''))}｜${x.ac=='a'?'⚡ 主動':'🛡️ 被動'}｜${x.k=='div'?'每股 '+esc(x.dps):R(x.q||0)+' 股 @'+esc(x.px)}${x.rs?' <span class=rsc>'+asRsN(x.rs)+'</span>':''}${aiTh(it)?' <span class="thc on">'+esc(aiTh(it))+'</span>':x.ac=='a'&&(x.k=='buy'||x.k=='sell')?' <span class=thc>未分類</span>':''}
+ if(P.tr.length)h+=`<div class=sub>交易（${P.tr.length}）</div>`+P.tr.map((it,i)=>{const x=it.x||{},m=it.m;return`<label class="aii ${it.err.length?'aie':''} ${it.dup?'aid':''}">${aiCk('t'+i,it)}<div><b>${esc(x.dt||'?')} ${asKN(x.k)||'?'}</b>${aiTg(it)} ${esc(x.n||'?')} ${esc(nameOf(x.n||''))}｜${x.ac=='a'?'⚡ 主動':'🛡️ 被動'}｜${x.k=='div'?'每股 '+esc(x.dps):R(x.q||0)+' 股 @'+esc(x.px)}${x.rs?' <span class=rsc>'+asRsN(x.rs)+'</span>':''}${aiTh(it)?' <span class="thc on">'+esc(aiTh(it))+'</span>':x.ac=='a'&&(x.k=='buy'||x.k=='sell')?' <span class=thc>未分類</span>':''}
   ${m&&(x.k=='buy'||x.k=='sell')?`<div class=h>手續費 ${R(m.fee)}${x.k=='sell'?'｜證交稅 '+R(m.tax):''}｜${x.k=='buy'?'付出':'收到'} ${R(Math.abs(m.cash))} 元${S.feeMode=='month'?'（券商先收全額 '+R(fullFee(x))+'，折讓每月退回）':''}</div>`:''}${aiMsgs(it)}</div></label>`}).join('');
- if(P.up.length)h+=`<div class=sub>修改既有論點（${P.up.length}）</div>`+P.up.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('u'+i,it)}<div><b>${it.T?it.T.id+' '+esc(cU(it.T.code))+' '+esc(nameOf(it.T.code)):'?'}</b>${(it.diff||[]).map(d=>`<div class=h>${esc(d.lb)}：${esc(String(d.old)||'（空）')} → <b>${esc(String(d.nw))}</b></div>`).join('')}${aiMsgs(it)}</div></label>`).join('');
- if(P.ev.length)h+=`<div class=sub>事件提醒（${P.ev.length}）</div>`+P.ev.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('e'+i,it)}<div><b>${esc(it.e.date||'?')} ${esc(it.e.type)}</b> ${esc(it.e.code)} ${esc(nameOf(it.e.code))}<div class=h>${esc(it.e.note)}</div>${aiMsgs(it)}</div></label>`).join('');
+ if(P.up.length)h+=`<div class=sub>修改既有論點（${P.up.length}）</div>`+P.up.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('u'+i,it)}<div><b>${it.T?it.T.id+' '+esc(cU(it.T.code))+' '+esc(nameOf(it.T.code)):'?'}</b>${aiTg(it)}${(it.diff||[]).map(d=>`<div class=h>${esc(d.lb)}：${esc(String(d.old)||'（空）')} → <b>${esc(String(d.nw))}</b></div>`).join('')}${aiMsgs(it)}</div></label>`).join('');
+ if(P.ev.length)h+=`<div class=sub>事件提醒（${P.ev.length}）</div>`+P.ev.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('e'+i,it)}<div><b>${esc(it.e.date||'?')} ${esc(it.e.type)}</b>${aiTg(it)} ${esc(it.e.code)} ${esc(nameOf(it.e.code))}<div class=h>${esc(it.e.note)}</div>${aiMsgs(it)}</div></label>`).join('');
  const aA=a=>a?['growth','cyc','lead'].filter(k=>a[k]!=null).map(k=>({growth:'結構性成長',cyc:'景氣循環',lead:'產業龍頭'})[k]+(a[k]?'：是':'：否')).concat(a.theme?['主題：'+a.theme]:[]).join('、'):'';
- if(P.ol.length)h+=`<div class=sub>前瞻資料（${P.ol.length}）</div>`+P.ol.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('o'+i,it)}<div><b>${esc(it.c)} ${esc(nameOf(it.c))}</b>${(it.eps||[]).length?`<div class=h>EPS 預估：${it.eps.map(e=>`${e.y} 年 ${e.v}（${esc(e.src||'未註明')}，${e.d}）`).join('；')}</div>`:''}${it.guide?`<div class=h>法說指引（${it.guide.d}）：營收${olDirN(it.guide.rev)}、毛利率${olDirN(it.guide.gm)}${it.guide.note?'｜'+esc(it.guide.note):''}</div>`:''}${it.attr&&aA(it.attr)?`<div class=h>股票屬性：${esc(aA(it.attr))}</div>`:''}${aiMsgs(it)}</div></label>`).join('');
- if(P.tm.length)h+=`<div class=sub>主題指標（${P.tm.length}）</div>`+P.tm.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('m'+i,it)}<div><b>${esc(it.n||'?')}</b>：${it.t?olDirN(it.t.st):'?'}${it.t?` <span class=h>${it.t.d}${it.t.note?'｜'+esc(it.t.note):''}</span>`:''}${aiMsgs(it)}</div></label>`).join('');
+ if(P.ol.length)h+=`<div class=sub>前瞻資料（${P.ol.length}）</div>`+P.ol.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('o'+i,it)}<div><b>${esc(it.c)} ${esc(nameOf(it.c))}</b>${aiTg(it)}${(it.eps||[]).length?`<div class=h>EPS 預估：${it.eps.map(e=>`${e.y} 年 ${e.v}（${esc(e.src||'未註明')}，${e.d}）`).join('；')}</div>`:''}${it.guide?`<div class=h>法說指引（${it.guide.d}）：營收${olDirN(it.guide.rev)}、毛利率${olDirN(it.guide.gm)}${it.guide.note?'｜'+esc(it.guide.note):''}</div>`:''}${it.attr&&aA(it.attr)?`<div class=h>股票屬性：${esc(aA(it.attr))}</div>`:''}${aiMsgs(it)}</div></label>`).join('');
+ if(P.tm.length)h+=`<div class=sub>主題指標（${P.tm.length}）</div>`+P.tm.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('m'+i,it)}<div><b>${esc(it.n||'?')}</b>${aiTg(it)}：${it.t?olDirN(it.t.st):'?'}${it.t?` <span class=h>${it.t.d}${it.t.note?'｜'+esc(it.t.note):''}</span>`:''}${aiMsgs(it)}</div></label>`).join('');
  if(P.sg.length){const LB={name:'名稱',logic:'邏輯說明',term:'期別',screen:'選什麼',entry:'何時買／買多少',exit:'何時賣',holdMin:'持有下限',holdMax:'持有上限',capStock:'個股上限',capGroup:'族群上限',capStrat:'策略合計上限',stopPct:'預設停損',stopTech:'技術停損',riskPct:'每筆風險',rr:'檢查賺賠比',addDays:'加碼間隔',addPx:'加碼價差方向',addPxPct:'加碼價差',addHalt:'暫停加碼'};
-  h+=`<div class=sub>策略新版本（${P.sg.length}）</div>`+P.sg.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('g'+i,it)}<div><b>${esc(it.id||'?')} ${esc(it.st?it.st.name:(it.f&&it.f.name)||'')}</b>${it.st?`：v${it.st.ver} → <b>v${it.ver}</b>`:'：新策略 v1'}${it.diff&&it.diff.length?`<div class=h>改了：${it.diff.map(k=>LB[k]||k).join('、')}</div>`:''}<div class=h>原因：${esc(it.reason||'')}</div>${it.up&&it.up.length?`<div class=h>論點 ${it.up.join('、')} 改跟隨 v${it.ver}</div>`:''}${it.f&&it.diff&&it.diff.includes('entry')?`<details><summary class=h>新的何時買／買多少</summary><div class=h style="white-space:pre-wrap">${esc(it.f.entry)}</div></details>`:''}${aiMsgs(it)}</div></label>`).join('')}
+  h+=`<div class=sub>策略新版本（${P.sg.length}）</div>`+P.sg.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('g'+i,it)}<div><b>${esc(it.id||'?')} ${esc(it.st?it.st.name:(it.f&&it.f.name)||'')}</b>${aiTg(it)}${it.st?`：v${it.st.ver} → <b>v${it.ver}</b>`:'：新策略 v1'}${it.diff&&it.diff.length?`<div class=h>改了：${it.diff.map(k=>LB[k]||k).join('、')}</div>`:''}<div class=h>原因：${esc(it.reason||'')}</div>${it.up&&it.up.length?`<div class=h>論點 ${it.up.join('、')} 改跟隨 v${it.ver}</div>`:''}${it.f&&it.diff&&it.diff.includes('entry')?`<details><summary class=h>新的何時買／買多少</summary><div class=h style="white-space:pre-wrap">${esc(it.f.entry)}</div></details>`:''}${aiMsgs(it)}</div></label>`).join('')}
  if(P.ck)h+=aiCheckHtml(P);
- if(!P.th.length&&!P.tr.length&&!P.up.length&&!P.ev.length&&!P.ol.length&&!P.tm.length&&!P.sg.length&&!P.ck)h+='<div class=wn>沒有找到 trades、theses、updates、events、outlook、themes、strategies 或 check。</div>';
+ if(!P.th.length&&!P.tr.length&&!P.up.length&&!P.ev.length&&!P.ol.length&&!P.tm.length&&!P.sg.length&&!P.rv.length&&!P.ck)h+='<div class=wn>沒有找到 trades、theses、updates、events、outlook、themes、strategies、review 或 check。</div>';
  h+=`<div class=asbtn><button class=pri id=aiGo onclick="aiCommit()"></button><button onclick="asClose()">取消</button></div><div class=h>匯入前會自動存還原點；匯入後可以在下方「匯入紀錄」整批復原。</div>`;
  el.innerHTML=h;aiSum()}
-function aiSum(){const b=$('aiGo');if(!b||!AIP)return;const n=t=>AIP[t].filter(it=>it.on&&!it.err.length).length,a=n('tr'),t=n('th'),u=n('up'),e=n('ev'),o=n('ol'),m=n('tm'),g=n('sg');b.innerText=`確認匯入（交易 ${a}、論點 ${t}、修改 ${u}、事件 ${e}${o?'、前瞻 '+o:''}${m?'、主題 '+m:''}${g?'、策略 '+g:''}）`;b.disabled=!(a+t+u+e+o+m+g)}
+function aiSum(){const b=$('aiGo');if(!b||!AIP)return;const n=t=>AIP[t].filter(it=>it.on&&!it.err.length).length,a=n('tr'),t=n('th'),u=n('up'),e=n('ev'),o=n('ol'),m=n('tm'),g=n('sg'),r=n('rv');b.innerText=`確認匯入（交易 ${a}、論點 ${t}、修改 ${u}、事件 ${e}${o?'、前瞻 '+o:''}${m?'、主題 '+m:''}${g?'、策略 '+g:''}${r?'、AI 看法 '+r:''}）`;b.disabled=!(a+t+u+e+o+m+g+r)}
 // 庫存核對：套用這次勾選的交易後，逐檔比股數（有給成本也比成本）
 function aiCheckHtml(P){const S2=clone(S);S2.trades=(S2.trades||[]).concat(P.tr.filter(it=>it.on&&!it.err.length).map(it=>Object.assign(NEW.trades(),it.x)));
  const H={},HB=asHoldB(S2);for(const o of holdings(S2)){if(o.q<=0)continue;const c=cU(o.n);H[c]=H[c]||{q:0,cb:0};H[c].q+=o.q;H[c].cb+=(HB[o.ac+'|'+c]||{}).cost||0}
@@ -162,7 +203,7 @@ function aiCheckHtml(P){const S2=clone(S);S2.trades=(S2.trades||[]).concat(P.tr.
 
 // ---------- 寫入（一次匯入＝一批，可以整批復原）
 window.aiCommit=async()=>{const P=AIP;if(!P)return;await rpSave('AI 匯入前');
- const B={id:'b'+Date.now().toString(36),at:new Date().toISOString(),tr:[],th:[],ev:[],upd:[],tags:[],plan:[],ol:[],tm:[],sg:[]},idOf={};
+ const B={id:'b'+Date.now().toString(36),at:new Date().toISOString(),tr:[],th:[],ev:[],upd:[],tags:[],plan:[],ol:[],tm:[],sg:[],rv:[],ai:(P.meta||{}).ai||'',q:(P.meta||{}).q||''},idOf={};
  // 前瞻資料與主題指標（記下原本的內容，整批復原時還原）
  S.outlook=S.outlook||{};S.attr=S.attr||{};S.themes=S.themes||{};
  for(const it of P.ol){if(!it.on||it.err.length)continue;const c=it.c;B.ol.push({c,o:JSON.stringify(S.outlook[c]??null),a:JSON.stringify(S.attr[c]??null)});const o=S.outlook[c]=S.outlook[c]||{};
@@ -184,14 +225,15 @@ window.aiCommit=async()=>{const P=AIP;if(!P)return;await rpSave('AI 匯入前');
   const T=tid?stThesis(S,tid):null;if(T&&x.k=='buy'){const h=P.th.find(z=>z.ref==it.ref);const pr=h&&h.plan.find(p=>p.trade===i);const row=pr?(T.plan||[]).find(r=>r.n==pr.n):null;if(row&&!row.tid){row.tid=x.id;B.plan.push({id:T.id,tid:x.id})}else{const r0=(T.plan||[]).find(r=>!r.tid);stLinkPlan(T,x);if(r0&&r0.tid==x.id)B.plan.push({id:T.id,tid:x.id})}}});
  for(const it of P.up){if(!it.on||it.err.length)continue;for(const d of it.diff)setF(it.T,d.f,d.nw)}
  S.events=S.events||[];for(const it of P.ev){if(!it.on||it.err.length)continue;const e=Object.assign({id:'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),done:0,src:'ai',batch:B.id},it.e);S.events.push(e);B.ev.push(e.id)}
+ for(const it of P.rv||[]){if(!it.on||it.err.length)continue;const T=it.T;T.aiRev=(T.aiRev||[]).concat([Object.assign({},it.r,{ai:B.ai,q:B.q,batch:B.id})]).slice(-20);B.rv.push(T.id)}
  // 賣到股數歸零的論點：出場原因依賣出依據
  stSync(S);for(const x of made.filter(Boolean)){if(x.k!='sell'||!x.thesisId)continue;const T=stThesis(S,x.thesisId);if(T&&T.status=='exit'&&!T.exit.reason){T.exit.reason=AS_RS2EXIT[x.rs]||'';T.exit.date=T.exit.date||x.dt}}
- const sum=`交易 ${B.tr.length}、新論點 ${B.th.length}${B.th.length?'（'+B.th.join('、')+'）':''}、修改 ${new Set(B.upd.map(u=>u.id)).size}、事件 ${B.ev.length}${B.ol.length?'、前瞻 '+B.ol.length:''}${B.tm.length?'、主題 '+B.tm.length:''}${B.sg.length?'、策略 '+B.sg.map(x=>x.id).join('、'):''}`;B.sum=sum;
+ const sum=`交易 ${B.tr.length}、新論點 ${B.th.length}${B.th.length?'（'+B.th.join('、')+'）':''}、修改 ${new Set(B.upd.map(u=>u.id)).size}、事件 ${B.ev.length}${B.ol.length?'、前瞻 '+B.ol.length:''}${B.tm.length?'、主題 '+B.tm.length:''}${B.sg.length?'、策略 '+B.sg.map(x=>x.id).join('、'):''}${B.rv.length?'、AI 看法 '+B.rv.length:''}`;B.sum=sum;
  S.imports=[B].concat(S.imports||[]).slice(0,20);
  if(typeof trEd!='undefined')trEd.clear();renderTrades();stBuild();upd();if(typeof pxApply=='function')pxApply();AIP=null;AIX='';
  $('asOvB').innerHTML=`<div class=ovh><button onclick="asClose()">✕</button><b>✅ 已匯入</b></div><div>${esc(sum)}</div>
   ${S.bkAsk===0?'':`<div class=stal style="margin-top:8px"><b>要匯出備份嗎？</b><div class=asbtn><button class=pri onclick="exp();asClose()">⬇️ 匯出設定檔</button><button onclick="asClose()">這次不用</button></div><label class=ck style="margin-top:4px"><input type=checkbox onchange="S.bkAsk=this.checked?0:1;save()">以後匯入後不要再問（仍會在超過 7 天沒備份時提醒）</label></div>`}
-  <div class=asbtn><button onclick="aiOpen()">再貼一次</button><button onclick="asClose()">回資產頁</button></div>`};
+  <div class=asbtn><button onclick="aiOpen({tab:'paste'})">再貼一次</button><button onclick="asClose()">回資產頁</button></div>`};
 window.aiUndo=async id=>{const B=(S.imports||[]).find(b=>b.id==id);if(!B||B.undone)return;if(!confirm(`整批復原 ${aiT(B.at)} 的匯入（${B.sum}）？目前的資料會先存成還原點。`))return;await rpSave('整批復原前');
  const tr=new Set(B.tr),th=new Set(B.th),ev=new Set(B.ev);S.trades=S.trades.filter(x=>!tr.has(x.id));S.theses=S.theses.filter(T=>!th.has(T.id));S.trades.forEach(x=>{if(th.has(x.thesisId))x.thesisId=''});S.events=(S.events||[]).filter(e=>!ev.has(e.id));
  for(const u of B.upd.slice().reverse()){const T=stThesis(S,u.id);if(T)T[u.f]=u.old}for(const p of B.plan||[]){const T=stThesis(S,p.id);if(T)(T.plan||[]).forEach(r=>{if(r.tid==p.tid)r.tid=''})}
@@ -199,10 +241,10 @@ window.aiUndo=async id=>{const B=(S.imports||[]).find(b=>b.id==id);if(!B||B.undo
  for(const x of (B.ol||[]).slice().reverse()){const o=JSON.parse(x.o),a=JSON.parse(x.a);if(o==null)delete S.outlook[x.c];else S.outlook[x.c]=o;if(a==null)delete S.attr[x.c];else S.attr[x.c]=a}
  for(const x of (B.tm||[]).slice().reverse()){const o=JSON.parse(x.o);if(o==null)delete S.themes[x.n];else S.themes[x.n]=o}
  for(const x of (B.sg||[]).slice().reverse()){const o=JSON.parse(x.o),k=S.strategies.findIndex(s=>s.id==x.id);if(o==null){if(k>=0)S.strategies.splice(k,1)}else if(k>=0)S.strategies[k]=o;else S.strategies.push(o)}
- for(const T of S.theses)if(T.status=='exit'&&stPerf(S,T).open)T.status='hold';
- B.undone=TODAY;if(typeof trEd!='undefined')trEd.clear();renderTrades();stBuild();upd();toast('已整批復原',0);aiOpen()};
+ for(const T of S.theses){if(T.aiRev)T.aiRev=T.aiRev.filter(x=>x.batch!=B.id);if(T.status=='exit'&&stPerf(S,T).open)T.status='hold'}
+ B.undone=TODAY;if(typeof trEd!='undefined')trEd.clear();renderTrades();stBuild();upd();toast('已整批復原',0);aiOpen({tab:'paste'})};
 async function aiSide(){const el=$('aiSd');if(!el)return;const L=await rpAll(),I=(S.imports||[]).slice(0,10);
- el.innerHTML=`<details style="margin-top:10px"><summary class=h>📜 匯入紀錄（${I.length}）</summary>${I.map(b=>`<div class=astl><span>${esc(aiT(b.at))}</span><span>${esc(b.sum||'')}${b.undone?' <small class=h>已復原</small>':''}</span>${b.undone?'<span></span>':`<button onclick="aiUndo('${b.id}')">整批復原</button>`}</div>`).join('')||'<div class=h>還沒有匯入過。</div>'}</details>
+ el.innerHTML=`<details style="margin-top:10px"><summary class=h>📜 匯入紀錄（${I.length}）</summary>${I.map(b=>`<div class=astl><span>${esc(aiT(b.at))}</span><span>${esc(b.sum||'')}${b.ai||b.q?` <small class=h>（${esc([b.ai,(typeof AA_Q!='undefined'&&AA_Q[b.q])||''].filter(Boolean).join('｜'))}）</small>`:''}${b.undone?' <small class=h>已復原</small>':''}</span>${b.undone?'<span></span>':`<button onclick="aiUndo('${b.id}')">整批復原</button>`}</div>`).join('')||'<div class=h>還沒有匯入過。</div>'}</details>
  <details style="margin-top:6px"><summary class=h>🛟 還原點（最近 ${RP_MAX} 份，只存在這台裝置的瀏覽器）</summary>${L.map(o=>`<div class=astl><span>${esc(aiT(o.at))}</span><span>${esc(o.label)}｜${o.n} 筆交易</span><button onclick="rpRestore(${o.id})">還原</button></div>`).join('')||'<div class=h>還沒有還原點（每次匯入前會自動建立）。</div>'}
  <label class=ck style="margin-top:6px"><input type=checkbox ${S.bkAsk===0?'':'checked'} onchange="S.bkAsk=this.checked?1:0;save()">匯入後詢問要不要匯出備份</label></details>`}
 
