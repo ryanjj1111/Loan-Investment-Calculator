@@ -47,7 +47,7 @@ const INFO={
  perfP:'這次結算時點的被動、主動部位撥款以來時間加權報酬，與對照基準 ETF 同期報酬比較。'};
 const CARDS=[['health','健康燈號'],['alpha','實際績效'],['perf','被動／主動 vs 基準'],['fc','預測期末淨效益'],['be','划算門檻'],['risk','距離停損線'],['dep','建倉進度'],['cf','月現金流'],['lev','槓桿與安全存量'],['early','提前清償比較'],['mn','預測最低真實淨資產']];
 const LINES=[['l_plan','原始計畫','#94a3b8','dash'],['l_af','A 面額（比不投資）','#7c3aed','line'],['l_b','B 定投收益','#ea580c','line'],['l_ao','C 機會成本＝A−B（比定投）','#7c3aed','dash'],['l_sc','壓力情境','#dc2626','dash'],['l_sl','停損線','#b91c1c','line'],['l_pt','實際結算','#16a34a','dot']];
-const RULES={loss1:['虧損上限 ①','已用掉虧損上限的(%)'],loss2:['虧損上限 ②（減碼）','已用掉虧損上限的(%)'],loss3:['虧損上限 ③（停損）','已用掉虧損上限的(%)'],dd:['帳戶回撤','帳戶總值從高點回落達(%)'],cash:['安全存量不足','現金＋被動可撐月數低於(月)'],lev:['槓桿過高','信貸餘額÷帳戶總值高於(%)'],cneg:['機會成本連續為負','C 連續為負達(次結算；情境以季計)'],xirr:['XIRR 低於信貸成本','連續低於信貸成本達(次結算)'],dip:['逢低加碼時機','基準 ETF 從近期高點回落達(%)'],rate:['利率上升','信貸利率達到(%)']};
+const RULES={loss1:['虧損上限 ①','已用掉虧損上限的(%)'],loss2:['虧損上限 ②（主動減半）','已用掉虧損上限的(%)'],loss3:['虧損上限 ③（主動全出）','已用掉虧損上限的(%)'],loss4:['虧損上限 ④（被動也出）','已用掉虧損上限的(%)'],rebuy:['買回時機','基準 ETF 收盤站上幾日均線（120＝半年線）'],dd:['帳戶回撤','帳戶總值從高點回落達(%)'],cash:['安全存量不足','現金＋被動可撐月數低於(月)'],lev:['槓桿過高','信貸餘額÷帳戶總值高於(%)'],cneg:['機會成本連續為負','C 連續為負達(次結算；情境以季計)'],xirr:['XIRR 低於信貸成本','連續低於信貸成本達(次結算)'],dip:['逢低加碼時機','基準 ETF 從近期高點回落達(%)'],rate:['利率上升','信貸利率達到(%)']};
 const SCF=[['市場',[['st','開始於撥款後第幾個月'],['dr','股市跌幅(%)：股票 ETF 與原有持股'],['dn','下跌期間(月)'],['rc','回升期間(月，0＝不回升)'],['ba','主動跌幅倍數'],['bb','債券 ETF 跌幅倍數'],['dc','壓力期間配息縮水(%)']]],['利率',[['ru','升息(百分點，從開始月起)']]],['收入與支出',[['il','收入中斷(月)'],['ic','減薪(%)'],['icm','減薪持續(月，0＝到期末)'],['sh','突發支出(萬，開始月一次)'],['fu','固定支出增加(元/月)']]]];
 const SC0={n:'基準',st:1,dr:0,dn:1,rc:0,ba:1,bb:0,dc:0,ru:0,il:0,ic:0,icm:0,sh:0,fu:0};
 const AK=[['Wc','保留現金'],['Wp','被動'],['Wa','主動']];
@@ -84,31 +84,31 @@ function autoKey(){const u=AK.map(a=>a[0]).filter(k=>!S.lk[k]);return u.length==
 function build(){
  const sameM=build.m===S.ui;build.m=S.ui;const op=sameM?[...document.querySelectorAll('#ctl details')].map(d=>d.open):[],ak=autoKey();
  $('ctl').innerHTML=isS()?simpleCtl():
-  `<details open><summary>信貸條件</summary><div class=g>${fld(['L','貸款金額(萬)'])}${fld(['Y','年期(年)'])}<label>撥款日期<input type=date data-p="dd" data-t="s" value="${S.dd||''}"></label>${fld(['fee','開辦費(元)'])}</div>
+  `<details ${dOpen("信貸條件",1)}><summary>信貸條件</summary><div class=g>${fld(['L','貸款金額(萬)'])}${fld(['Y','年期(年)'])}<label>撥款日期<input type=date data-p="dd" data-t="s" value="${S.dd||''}"></label>${fld(['fee','開辦費(元)'])}</div>
    <label class=ck style="margin-top:6px"><input type=checkbox data-p="feeDed" data-t="b" ${S.feeDed?'checked':''}>開辦費從撥款金額直接扣除（取消＝用口袋另付）</label>
    <div class=h id=payday></div>
    <div class=sub>利率（從第幾期起適用；優惠期、機動利率調整就新增一列）</div>
    <div class="row r-tl h"><span>從第幾期起</span><span>年利率(%)</span><span></span></div>${S.rates.map((e,i)=>`<div class="row r-tl">${inp('rates.'+i+'.k',e.k)}${inp('rates.'+i+'.r',e.r)}${del('rates',i)}</div>`).join('')}<button onclick="addRow('rates')">＋新增利率</button></details>`+
-  `<details open><summary>資金配置（萬元）</summary><div class=g3>${AK.map(([k,l])=>`<label>${l}${k==ak?'（自動）':''}<div class=lkw><button onclick="tgLk('${k}')" title="鎖定">${S.lk[k]?'🔒':'🔓'}</button><input type=number step=any data-a="${k}" value="${esc(S[k])}" ${S.lk[k]||k==ak?'disabled':''}></div></label>`).join('')}</div>
+  `<details ${dOpen("資金配置（萬元）",1)}><summary>資金配置（萬元）</summary><div class=g3>${AK.map(([k,l])=>`<label>${l}${k==ak?'（自動）':''}<div class=lkw><button onclick="tgLk('${k}')" title="鎖定">${S.lk[k]?'🔒':'🔓'}</button><input type=number step=any data-a="${k}" value="${esc(S[k])}" ${S.lk[k]||k==ak?'disabled':''}></div></label>`).join('')}</div>
    <div class=h id=ahint style="margin-top:4px"></div>
    <div class=g style="margin-top:6px">${[['K','分批月數(含撥款月)'],['Ra','主動預期報酬(%)'],['cr','閒置現金利率(%)']].map(fld).join('')}</div>
    <div class=sub>被動 ETF（可增列；價格報酬＝淨值漲跌不含息；配息以季配估算；抵減＝適用股利 8.5% 抵減）</div><div class="row r-etf h"><span>名稱</span><span>比例%</span><span>價格報酬%</span><span>殖利率%</span><span>抵減</span><span></span></div>${S.etfs.map((e,i)=>`<div class="row r-etf">${inp('etfs.'+i+'.n',e.n,'s')}${inp('etfs.'+i+'.w',e.w)}${inp('etfs.'+i+'.p',e.p)}${inp('etfs.'+i+'.y',e.y)}<input type=checkbox data-p="etfs.${i}.c" data-t="b" ${+e.c?'checked':''}>${del('etfs',i)}</div>`).join('')}<button onclick="addRow('etfs')">＋新增 ETF</button> <span id=wsum class=h></span>${refHTML()}</details>`+
-  `<details open><summary>每月現金流（時間軸）</summary><div class=h>每筆從該月起適用，直到下一筆為止。只用來檢查每月付不付得起信貸。</div><div class=sub>每月收入</div>${tlEd('sals','v','月實領(元)')}<div class=sub>每月固定支出（房貸、生活費、保險等合計）</div>${tlEd('livs','v','每月合計(元)')}</details>`+
-  `<details open><summary>撥款前狀態與對照基準</summary><div class=h>撥款前追蹤帳戶的持股與現金，是判斷「借錢多賺多少」的基準。</div>
+  `<details ${dOpen("每月現金流（時間軸）",0)}><summary>每月現金流（時間軸）</summary><div class=h>每筆從該月起適用，直到下一筆為止。只用來檢查每月付不付得起信貸。</div><div class=sub>每月收入</div>${tlEd('sals','v','月實領(元)')}<div class=sub>每月固定支出（房貸、生活費、保險等合計）</div>${tlEd('livs','v','每月合計(元)')}</details>`+
+  `<details ${dOpen("撥款前狀態與對照基準",0)}><summary>撥款前狀態與對照基準</summary><div class=h>撥款前追蹤帳戶的持股與現金，是判斷「借錢多賺多少」的基準。</div>
    <div class=seg style="margin:6px 0"><button class="${S.initMode=='none'?'on':''}" onclick="setInitMode('none')">無（全新帳戶）</button><button class="${S.initMode=='total'?'on':''}" onclick="setInitMode('total')">直接填總額</button><button class="${S.initMode=='detail'?'on':''}" onclick="setInitMode('detail')">逐檔明細</button></div>
    ${S.initMode=='none'?`<div class=h style="margin:4px 0">信貸資金放在全新帳戶、沒有撥款前的持股與現金時選這個；借錢的效果就等於帳戶淨值。</div>`:''}
    ${S.initMode=='detail'?`<div class="h">最準：結算時逐檔用現價計算「不借錢的話」的價值。</div><div class="h mob">每檔三行：帳戶｜代號｜名稱／股數｜撥款日收盤價／原始成本</div><div class="r-in h"><span class=w-ac>帳戶</span><span class=w-c>代號</span><span class=w-n>名稱</span><span class=w-q>股數</span><span class=w-p>撥款日收盤價</span><span class=w-c0>原始成本(元)</span></div>${(S.init||[]).map((r,i)=>`<div class=r-in><select class=w-ac data-p="init.${i}.ac" data-t="s"><option value=p ${r.ac!='a'?'selected':''}>被動部位</option><option value=a ${r.ac=='a'?'selected':''}>主動部位</option></select>${inp('init.'+i+'.n',r.n,'s','class=w-c placeholder="代號" autocomplete=off')}<span class=w-n id="inN${i}">${esc(nameOf(r.n))}</span>${inp('init.'+i+'.q',r.q,'o','class=w-q placeholder="股數"')}${inp('init.'+i+'.px',r.px,'o','class=w-p placeholder="收盤價"')}${inp('init.'+i+'.c0',r.c0,'o','class=w-c0 placeholder="原始成本(選填)"')}${del('init',i)}</div>`).join('')}<div class=h>原始成本：券商 App 上這批股票的付出成本（元，選填，含手續費）。只用在「📊 資產」顯示跟 App 一樣的損益，信貸計算仍用撥款日收盤價。</div><button onclick="addRow('init')">＋新增一檔</button><div class=h id=initSum style="margin-top:4px"></div>`:S.initMode=='total'?`<div class=h>結算時以「撥款前市值 × 對照基準 ETF 的漲跌」估算「不借錢的話」，原有持股和基準走勢不同時會有誤差。</div><div class=g>${fld(['sv0p','撥款前被動市值(萬)'])}${fld(['sv0a','撥款前主動市值(萬)'])}</div>`:''}
    <div class=g style="margin-top:6px">${S.initMode!='none'?fld(['sc0','撥款前帳戶現金(萬)']):''}<label>對照基準 ETF（代號）${inp('bm',S.bm,'s','placeholder="0050"')}<span class=h id=bmN>${esc(nameOf(S.bm))}</span></label>${hasInit(S)&&(S.init||[]).some(r=>cU(r.n)==bmC(S))?`<label>撥款日 ${esc(bmC(S))} 價格(元)<input value="${esc(S.p0050)}" disabled></label>`:fld(['p0050','撥款日 '+bmC(S)+' 價格(元)','o'])}${fld(['br','機會成本報酬率(%)：月付金若改投入的年報酬'])}</div></details>`+
-  `<details><summary>稅費與手續費</summary><div class=g>${[['tax','所得稅級距(%)'],['stE','ETF證交稅(%)'],['stS','股票證交稅(%)']].map(fld).join('')}</div>
+  `<details ${dOpen("稅費與手續費",0)}><summary>稅費與手續費</summary><div class=g>${[['tax','所得稅級距(%)'],['stE','ETF證交稅(%)'],['stS','股票證交稅(%)']].map(fld).join('')}</div>
    <div class=sub>券商手續費（牌告 0.1425% × 折數；2 折填 2，不打折填 10）</div><label class=ck><input type=checkbox data-p="feeSame" data-t="b" ${S.feeSame?'checked':''} onchange="setTimeout(build,0)">被動、主動用同一家券商</label><div class=g>${S.feeSame?`<label>折數${inp('fees.p.d',S.fees.p.d)}</label><label>最低收費(元)${inp('fees.p.mn',S.fees.p.mn)}</label>`:`<label>被動部位 折數${inp('fees.p.d',S.fees.p.d)}</label><label>被動部位 最低收費(元)${inp('fees.p.mn',S.fees.p.mn)}</label><label>主動部位 折數${inp('fees.a.d',S.fees.a.d)}</label><label>主動部位 最低收費(元)${inp('fees.a.mn',S.fees.a.mn)}</label>`}</div>
    <div class=g><label>折讓方式<select data-p="feeMode" data-t="s" onchange="setTimeout(build,0)"><option value="now" ${S.feeMode!='month'?'selected':''}>成交時直接打折</option><option value="month" ${S.feeMode=='month'?'selected':''}>交易時收全額、每月退回</option></select></label>${S.feeMode=='month'?`<label>退款日（次月幾號，大概就好）${inp('feeDay',S.feeDay,'o')}</label>`:''}</div>
    ${S.feeMode=='month'?'<div class=h>每月退回：信貸與策略仍用折讓後的實際成本；「📊 資產」的成本用全額手續費（和券商 App 一樣）；結算時還沒退回的折讓會自動算成應收退款加回現金，不用另外記錄。</div>':''}
    <div class=h>交易紀錄自動計算手續費、試算頁預測的買賣成本都用這裡的設定（預測不計最低收費）。賣出證交稅：代號 00 開頭以 ETF 稅率計，其餘以股票稅率計。</div></details>`+
-  `<details><summary>情境</summary><div class=sub>提前清償</div><div class=tg>${tg('early','啟用提前清償（一次還清）')}</div><div class=g style="margin-top:4px">${fld(['E','提前清償第幾期（也用於比較卡）'])}${fld(['lock','綁約(月)'])}${fld(['pen','違約金(%)'])}</div>
+  `<details ${dOpen("情境",0)}><summary>情境</summary><div class=sub>提前清償</div><div class=tg>${tg('early','啟用提前清償（一次還清）')}</div><div class=g style="margin-top:4px">${fld(['E','提前清償第幾期（也用於比較卡）'])}${fld(['lock','綁約(月)'])}${fld(['pen','違約金(%)'])}</div>
    <div class=sub>其他</div><div class=tg>${tg('grow','原有部位成長（只影響真實淨資產底線檢查）')}</div><div class=h style="margin-top:4px">市場下跌、收入中斷等壓力測試請到「🛡️ 風險」分頁。</div></details>`+
   `<div style="margin-top:8px"><button onclick="resetPlan()">📌 以目前設定重設「原始計畫」線</button> <span class=h id=pinfo></span></div>`;
  if(op.length)document.querySelectorAll('#ctl details').forEach((d,i)=>{if(i<op.length)d.open=op[i]});
- $('s1').innerHTML=`<label>結算日期${dIn('cur.dt',S.cur.dt,'結算日期')}</label>`+(usePx(S)?cashIns():`${cf_('x50',bmC(S)+' 價格(元)')}${cf_('p','被動部位市值(萬)')}${cf_('a','主動部位市值(萬)')}`+cashIns())+`<label style="grid-column:span 2">備註${inp('cur.note',S.cur.note,'s')}</label>`;
+ $('s1').innerHTML=`<label>結算日期 ${S.cur.dtFix?`<span class=h>📌 固定</span> <a href="#" onclick="curToday();return false" class=h>回到今天</a>`:'<span class=h>（自動：今天）</span>'}${dIn('cur.dt',S.cur.dt,'結算日期')}</label>`+(usePx(S)?cashIns():`${cf_('x50',bmC(S)+' 價格(元)')}${cf_('p','被動部位市值(萬)')}${cf_('a','主動部位市值(萬)')}`+cashIns())+`<label style="grid-column:span 2">備註${inp('cur.note',S.cur.note,'s')}</label>`;
  $('s1h').innerText=usePx(S)?'現金照券商 App 上的交割帳戶餘額填寫；現價每個交易日收盤後自動帶入（要改到「📊 資產 → 持股明細表」），被動、主動市值自動計算（可在「修正」覆寫）。尚未交割的交易、尚未發放的股利、還沒退回的手續費折讓會自動處理。':'市值與現金照券商 App 抄；尚未交割的交易與尚未發放的股利會自動處理。建議在試算頁「撥款前狀態」改用逐檔明細，結算只要填各檔現價，借錢效果也會更準。';
  $('s3').innerHTML=cf_('rem','剩餘本金(萬)：以銀行為準時才填')+(usePx(S)?cf_('p','被動市值(萬)：漏填現價或有特殊部位時才填')+cf_('a','主動市值(萬)：漏填現價或有特殊部位時才填'):'')+cf_('bp','本期被動淨買進(萬)：沒記交易紀錄時才填')+cf_('ba','本期主動淨買進(萬)：沒記交易紀錄時才填');
  renderTrades();
@@ -118,7 +118,7 @@ function build(){
  if(!(S.scSel>=0&&S.scSel<S.scen.length))S.scSel=0;const si=S.scSel,sc=S.scen[si];
  $('pkw').innerHTML=fld(['pk0','口袋緩衝(萬)：帳戶以外可動用的緊急預備金'])+`<label class=ck style="align-self:end"><input type=checkbox data-p="pkAcc" data-t="b" ${S.pkAcc?'checked':''}>每月結餘（收入−固定支出−月付）累積進口袋緩衝</label>`;
  $('scEd').innerHTML=`<label style="margin-top:6px">情境名稱${inp('scen.'+si+'.n',sc.n,'s')}</label>`+SCF.map(([g,fs])=>`<div class=sub>${g}</div><div class=g>${fs.map(([k,l])=>`<label>${l}${inp('scen.'+si+'.'+k,sc[k])}</label>`).join('')}</div>`).join('')+`<div class=h id=scNote style="margin-top:4px"></div><div style="margin-top:6px"><button onclick="resetScen()">↺ 還原四個預設情境</button></div>`;
- $('rulesEd').innerHTML=S.rules.map((r,i)=>{const d=RULES[r.k]||[r.k,''];return`<div class=ru id="ru_${r.k}"><div class=hd><label class=ck><input type=checkbox data-p="rules.${i}.on" data-t="b" ${r.on?'checked':''}><b>${d[0]}</b></label><span id="rn_${r.k}"></span></div><div class="row r-ru" style="margin-top:4px"><span class=h>${d[1]}</span>${inp('rules.'+i+'.th',r.th)}</div>${r.k=='dip'?`<label>基準 ETF 近期高點(元)：自行填寫${inp('hi50',S.hi50,'o')}</label>`:''}<label>應對動作${inp('rules.'+i+'.a',r.a,'s')}</label><div class=h id="rs_${r.k}"></div></div>`}).join('');
+ $('rulesEd').innerHTML=S.rules.map((r,i)=>{const d=RULES[r.k]||[r.k,''];return`<div class=ru id="ru_${r.k}"><div class=hd><label class=ck><input type=checkbox data-p="rules.${i}.on" data-t="b" ${r.on?'checked':''}><b>${d[0]}</b></label><span id="rn_${r.k}"></span></div><div class="row r-ru" style="margin-top:4px"><span class=h>${d[1]}</span>${inp('rules.'+i+'.th',r.th)}</div>${r.k=='dip'?`<label>基準 ETF 近期高點(元)：自行填寫${inp('hi50',S.hi50,'o')}</label>`:''}${r.k=='rebuy'?`<div class=h>觸發 ②～④ 賣出後，${bmC(S)} 收盤站上這條均線就提醒買回。買回後按下面的按鈕，虧損上限從那天的狀態重新起算（回測 v5：2013～2019 每年起算的 7 年期，這樣做最差的一次和不設規則一樣）。</div><div style="margin-top:4px">${num(S.lossRef)?`<span class=h>${esc(S.lossRefD||'')} 已重新起算（當時信貸淨效益 ${W2(num(S.lossRef))} 萬）</span> <button class=lk onclick="lossRefSet(0)">取消重新起算</button>`:`<button class=lk onclick="lossRefSet(1)">已買回，重新起算</button>`}</div>`:''}<label>應對動作${inp('rules.'+i+'.a',r.a,'s')}</label><div class=h id="rs_${r.k}"></div></div>`}).join('');
  $('slIn').innerHTML=fld(['loss','虧損上限：貸款金額的(%)'])+fld(['lossZ','② 減碼試算：假設股市再跌(%)'])+`<label style="grid-column:span 2">停損時轉入的低風險標的（由你選擇）<select data-p="lossTo" data-t="s"><option value="" ${!S.lossTo?'selected':''}>請選擇</option>${S.etfs.map(e=>`<option value="${esc(e.n)}" ${String(S.lossTo)==String(e.n)?'selected':''}>${esc(e.n)}（被動清單）</option>`).join('')}<option value="__cash" ${S.lossTo=='__cash'?'selected':''}>帳戶現金</option></select></label>`;
  $('rbw').innerHTML=fld(['rb','再平衡：被動比例容許偏離(百分點)'])+fld(['du','逢低加碼時動用帳戶現金比例(%)']);
  applyUi();if(typeof stBuild=='function')stBuild();if(typeof asBuild=='function')asBuild();
@@ -164,8 +164,8 @@ function simpleCtl(){const one=a=>a&&a.length==1;
  `<details open><summary>③ 每月與風險</summary><div class=g>${tlF('sals','每月收入(元)')}${tlF('livs','每月固定支出(元)')}${fld(['loss','虧損上限：貸款金額的(%)'])}${fld(['br','不借錢、每月定期定額的預期年報酬(%)'])}</div><div class=h id=lossH></div><div class=h style="margin-top:4px">收入與固定支出只用來檢查每月付不付得起信貸。</div></details>`}
 function sRebal(){const av=deposit(S)/1e4;let ex=(+S.Wp||0)+(+S.Wa||0)-av;if(ex>0){const r=Math.min(ex,+S.Wa||0);S.Wa=rr((+S.Wa||0)-r);ex-=r;if(ex>0)S.Wp=rr(Math.max(0,(+S.Wp||0)-ex))}S.Wc=rr(Math.max(0,av-(+S.Wp||0)-(+S.Wa||0)))}
 function applyUi(){if(typeof stApplyWs=='function')stApplyWs();document.body.classList.toggle('simple',isS());$('uiS').className=isS()?'on':'';$('uiP').className=isS()?'':'on';document.querySelectorAll('#rngS button').forEach(b=>b.className=(S.rng||'all')==b.dataset.r?'on':'');applyPin()}
-window.setUi=m=>{if(S.ui==m)return;S.ui=m;hi=null;if(m=='simple'){curT='F'}build();if(m=='simple')tab('F');else tab(ls('lct2')||'F');save()};
-window.pickUi=m=>{$('chz').style.display='none';S.ui=m;hi=null;build();tab(m=='simple'?'F':(ls('lct2')||'F'));save();if(m=='pro'&&ls('lcg')!='1')showGd()};
+window.setUi=m=>{if(S.ui==m)return;S.ui=m;hi=null;if(m=='simple'){curT='F'}build();if(m=='simple')tab('F');else tab(ls('lct2')||'S');save()};
+window.pickUi=m=>{$('chz').style.display='none';S.ui=m;hi=null;build();tab(m=='simple'?'F':(ls('lct2')||'S'));save();if(m=='pro'&&ls('lcg')!='1')showGd()};
 window.goPro=()=>{setUi('pro');tab('F');setTimeout(()=>$('ctl').scrollIntoView({behavior:'smooth',block:'start'}),60)};
 window.setRng=r=>{S.rng=r;hi=null;applyUi();save();draw()};
 window.clrHi=()=>{hi=null;draw()};
@@ -176,21 +176,30 @@ window.resetScen=()=>{if(confirm('把四個情境的參數還原成預設值？'
 // 應對規則：以一串已結算結果（依時間排序，最後一筆為「目前」）判斷
 function ruleNow(list,s,emM,lev,aprE,tNow,afNow){const init=(S.sv0+S.sc0)*1e4,r=list[list.length-1],o={};
  for(const R_ of S.rules){const th=+R_.th||0;let v=null,hit=null;
-  if(/^loss/.test(R_.k)){const B=lossB(S);if(!(B>0))v='未設定虧損上限';else if(afNow!=null){const u=Math.max(0,-afNow)/B*100;v='已用 '+u.toFixed(0)+'%（虧 '+W(Math.max(0,-afNow))+' 萬）';hit=u>=th}}
+  if(/^loss/.test(R_.k)){const B=lossB(S);if(!(B>0))v='未設定虧損上限';else if(afNow!=null){const u=Math.max(0,-lossAf(afNow))/B*100;v='已用 '+u.toFixed(0)+'%（虧 '+W(Math.max(0,-afNow))+' 萬）';hit=u>=th}}
   else if(R_.k=='dd'){if(r){const pk=Math.max(init+deposit(S),...list.map(x=>x.scope)),d=pk>0?Math.max(0,(1-r.scope/pk)*100):0;v='回落 '+d.toFixed(1)+'%';hit=d>=th}}
   else if(R_.k=='cash'){v=isFinite(emM)?emM.toFixed(1)+' 個月':'—';hit=emM<th}
   else if(R_.k=='lev'){v=lev.toFixed(1)+'%';hit=lev>th}
   else if(R_.k=='cneg'){if(r){let n=0;for(let i=list.length-1;i>=0&&list[i].ao<0;i--)n++;v='連續 '+n+' 次';hit=n>=th}}
   else if(R_.k=='xirr'){if(r){let n=0;for(let i=list.length-1;i>=0&&!isNaN(list[i].x)&&list[i].x<aprE;i--)n++;v='連續 '+n+' 次';hit=n>=th}}
   else if(R_.k=='dip'){const x=num(s&&s.x50),hh=num(S.hi50)??num(s&&s.hi50);if(x!=null&&hh){const d=(1-x/hh)*100;v='回落 '+d.toFixed(1)+'%';hit=d>=th}else v='需填 '+bmC(S)+' 現價與近期高點'}
+  else if(R_.k=='rebuy'){const m=typeof CK!='undefined'&&CK&&typeof ckM0=='function'?ckM0(bmC(S)):null,n=th||120,ma=m?(n<=20?m.m20:n<=60?m.m60:m.m120):null;
+   const sold=S.rules.some(x=>/^loss[234]$/.test(x.k)&&x.on&&lossB(S)>0&&afNow!=null&&Math.max(0,-lossAf(afNow))/lossB(S)*100>=+x.th);
+   if(!m||ma==null)v='讀取 '+bmC(S)+' 均線中';else{const up=m.c>ma;v=`${bmC(S)} 收盤 ${m.c}，${n<=20?'月線':n<=60?'季線':'半年線'} ${ma}（${up?'站上':'在下方'}）`+(num(S.lossRef)?`｜${S.lossRefD||''} 已重新起算`:'');hit=up&&sold}}
   else if(R_.k=='rate'){const rt=rateK(S,Math.max(1,tNow));v=rt.toFixed(2)+'%';hit=rt>=th}
   o[R_.k]={v,hit:R_.on?hit:null,on:R_.on}}
  return o}
-function slCalc(af,act,pas){const B=lossB(S),Z=Math.max(1,+S.lossZ||20),used=B>0?Math.max(0,-af)/B*100:0,rb=B+af,risky=Math.max(0,act)+Math.max(0,pas),x=Math.max(0,risky-Math.max(0,rb)/(Z/100)),sa=Math.min(x,Math.max(0,act));return{B,Z,used,rb,risky,Y:risky>0?Math.max(0,rb)/risky*100:null,x,sa,sp:x-sa,af}}
+// 買回後虧損上限重新起算：lossRef＝買回當時的信貸淨效益（元），之後的虧損從這裡算
+const lossAf=af=>af-(num(S.lossRef)||0);
+function slCalc(af,act,pas){af=lossAf(af);const B=lossB(S),Z=Math.max(1,+S.lossZ||20),used=B>0?Math.max(0,-af)/B*100:0,rb=B+af,risky=Math.max(0,act)+Math.max(0,pas),x=Math.max(0,risky-Math.max(0,rb)/(Z/100)),sa=Math.min(x,Math.max(0,act));return{B,Z,used,rb,risky,Y:risky>0?Math.max(0,rb)/risky*100:null,x,sa,sp:x-sa,af,act:Math.max(0,act),pas:Math.max(0,pas)}}
 // 信貸資金部位：帳戶股票 × 信貸占比；持股明細模式下，你選的轉入標的視為低風險、不計入
 const slSplit=(r)=>{const q=r.scope>0?Math.max(0,(r.scope-r.nle)/r.scope):0;let tv=0;if(S.lossTo&&S.lossTo!='__cash'){const c=String(S.lossTo).trim().toUpperCase();holdings(S).forEach(o=>{if(o.ac=='p'&&o.n.toUpperCase()==c&&o.q>0){const px=num((S.px||{})[c]);tv+=px!=null?o.q*px:o.cost}})}return{act:r.a*1e4*q,pas:Math.max(0,r.p*1e4*q-tv)}};
+window.lossRefSet=on=>{if(on){const r=settle(S,curEff());if(!r){alert('要先在結算填現金');return}if(!confirm('用今天的狀態重新起算虧損上限？之後的虧損從現在開始算。'))return;S.lossRef=Math.round(r.af);S.lossRefD=TODAY}else{S.lossRef='';S.lossRefD=''}save();build();upd()};
+// 設定的每一段記住打開或收合
+const dOpen=(k,d)=>{const v=ls('lcd_'+k);return`${(v==null?d:v=='1')?'open':''} ontoggle="ls('lcd_${k}',this.open?'1':'0')"`};
+window.yrTog=y=>{ls('lcyr',ls('lcyr')==String(y)?'':String(y));calc()};
 const tgName=()=>S.lossTo=='__cash'?'帳戶現金':(S.lossTo||'（尚未選擇轉入標的）');
-function slAct(k,sl){if(k=='loss2')return sl.x>0?`依規則：賣出 ${W2(sl.x)} 萬（主動 ${W2(sl.sa)}、被動 ${W2(sl.sp)}）轉入 ${tgName()}，之後股市再跌 ${sl.Z}% 最多虧到上限`:'剩餘額度足以承受再跌 '+sl.Z+'%，不需減碼';if(k=='loss3')return`依規則：信貸資金的股票部位約 ${W2(sl.risky)} 萬全部轉入 ${tgName()}`;return''}
+function slAct(k,sl){if(k=='loss2')return`依規則：信貸資金的主動部位約 ${W2(sl.act)} 萬，賣出一半約 ${W2(sl.act/2)} 萬轉入 ${tgName()}`;if(k=='loss3')return`依規則：信貸資金的主動部位約 ${W2(sl.act)} 萬全部轉入 ${tgName()}；被動先不動`;if(k=='loss4')return`依規則：信貸資金的被動部位約 ${W2(sl.pas)} 萬也轉入 ${tgName()}`;if(k=='rebuy')return'買回後按「🛡️ 風險 → 買回時機」的「已買回，重新起算」';return''}
 // 虧損上限 ①②③ 同時觸發時只保留最高的一段
 const topLoss=a=>{const l=a.filter(x=>/^loss/.test(x.k)),mx=l.length?l[l.length-1].k:null;return a.filter(x=>(!/^loss/.test(x.k)||x.k==mx)&&!(mx&&x.k=='dip'))};
 // 空白日期顯示提示文字，點了才變成日期選擇
@@ -221,7 +230,7 @@ function onIn(e){const d=e.target.dataset,el=e.target;
  if(!d.p)return;let v;
  if(d.t=='b')v=el.checked?1:0;else if(d.t=='s')v=el.value;else if(d.t=='o')v=el.value===''?'':+el.value;else{if(el.value==='')return;v=+el.value}
  setP(d.p,v);if(d.p=='dd'&&!v)return;norm(S);if(typeof stOnIn=='function')stOnIn(d.p,v);
- if(d.p=='cur.dt')S.cur.m=String(v).slice(0,7);if(d.p=='cur.ca'||d.p=='cur.cp')cashSync();{const mm=/^ledger\.(\d+)\.dt$/.exec(d.p);if(mm)S.ledger[+mm[1]].m=String(v).slice(0,7)}
+ if(d.p=='cur.dt'){S.cur.m=String(v).slice(0,7);S.cur.dtFix=1}if(d.p=='cur.ca'||d.p=='cur.cp')cashSync();{const mm=/^ledger\.(\d+)\.dt$/.exec(d.p);if(mm)S.ledger[+mm[1]].m=String(v).slice(0,7)}
  if(/^trades\.\d+\.(k|dt)$/.test(d.p)){renderTrades()}
  {const mm=/^init\.(\d+)\.n$/.exec(d.p);if(mm){const e=$('inN'+mm[1]);if(e)e.innerText=nameOf(v)}}
  if(d.p=='bm'){const e=$('bmN');if(e)e.innerText=nameOf(v)}
@@ -239,12 +248,18 @@ function autoPlan(){if(!hasSettle()||!S.plan||!S.plan.af||!S.plan.re){const r=pr
 window.resetPlan=()=>{if(confirm('以目前設定覆蓋「原始計畫」線？')){S.plan=null;autoPlan();calc()}};
 const cd=(k,t,v,c)=>`<div class=c><small>${t}${k&&INFO[k]?`<span class=ib data-i="${k}">ⓘ</span>`:''}</small><b class="${c||''}">${v}</b>${info.has(k)?`<div class=ix>${INFO[k]}</div>`:''}</div>`;
 const sg=v=>(v>=0?'+':'')+W2(v);
-function curEff(){const c=Object.assign({},S.cur);if(!usePx(S))return c;const dt=sDate(c)||TODAY,px=S.px||{},mv=marketVals(S,px,dt),nl=nleAt(S,px,dt),miss=[...new Set(mv.miss.concat(nl.miss))];
+// 結算日沒有固定時，自動跟著今天（2026-11-10）；手動改日期或載入舊結算時固定
+function curAuto(){if(S.cur&&!S.cur.dtFix&&S.cur.dt!==TODAY){S.cur.dt=TODAY;S.cur.m=TODAY.slice(0,7)}}
+window.curToday=()=>{S.cur.dtFix=0;curAuto();build();upd()};
+// 現金是在結算日之前填的：用填的那天的餘額，加減之後的買賣、配息推算到結算日（換算回「交割帳戶餘額」，結算時再處理未交割）
+function curCash(c,dt){const L=typeof cashLast=='function'?cashLast(S):null;if(!L||L.src!='cur'||!(L.d<dt))return;const A=cashAt(S,dt);if(!A)return;const pa=pendAt(S,dt),v=+((A.t-pa.adj)/1e4).toFixed(4);
+ if(Math.abs(v-L.t)<0.0001)return;c.c=v;c._cashEst={from:L.d,raw:L.t}}
+function curEff(){const c=Object.assign({},S.cur);curCash(c,sDate(c)||TODAY);if(!usePx(S))return c;const dt=sDate(c)||TODAY,px=S.px||{},mv=marketVals(S,px,dt),nl=nleAt(S,px,dt),miss=[...new Set(mv.miss.concat(nl.miss))];
  c._mv=mv;c._miss=miss;if(miss.length){if(num(c.p)==null||num(c.a)==null){c.p='';c.a=''}return c}
  if(num(c.p)==null)c.p=+(mv.p/1e4).toFixed(4);if(num(c.a)==null)c.a=+(mv.a/1e4).toFixed(4);c.nleS=+(nl.v/1e4).toFixed(4);c.pxs=Object.assign({},px);if(num(c.x50)==null&&num(px[bmC(S)])!=null)c.x50=px[bmC(S)];return c}
 function sortedSnaps(){return(S.snaps||[]).map((s,i)=>({s,i})).filter(o=>sDate(o.s)).sort((a,b)=>sDate(a.s)>sDate(b.s)?1:sDate(a.s)<sDate(b.s)?-1:a.i-b.i)}
 function calc(){
- norm(S);autoPlan();
+ norm(S);curAuto();autoPlan();
  const w=[],ws=S.etfs.reduce((a,e)=>a+(+e.w),0);if($('initSum'))$('initSum').innerText='被動 '+(+S.sv0p).toFixed(2)+' 萬｜主動 '+(+S.sv0a).toFixed(2)+' 萬｜合計 '+(+S.sv0).toFixed(2)+' 萬（股數 × 撥款日收盤價）';if($('wsum'))$('wsum').innerText='比例合計 '+ws+'%';
  if(Math.abs(ws-100)>.01)w.push('ETF 比例合計不是 100%（目前 '+ws+'%，計算時等比例換算）');
  const av=deposit(S)/1e4,asum=(+S.Wc||0)+(+S.Wp||0)+(+S.Wa||0),aok=Math.abs(asum-av)<0.005;
@@ -344,7 +359,8 @@ function calc(){
    const lst=prev.map(s=>settle(S,s)).filter(Boolean).concat([r]),q=ruleNow(lst,ce,em2,lv2,aprE,r.ts,r.af),hits=topLoss(S.rules.filter(x=>q[x.k]&&q[x.k].hit)),sp_=slSplit(r),slc=slCalc(r.af,sp_.act,sp_.pas);
    extra+=`<div class=c style="grid-column:span 2;text-align:left"><small>📏 應對規則提醒（規則可在「🛡️ 風險」分頁修改）</small><div style="margin-top:3px;font-size:12.5px;line-height:1.6">${hits.length?hits.map(x=>`⚠️ <b>${RULES[x.k][0]}</b>（${q[x.k].v}）<br><span class=h>→ ${esc(x.a)||'（未填應對動作）'}${slAct(x.k,slc)?'<br>　'+slAct(x.k,slc):''}</span>`).join('<br>'):'<span class=ok>✅ 沒有觸發的規則</span>'}</div></div>`}
   if(twC)extra+=cd('perfP','被動／主動 vs '+bmC(S)+'（撥款以來）',P1(twC.rp)+' / '+P1(twC.ra)+' / '+(r.sbOk?P1(r.sb):'—')+(r.sbOk?`<br><small>${bmC(S)} 依${r.sbSrc}｜超額 ${P1(twC.rp-r.sb)} / ${P1(twC.ra-r.sb)}</small>`:'<br><small>填 0050 還原價後可比較</small>'))}
- $('sres').innerHTML=r?(r.pa&&(r.pa.n||r.pa.dn||r.pa.rn)?`<div class="c" style="grid-column:span 2;text-align:left;background:#fef3c7;border-color:#fcd34d"><small>⚠️ 現金已自動調整</small><div style="font-size:12.5px;line-height:1.6;margin-top:2px">${r.pa.n?`有 ${r.pa.n} 筆交易在結算日尚未交割（T+2）：${r.pa.pay?'已扣除應付 '+R(r.pa.pay)+' 元':''}${r.pa.pay&&r.pa.rcv?'、':''}${r.pa.rcv?'已加回應收 '+R(r.pa.rcv)+' 元':''}。<br>`:''}${r.pa.dn?`有 ${r.pa.dn} 筆股利已除息、尚未發放：已加回應收股利 ${R(r.pa.dv)} 元。<br>`:''}${r.pa.rn?`有 ${r.pa.rn} 筆交易的手續費折讓還沒退回（每月退回）：已加回應收退款 ${R(r.pa.rb)} 元。<br>`:''}<span class=h>追蹤帳戶現金請照 App 上的餘額填寫。交割日只跳過週末，遇到國定假日請自行確認。現金合計 ${r.cRaw.toFixed(2)} → ${r.c.toFixed(2)} 萬</span></div></div>`:'')+cd('alpha','⚔️ Alpha　A｜B｜C',sg(r.af)+'｜'+sg(r.af-r.ao)+'｜'+sg(r.ao)+' 萬<br><small>A 面額｜B 定投收益｜C＝A−B 機會成本</small>',r.ao<0?'bad':'ok')+(()=>{const t=xirrT(r);return cd('xirr',t.l,t.v+(t.ann?'<br><small>vs 信貸成本 '+aprE.toFixed(2)+'%</small>':'<br><small>撥款至今 '+Math.round(t.days||0)+' 天，滿 6 個月後顯示年化</small>'),t.ann?(r.x>=aprE?'ok':'bad'):'')})()+cd(null,'已繳期數 / 剩餘本金',r.n+' 期 / '+W2(r.rem)+' 萬')+cd(null,'累計成本(月付+開辦+淨入金+費用)',W2(r.ext0)+' 萬')+cd('real','真實淨資產 / 對撥款前',W2(r.real)+' / '+sg(r.d0)+' 萬',r.d0<0?'bad':'ok')+cd('nle','沒借錢估計值',W2(r.nle)+' 萬'+(r.sbOk?'':'<br><small>未填 0050，以 0% 計</small>'))+extra+cd(null,'股息/利息 本期 / 累計（統計）',dCur.toFixed(2)+' / '+dsum.toFixed(2)+' 萬'):`<div class=h style="grid-column:span 2">${ce._miss&&ce._miss.length?'請在上方持股表填入以下各檔現價：'+ce._miss.map(c=>c+' '+nameOf(c)).join('、'):usePx(S)?'請選結算日期，填入追蹤帳戶現金與各檔現價。':'請選結算日期，並填入被動、主動市值與追蹤帳戶現金。'}</div>`;
+ const cE_=curEff()._cashEst;
+ $('sres').innerHTML=r?(r.pa&&(r.pa.n||r.pa.dn||r.pa.rn)||cE_?`<div class="c" style="grid-column:span 2;text-align:left;background:#fef3c7;border-color:#fcd34d"><small>⚠️ 現金已自動調整（結算日 ${esc(sDate(S.cur))}）</small><div style="font-size:12.5px;line-height:1.6;margin-top:2px">${cE_?`你的現金是 ${esc(cE_.from)} 填的 ${cE_.raw.toFixed(2)} 萬，已用之後的買賣、配息推算到結算日；請照 App 今天的餘額更新。<br>`:''}${r.pa.n?`有 ${r.pa.n} 筆交易在結算日還沒交割（T+2）：${r.pa.pay?'已扣除應付 '+R(r.pa.pay)+' 元':''}${r.pa.pay&&r.pa.rcv?'、':''}${r.pa.rcv?'已加回應收 '+R(r.pa.rcv)+' 元':''}。<br>`:''}${r.pa.dn?`有 ${r.pa.dn} 筆股利已除息、尚未發放：已加回應收股利 ${R(r.pa.dv)} 元。<br>`:''}${r.pa.rn?`有 ${r.pa.rn} 筆交易的手續費折讓還沒退回（每月退回）：已加回應收退款 ${R(r.pa.rb)} 元。<br>`:''}<span class=h>追蹤帳戶現金請照 App 上的餘額填寫。交割日只跳過週末，遇到國定假日請自行確認。${cE_?'推算的':''}交割帳戶餘額 ${r.cRaw.toFixed(2)} 萬 → 結算用 ${r.c.toFixed(2)} 萬</span></div></div>`:'')+cd('alpha','⚔️ Alpha　A｜B｜C',sg(r.af)+'｜'+sg(r.af-r.ao)+'｜'+sg(r.ao)+' 萬<br><small>A 面額｜B 定投收益｜C＝A−B 機會成本</small>',r.ao<0?'bad':'ok')+(()=>{const t=xirrT(r);return cd('xirr',t.l,t.v+(t.ann?'<br><small>vs 信貸成本 '+aprE.toFixed(2)+'%</small>':'<br><small>撥款至今 '+Math.round(t.days||0)+' 天，滿 6 個月後顯示年化</small>'),t.ann?(r.x>=aprE?'ok':'bad'):'')})()+cd(null,'已繳期數 / 剩餘本金',r.n+' 期 / '+W2(r.rem)+' 萬')+cd(null,'累計成本(月付+開辦+淨入金+費用)',W2(r.ext0)+' 萬')+cd('real','真實淨資產 / 對撥款前',W2(r.real)+' / '+sg(r.d0)+' 萬',r.d0<0?'bad':'ok')+cd('nle','沒借錢估計值',W2(r.nle)+' 萬'+(r.sbOk?'':'<br><small>未填 0050，以 0% 計</small>'))+extra+cd(null,'股息/利息 本期 / 累計（統計）',dCur.toFixed(2)+' / '+dsum.toFixed(2)+' 萬'):`<div class=h style="grid-column:span 2">${ce._miss&&ce._miss.length?'請在上方持股表填入以下各檔現價：'+ce._miss.map(c=>c+' '+nameOf(c)).join('、'):usePx(S)?'請選結算日期，填入追蹤帳戶現金與各檔現價。':'請選結算日期，並填入被動、主動市值與追蹤帳戶現金。'}</div>`;
  // 信貸餘額回填表
  const ln0=loanS(S,0),t0=Math.max(0,isNaN(ym2t(S,S.cur.m))?0:ym2t(S,S.cur.m));let lh='';
  for(let t=t0;t<=Math.min(t0+11,H);t++){const n=paidAt(S,t);lh+=`<tr><td>${t2ym(S,t)}-15</td><td>${n}</td><td>${R(ln0.rem[n])}</td></tr>`}$('liab').innerHTML=lh;
@@ -352,7 +368,10 @@ function calc(){
  $('snaps').innerHTML=ss.map((o,k)=>{const s=o.s,r=settle(S,s),t=tw[k];return r?`<tr><td>${sDate(s)}${s.h?' 📑':''}</td><td>${(+s.p).toFixed(2)}</td><td>${(+s.a).toFixed(2)}</td><td>${s.c}</td><td>${num(s.d)!=null?(+s.d).toFixed(2):''}</td><td>${W2(r.rem)}</td><td>${W2(r.real)}</td><td class="${r.af<0?'bad':'ok'}">${W2(r.af)}</td><td>${W2(r.ao)}</td><td>${isNaN(r.x)?'—':(Math.abs(r.x)<0.05?0:r.x).toFixed(1)+'%'}</td><td>${t?t.rp.toFixed(1)+'/'+t.ra.toFixed(1)+'/'+(r.sbOk?r.sb.toFixed(1):'—'):''}</td><td style="text-align:left">${esc(s.note)}</td><td><button onclick="ldSnap(${o.i})">載入</button><button onclick="delRow('snaps',${o.i})">✕</button></td></tr>`:''}).join('');
  // 年度表
  let th='';for(let y=1;y*12<=H;y++){const a=cf.slice((y-1)*12+1,y*12+1),q=rec[y*12];
-  th+=`<tr><td>${y}</td><td>${t2ym(S,(y-1)*12+1)}~${t2ym(S,y*12)}</td><td>${W(a.reduce((x,o)=>x+o.lp,0))}</td><td>${W(ln0.rem[Math.min(y*12,ln0.N)])}</td><td>${q?W(q.af):'—'}</td><td>${q?W(q.af-q.ao):'—'}</td><td><b>${q?W(q.ao):'—'}</b></td></tr>`}$('tb').innerHTML=th;
+  let pr=0,it=0,mr='';for(let t=(y-1)*12+1;t<=y*12&&t<=ln0.N;t++){const p=ln0.pay[t]||0,pp=Math.max(0,(ln0.rem[t-1]||0)-(ln0.rem[t]||0)),ii=Math.max(0,p-pp);if(!(p>0))continue;pr+=pp;it+=ii;const o=tm(S,t);
+   mr+=`<tr><td>${t}</td><td>${o.y}-${String(o.m).padStart(2,'0')}-${String(payDay(S,t)).padStart(2,'0')}</td><td>${R(p)}</td><td>${R(pp)}</td><td>${R(ii)}</td><td>${R(ln0.rem[t]||0)}</td></tr>`}
+  const op=ls('lcyr')==String(y);
+  th+=`<tr class=yrr onclick="yrTog(${y})" style="cursor:pointer"><td>${op?'▾':'▸'} ${y}</td><td>${t2ym(S,(y-1)*12+1)}~${t2ym(S,y*12)}</td><td>${W(a.reduce((x,o)=>x+o.lp,0))}</td><td>${W(pr)}</td><td>${W(it)}</td><td>${W(ln0.rem[Math.min(y*12,ln0.N)])}</td><td>${q?W(q.af):'—'}</td><td>${q?W(q.af-q.ao):'—'}</td><td><b>${q?W(q.ao):'—'}</b></td></tr>`+(op&&mr?`<tr><td colspan=9 style="padding:0 0 6px 10px"><table class=mtb><thead><tr><th>期</th><th>扣款日</th><th>月付金</th><th>本金</th><th>利息</th><th>剩餘本金</th></tr></thead><tbody>${mr}</tbody></table><div class=h>單位：元。利息＝剩餘本金 × 當期年利率 ÷ 12；實際以銀行對帳單為準。</div></td></tr>`:'')}$('tb').innerHTML=th;
  if($('pinfo'))$('pinfo').innerText=hasSettle()?'已於第一次結算後凍結（建立於 '+S.plan.d+'）':'尚未結算：計畫線會跟著設定自動更新';
  const re=effRe();
  if(isS()){const eA=end.af,eC=end.ao;$('verdict').innerHTML=`依你的假設，${S.Y} 年後（${t2ym(S,H)}）借錢投資比每月定期定額<b class="${eC<0?'bad':'ok'}">${eC>=0?'多賺':'少賺'} ${W(Math.abs(eC))} 萬</b>（比完全不投資${eA>=0?'多賺':'少賺'} ${W(Math.abs(eA))} 萬）。每年含息報酬至少 <b>${bT.toFixed(1)}%</b> 才划算（你的假設 ${asm.toFixed(1)}%）${B>0?`；虧損上限 ${W(B)} 萬，目前${SL.rb<=0?'<b class=bad>已超過上限</b>':SL.Y==null?'信貸資金尚未投入股市':'約可承受股市再跌 '+SL.Y.toFixed(0)+'%'}`:''}。`;
@@ -439,12 +458,12 @@ cvs.addEventListener('pointerdown',e=>{drag=true;try{cvs.setPointerCapture(e.poi
 cvs.addEventListener('pointermove',e=>{if(drag)setHi(e)});
 ['pointerup','pointercancel','lostpointercapture'].forEach(n=>cvs.addEventListener(n,()=>{drag=false}));
 window.snap=()=>{const ce=curEff(),r=settle(S,ce);if(!r){alert('請先選結算日期（撥款日以後），並填入被動、主動市值與追蹤帳戶現金');return}
- const first=!hasSettle(),c=clone(ce);delete c.h;delete c._mv;delete c._miss;if(usePx(S)){if(num(S.cur.p)==null)c.p_auto=1;}
+ const first=!hasSettle(),c=clone(ce);delete c.h;delete c._mv;delete c._miss;delete c.dtFix;if(c._cashEst){c.cEst=c._cashEst.from;delete c._cashEst}if(usePx(S)){if(num(S.cur.p)==null)c.p_auto=1;}
  const dk=sDate(S.cur),i=S.snaps.findIndex(s=>sDate(s)==dk);if(i>=0){if(!confirm(dk+' 已有結算，要覆蓋嗎？'))return;S.snaps[i]=c}else S.snaps.push(c);
  if(first)S.plan.d=TODAY;save();calc();toast('已儲存 '+dk+' 結算',0)};
-window.ldSnap=i=>{const s=clone(S.snaps[i]);delete s.h;if(s.pxs)S.px=clone(s.pxs);if(s.p_auto){s.p='';s.a=''}delete s.p_auto;delete s.nleS;delete s.pxs;S.cur=Object.assign(clone(DEF.cur),s);build();upd()};
+window.ldSnap=i=>{const s=clone(S.snaps[i]);delete s.h;s.dtFix=1;if(s.pxs)S.px=clone(s.pxs);if(s.p_auto){s.p='';s.a=''}delete s.p_auto;delete s.nleS;delete s.pxs;S.cur=Object.assign(clone(DEF.cur),s);build();upd()};
 window.freshCur=()=>{S.cur=Object.assign(clone(DEF.cur),{dt:TODAY,m:TODAY.slice(0,7)});build();upd()};
-window.tab=k=>{if(!['F','R','S'].includes(k)||isS())k='F';curT=k;['F','R','S'].forEach(x=>{$('pg'+x).style.display=x==k?'':'none';$('tb'+x).className=x==k?'on':''});ls('lct2',k);calc()};
+window.tab=k=>{if(!['F','R','S','Y'].includes(k)||isS())k='F';curT=k;['F','R','S','Y'].forEach(x=>{const p=$('pg'+x),b=$('tb'+x);if(p)p.style.display=x==k?'':'none';if(b)b.className=x==k?'on':''});ls('lct2',k);calc()};
 function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
 window.exp=()=>{dl('loan-calc-'+TODAY+'.json',JSON.stringify(S,null,1),'application/json');ls('lcx',new Date().toISOString());ls('lch',sig());bkUpd()};
 function bkUpd(){const el=$('bkS');if(!el)return;const last=ls('lcx'),dirty=ls('lch')!=sig(),days=last?Math.floor((Date.now()-Date.parse(last))/864e5):null;

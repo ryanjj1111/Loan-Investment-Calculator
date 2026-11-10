@@ -44,6 +44,7 @@ const CK_ATOMS=[
  [/^(投信|外資)連(\d+)日賣超$/,x=>m=>{const a=m[x[1]=='投信'?'it':'fi'],n=+x[2];if(!a||a.length<n)return NA('法人資料不足');return R_(a.slice(-n).every(v=>v<0),`${x[1]}近 ${n} 日：${a.slice(-n).map(v=>(v>0?'+':'')+R(v)).join('、')} 張`)}],
  [/^融資餘額近(10|20)日(增加|減少)(不超過|≤|≥|超過|>)?(\d+(?:\.\d+)?)%$/,x=>m=>{const g=m.mg,b0=g&&g[0],bn=g&&g[x[1]=='10'?1:2];if(b0==null||!bn)return NA('融資資料不足');const d=(b0/bn-1)*100,p=+x[4],op=x[3]||'≥';
   const v=x[2]=='增加'?(op=='不超過'||op=='≤'?d<=p:d>=p):(op=='不超過'||op=='≤'?-d<=p:-d>=p);return R_(v,`融資餘額 ${R(b0)} 張，${x[1]} 日前 ${R(bn)} 張（${pc(d)}）`)}],
+ [/^融資餘額近(10|20)日(?:沒有增加|未增加|持平或減少)$/,x=>m=>{const g=m.mg,b0=g&&g[0],bn=g&&g[x[1]=='10'?1:2];if(b0==null||!bn)return NA('融資資料不足');const d=(b0/bn-1)*100;return R_(d<=0,`融資餘額 ${R(b0)} 張，${x[1]} 日前 ${R(bn)} 張（${pc(d)}）`)}],
  [/^(?:月營收)?年增率連(\d+)個月>(-?\d+(?:\.\d+)?)%(且加速)?$/,x=>m=>{const n=+x[1],y=m.ry;if(!y||y.length<n||y.slice(-n).some(v=>v==null))return NA('月營收資料不足');const L=y.slice(-n);
   return R_(L.every(v=>v>+x[2])&&(!x[3]||L.every((v,i)=>!i||v>L[i-1])),`近 ${n} 個月年增率 ${L.map(v=>v+'%').join('、')}${m.rLag?'（最新月份還沒公布）':''}`)}],
  [/^月營收年增率(?:>|大於)(-?\d+(?:\.\d+)?)%?$/,x=>m=>{const y=m.ry,v=y&&y[y.length-1];if(v==null)return NA('月營收資料不足');return R_(v>+x[1],`最新月營收年增率 ${v}%${m.rLag?'（最新月份還沒公布）':''}`)}],
@@ -315,4 +316,20 @@ function ckExitHtml(T,st){if(!st||T.status!='hold')return'';const L=exRules(st);
  const p=stPerf(S,T),rm=typeof stRmul=='function'?stRmul(T,p.ret):null;
  return`<div class="asck ckc"><b>🚪 出場條件</b> <span class=h>策略均價 ${X.avg!=null?f2(X.avg):'—'}${X.peak!=null?`｜持有期間最高 ${f2(X.peak)}`:''}${num(T.risk0)?`｜進場停損 ${f2(num(T.stop0))}（每股風險 ${f1(num(T.risk0))}%${T.rec0=='補記'?'，補記':''}）${rm!=null?`，目前 ${rm>=0?'+':''}${rm.toFixed(2)}R`:''}`:''}</span><div class=h style="font-size:11.5px">🔴 成立（照規則處理）　✓ 沒有成立　⏳ 資料不足　❔ 要自己判斷</div>${E.map(x=>{const r=x.r,ic=!r?'❔':r.v===true?'🔴':r.v===false?'✓':'⏳';
   return`<div class=ckl>${ic} ${x.lb?`<b>${esc(x.lb)}</b>：`:''}${ckT(x.cond)}${x.act?` → <b>${esc(x.act)}</b>`:''}${r?`<div class=h>${esc(r.why)}${r.miss?' <i>'+esc(r.miss)+'</i>':''}</div>`:'<div class=h>要自己判斷</div>'}${r&&r.v===true?(ack[x.key]?`<div class=h>${ckMD(ack[x.key])} 已處理（條件不成立後會自動解除）</div>`:` <button class=ckmb onclick="exAck('${T.id}','${x.key}')">✓ 已處理</button>`):''}</div>`}).join('')}
-  <div class=h style="margin-top:4px">自動判斷只看公開資料與你記的交易，僅供參考，不是投資建議。</div></div>`}
+  ${exTrigHtml(T)}<div class=h style="margin-top:4px">自動判斷只看公開資料與你記的交易，僅供參考，不是投資建議。</div></div>`}
+
+// ---------- 今天的觸發價：和價格有關的出場規則，今天收盤到哪個價位就成立
+// 均線用最近一次檢核資料的均線估（今天的收盤會讓均線移動一點，所以標「約」）；均價、最高點、停損價、本益比上緣是精確的
+function exTrig(T){const st=stStrat(S,T.sid),c=cU(T.code),m=CK?ckM(c):null,X=exCtx(T),out=[];
+ const add=(px,dir,what,act,ap)=>{if(px!=null&&isFinite(px)&&px>0)out.push({px:+px.toFixed(2),dir,what,act,ap:!!ap})};
+ if(num(T.stop)!=null)add(num(T.stop),'≤','論點停損價','全部賣出');
+ for(const x of exRules(st)){for(const p of ckN(exNorm(x.cond)).split(/,或者?/)){if(/,且/.test(p))continue;let g;
+  if((g=p.match(/^(?:收盤價?|股價)?跌破(月線|季線|半年線)(?:[−-](\d+(?:\.\d+)?)%)?$/))&&m){const ma=m[CK_MA[g[1]][0]];if(ma!=null)add(ma*(1-(+(g[2]||0))/100),'<',`跌破${g[1]}${g[2]?' −'+g[2]+'%':''}`,x.act,1)}
+  else if((g=p.match(/^(?:現價|收盤價?|股價)?跌破(?:策略)?均價[−-](\d+(?:\.\d+)?)%$/))&&X.avg!=null)add(X.avg*(1-g[1]/100),'<',`跌破均價 −${g[1]}%`,x.act)
+  else if((g=p.match(/^(?:從)?(?:持有期間)?(?:的)?最高(?:點|收盤)?回落(\d+(?:\.\d+)?)%(?:時)?$/))&&X.peak!=null)add(X.peak*(1-g[1]/100),'≤',`從最高點回落 ${g[1]}%`,x.act)
+  else if(/^回到前高$/.test(p)&&(X.hi0??(m&&m.hi250))!=null)add(X.hi0??m.hi250,'≥','回到前高',x.act)
+  else if(/^本益比(?:回)?到(?:近)?5年(?:本益比)?區間(?:的)?上緣$/.test(p)&&m&&m.pe>0&&m.peHi5)add(m.c*m.peHi5/m.pe,'≥','本益比到 5 年上緣',x.act)}}
+ const px=num((S.px||{})[c])??(m&&m.c),U=[];for(const o of out){const d=U.find(u=>(u.dir=='≥')==(o.dir=='≥')&&Math.abs(u.px/o.px-1)<0.003);if(d){if(d.what=='論點停損價'){d.what=o.what+'（＝論點停損價）';d.act=o.act;d.ap=o.ap}else if(o.what=='論點停損價')d.what+='（＝論點停損價）';else d.what+='、'+o.what;continue}U.push(o)}
+ U.forEach(o=>{o.gap=px?(o.px/px-1)*100:null;o.hit=o.gap!=null&&(o.dir=='≥'?o.gap<=0:o.gap>=0)});return U.sort((a,b)=>(b.hit-a.hit)||Math.abs(a.gap??99)-Math.abs(b.gap??99))}
+function exTrigHtml(T,n){const L=exTrig(T).slice(0,n||9);if(!L.length)return'';
+ return`<div class=h style="margin-top:4px"><b>今天收盤的觸發價</b>（收盤判斷，回測也是隔天開盤成交）</div>${L.map(o=>`<div class=ckl style="font-size:12.5px">${o.hit?'🔴 ':''}收盤 ${o.dir} <b>${o.ap?'約 ':''}${f2(o.px)}</b>${o.gap!=null?` <span class=h>（${o.hit?'現價已經到了':'距現價 '+(o.gap>=0?'+':'')+o.gap.toFixed(1)+'%'}）</span>`:''}：${esc(o.what)}${o.act?' → '+esc(o.act):''}</div>`).join('')}`}
