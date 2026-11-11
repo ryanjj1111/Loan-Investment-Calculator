@@ -7,7 +7,7 @@ let src=['js/engine.js','js/strategy-engine.js','js/check.js'].map(f=>fs.readFil
 const noop=()=>null,el={style:{},classList:{add(){},remove(){},toggle(){}},appendChild(){},setAttribute(){}};
 const ctx=vm.createContext({console,document:{getElementById:noop,querySelector:noop,querySelectorAll:()=>[],addEventListener(){},createElement:()=>el,body:el},localStorage:{getItem:noop,setItem(){}},navigator:{},location:{href:''},setTimeout,fetch:async()=>({ok:false})});ctx.window=ctx;
 vm.runInContext(src,ctx);const run=c=>vm.runInContext(c,ctx);
-const F=['c','m20','m60','m120','gm','ry','rLag','epsQ','jp','hi250'];
+const F=['c','m20','m60','m120','gm','ry','rLag','epsQ','jp','hi250','adj'];
 function m(o){return o}
 // 每個案例：條件文字、這檔的資料、前瞻資料、論點（起算日、kn）→ 預期 v（true／false／null）與 pre
 function check(name,text,o,want){
@@ -26,6 +26,10 @@ C.push(check('嘉澤：兩筆都在起算前 → ⏸','法人 EPS 預估下修 >
 C.push(check('跨年：舊預估只有 2026 年 → 不比','法人 EPS 預估下修 > 10%',{m:{c:100},outlook:{'9999':{eps:[e(2026,100,'2026-08-20','FactSet'),e(2027,70,'2026-11-01','FactSet')]}}},{v:null}));
 C.push(check('沒有 EPS 預估 → 資料不足','法人 EPS 預估下修 > 10%',{m:{c:100},outlook:{}},{v:null}));
 C.push(check('預估超過 4 個月 → 資料不足','法人 EPS 預估下修 > 10%',{m:{c:100},outlook:{'9999':{eps:[e(2027,100,'2026-05-01','FactSet')]}}},{v:null}));
+// 配股、分割：事件日之前的 EPS 預估換算成新股數單位，不會被判成下修
+const ADJ=[['2026-09-02',0.335256,0.333333]];
+C.push(check('分割前後的預估換算後比較（1 拆 3）','法人 EPS 預估下修 > 10%',{m:{c:1680,adj:ADJ},outlook:{'9999':{eps:[e(2027,300,'2026-08-20','FactSet'),e(2027,99,'2026-11-01','FactSet')]}},T:{baseD:'2026-07-01'}},{v:false}));
+C.push(check('分割前後：換算後仍下修 > 10% 成立','法人 EPS 預估下修 > 10%',{m:{c:1680,adj:ADJ},outlook:{'9999':{eps:[e(2027,300,'2026-08-20','FactSet'),e(2027,80,'2026-11-01','FactSet')]}},T:{baseD:'2026-07-01'}},{v:true}));
 // 毛利率連 2 季下滑與 ⏸
 const gm=[51.2,51.5,49.5,45.5];
 C.push(check('毛利率連 2 季下滑','毛利率連 2 季下滑',{m:{c:100,gm}},{v:true}));

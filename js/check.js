@@ -13,7 +13,7 @@ function ckM(c){const o=ckM0(c);if(!o)return o;c=cU(c);const px=num((S.px||{})[c
 const ckLive=m=>m&&m.live?(m.live.auto?`價格條件用 ${ckMD(m.live.d)} 收盤 ${f2(m.live.px)} 試算（檢核資料是 ${ckMD(CK.d)} 收盤 ${f2(m.live.c0)}）`:`價格條件用你填的現價 ${f2(m.live.px)} 試算（檢核資料是 ${ckMD(CK.d)} 收盤 ${f2(m.live.c0)}）`):'';
 const ckMD=d=>d?String(d).slice(5).replace('-','/'):'';
 // 資料日期一句話
-function ckAsOf(){if(!CK)return'';return`收盤 ${ckMD(CK.d)}｜法人 ${ckMD(CK.dC)||'—'}｜融資 ${ckMD(CK.dM)||'—'}｜月營收 ${CK.rM||'—'}${CK.bW&&CK.bW.length?'｜大戶 '+ckMD(CK.bW[CK.bW.length-1]):''}`}
+function ckAsOf(){if(!CK)return'';return`收盤 ${ckMD(CK.d)}${CK.f&&CK.f.includes('adj')?'（價格指標已還原權息）':''}｜法人 ${ckMD(CK.dC)||'—'}｜融資 ${ckMD(CK.dM)||'—'}｜月營收 ${CK.rM||'—'}${CK.bW&&CK.bW.length?'｜大戶 '+ckMD(CK.bW[CK.bW.length-1]):''}`}
 
 // ---------- 條件文字 → 判斷
 const CK_MA={'月線':['m20','m20p',20],'季線':['m60','m60p',60],'半年線':['m120','',120]};
@@ -118,7 +118,12 @@ function exPre(r,k,m){const kn=CKX&&CKX.T&&CKX.T.kn;if(!r||r.v!==true||!kn||kn[k
 // 股票屬性：1＝是、0＝否、沒填＝待確認
 function ckAttr(k,want,lb){const a=(S.attr||{})[CKX.c]||{};if(a[k]==null||a[k]==='')return NA(`股票屬性「${lb}」還沒確認`,'attr:'+k);return R_(+a[k]===want,`股票屬性：${+a[k]?'是':'不是'}${lb}${a.d?'（'+a.d+' 確認）':''}`)}
 // 前瞻資料：某年度 EPS 預估的中位數（只取 a～b 天前記錄的，預設 120 天內）
-function ckOut(c){const o=(S.outlook||{})[cU(c)]||{},E=o.eps||[];const pick=(y,a=0,b=120)=>E.filter(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)>=a&&dDays(e.d,TODAY)<=b).map(e=>+e.v).filter(isFinite);
+// 還原（2026-11-11）：檢核資料的 adj＝近一年的事件［日期, f, fs］；ckAdjF＝d 之後股數變動的累積倍數（配股、減資、分割；現金股利不算）
+function ckAdjF(c,d,k){const m=CK?ckM(cU(c)):null;if(!m||!m.adj||!d)return 1;let r=1;for(const e of m.adj)if(e[0]>d&&e[0]<=TODAY)r*=e[k==='f'?1:2];return r}
+const ckAdjEv=c=>{const m=CK?ckM(cU(c)):null;return m&&m.adj?m.adj.filter(e=>Math.abs(e[2]-1)>0.02):[]};
+// 法人 EPS 預估：事件日之前的預估換算成最新的股數單位（不改存的資料）
+const ckEpsAdj=(c,E)=>E.map(e=>{const k=e&&e.d?ckAdjF(c,e.d):1;return k==1?e:Object.assign({},e,{v:+(+e.v*k).toFixed(2),v0:e.v,adjK:k})});
+function ckOut(c){const o=(S.outlook||{})[cU(c)]||{},E=ckEpsAdj(c,o.eps||[]);const pick=(y,a=0,b=120)=>E.filter(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)>=a&&dDays(e.d,TODAY)<=b).map(e=>+e.v).filter(isFinite);
  const med=(y,a,b)=>{const L=pick(y,a,b).sort((p,q)=>p-q);if(!L.length)return null;const k=L.length>>1;return L.length%2?L[k]:(L[k-1]+L[k])/2};
  const src=y=>{const L=E.filter(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)<=120);return L.length?L.map(e=>e.src||'未註明').slice(0,3).join('、')+(L.length>3?' 等 '+L.length+' 家':'')+'，'+L.map(e=>e.d).sort().pop():''};
  // 最近一批：120 天內最新的日期往前 45 天內的紀錄（避免新舊預估混在一起算中位數）
@@ -134,7 +139,7 @@ function ckOut(c){const o=(S.outlook||{})[cU(c)]||{},E=o.eps||[];const pick=(y,a
 const epsSrcK=s=>String(s||'未註明').split(/[（(]/)[0].replace(/\s+/g,'').toLowerCase();
 function epsBatch(L){if(!L.length)return null;const dm=L.map(e=>e.d).sort().pop(),B=L.filter(e=>dDays(e.d,dm)<=45),v=B.map(e=>+e.v).filter(isFinite).sort((p,q)=>p-q);if(!v.length)return null;const k=v.length>>1;
  return{v:v.length%2?v[k]:(v[k-1]+v[k])/2,d:dm,src:[...new Set(B.map(e=>epsSrcK(e.src)))],lb:[...new Set(B.map(e=>String(e.src||'未註明').split(/[（(]/)[0].trim()))].slice(0,2).join('、')}}
-function exEpsRev(c,th,start){const E=(((S.outlook||{})[cU(c)]||{}).eps||[]).filter(e=>e&&e.d&&isFinite(+e.v)),y=+TODAY.slice(0,4)+1,Y=E.filter(e=>+e.y==y);
+function exEpsRev(c,th,start){const E=ckEpsAdj(c,(((S.outlook||{})[cU(c)]||{}).eps||[]).filter(e=>e&&e.d&&isFinite(+e.v))),y=+TODAY.slice(0,4)+1,Y=E.filter(e=>+e.y==y);
  const nowB=epsBatch(Y.filter(e=>dDays(e.d,TODAY)<=120));if(!nowB)return NA(Y.length?`${y} 年 EPS 預估超過 4 個月，請更新`:`前瞻資料沒有 ${y} 年的 EPS 預估`,'eps');
  const oldB=epsBatch(Y.filter(e=>{const a=dDays(e.d,TODAY);return a>=60&&a<=150}));
  let stB=null;if(start){stB=epsBatch(Y.filter(e=>e.d<=start));if(!stB){const A=Y.filter(e=>e.d>start).sort((p,q)=>p.d<q.d?-1:1);if(A.length){const d0=A[0].d;stB=epsBatch(A.filter(e=>dDays(d0,e.d)<=45));if(stB)stB.after=1}}}
@@ -333,7 +338,7 @@ function exRules(st){const out=[];if(!st)return out;String(st.exit||'').split(/\
 const exNorm=c=>{c=String(c).replace(/、\s*或/g,'，或');if(/或/.test(c.replace(/走平或上彎|或整理區|或者/g,'')))c=c.replace(/、/g,'，或');return c.replace(/([^，,\s])\s*且\s*(?!加速)/g,'$1，且').replace(/\s*時\s*$/,'')};
 // 論點的判斷背景：策略均價、第一次買進日、持有期間最高收盤、進場時記下的 52 週高點與融資餘額
 function exCtx(T){const p=stPerf(S,T),c=cU(T.code),avg=p.q>0?p.cost/p.q:null;let peak=null;
- if(p.first&&typeof PXH!='undefined')for(const d in PXH){if(d>=p.first&&num(PXH[d][c])!=null)peak=Math.max(peak??-Infinity,num(PXH[d][c]))}
+ if(p.first&&typeof PXH!='undefined')for(const d in PXH){if(d>=p.first&&num(PXH[d][c])!=null)peak=Math.max(peak??-Infinity,num(PXH[d][c])*ckAdjF(c,d))}
  const px=num((S.px||{})[c]);if(px!=null&&p.first)peak=Math.max(peak??-Infinity,px);return{c,st:stStrat(S,T.sid),T,avg,first:p.first,start:T.baseD||p.first||T.created||'',peak,hi0:num(T.hi0),mg0:num(T.mg0)}}
 function exEval(T){const st=stStrat(S,T.sid);if(!st||!CK)return[];const L=exRules(st);if(!L.length)return[];const c=cU(T.code),m=ckM(c),k=CK.mkt,X=exCtx(T);
  return L.map(x=>{const t=exNorm(x.cond);let r=null,hit='';if(ckAuto(t)){if(!m)r={v:null,why:'',miss:'沒有這檔的資料'};else if(ckJump(m,t))r=ckJump(m,t);else{CKX=X;EXPRE=false;r=ckRun(ckParse(t),m,k);if(r&&r.v!==true&&EXPRE)r=Object.assign({},r,{pre:1});
