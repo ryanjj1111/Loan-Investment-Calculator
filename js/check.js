@@ -96,7 +96,7 @@ const CK_ATOMS=[
   if(now!=null&&old!=null){const d=(now/old-1)*100;return R_(d>=-2,`${y} 年 EPS 預估 ${f2(old)} → ${f2(now)}（${pc(d)}）`)}
   const r=m.ry;if(!r||r.length<6||r.some(v=>v==null))return NA(o.med(y,0,45)==null?'前瞻資料沒有最近的 EPS 預估，月營收資料也不足':'還沒有 3 個月前的預估紀錄，月營收資料也不足',o.med(y,0,45)==null?'eps':'');const a=(r[0]+r[1]+r[2])/3,b=(r[3]+r[4]+r[5])/3;
   const dN=o.dIn(y,0,45),dO=o.dIn(y,60,150),cut=ckMD(ckAddD(TODAY,-45)),why=dN?`（⏳ 還沒有 3 個月前的預估：${ckMD(dN)} 那筆約 ${ckMD(ckAddD(dN,60))} 起可以拿來比較，先用月營收判斷）`:dO?`（有 ${ckMD(dO)} 的預估，還缺 ${cut} 之後的新預估才能比較，先用月營收判斷）`:'（還沒有法人 EPS 預估，先用月營收判斷）';
-  return Object.assign(R_(b>=a,`近 3 個月營收年增率平均 ${f1(b)}%，前 3 個月 ${f1(a)}%`,why),{hint:dN?'wait':dO?'new':'none',hd:dO||''})}],
+  return Object.assign(R_(b>=a,`近 3 個月營收年增率平均 ${f1(b)}%，前 3 個月 ${f1(a)}%`,why),{hint:dN?'wait':dO?'new':'none',hd:dO||'',proxy:1})}],
  // 出場：法人 EPS 預估下修 > N%（2026-11-11，基準 C：比 3 個月前、也比論點起算時，任何一個超過門檻就成立）
  [/^法人(?:明年)?EPS預估(?:下修|下調)>(\d+(?:\.\d+)?)%$/,x=>m=>exEpsRev(CKX.c,+x[1],CKX.start||'')],
  [/^最近一次法說(?:的)?營收與毛利率展望不低於持平$/,x=>m=>{const g=ckOut(CKX.c).guide;if(!g||!g.d)return NA('前瞻資料沒有法說指引','guide');if(!g.rev||!g.gm)return NA('法說指引缺營收或毛利率的方向','guide');if(dDays(g.d,TODAY)>120)return NA(`法說指引是 ${g.d} 的，超過 4 個月，請更新`,'guide');
@@ -158,7 +158,10 @@ function ckParse(t){const s=ckN(t);if(CKC[s]!==undefined)return CKC[s];let r=ckA
  return CKC[s]=r}
 // 判斷一個條件：{v:true／false／null, why, miss, auto}；null＝不是自動條件（要自己勾）
 const ckAuto=t=>!/（手動）|\(手動\)/.test(t)&&!!ckParse(t);
-function ckEval(c,t,st){if(!CK||!ckAuto(t))return null;CKX={c:cU(c),st:st||null};const P=ckParse(t),m=ckM(c),k=CK.mkt;if(!m)return{v:null,why:'',miss:'沒有這檔的資料',auto:1};
+// 跳動保險（2026-11-11）：近一年有單日漲跌超過 10.5%、還沒還原的股票，和價格有關的條件不判斷（❔）
+const CK_PXRE=/線|RSI|MACD|週|高點|低點|最高|最低|新高|新低|突破|乖離|賺賠比|前高|整理區|收盤|均價|回落|回到/;
+const ckJump=(m,t)=>m&&m.jp&&CK_PXRE.test(t)&&!(/〔盤〕|大盤|加權指數/.test(t)&&!/〔技〕/.test(t))&&!/^〔基〕/.test(t)?{v:null,why:'',miss:`${ckMD(m.jp[0])} 單日漲跌 ${m.jp[1]>0?'+':''}${m.jp[1]}%（可能是除權、分割或減資，股價還沒還原），和價格有關的條件先不判斷`,auto:1,jump:1}:null;
+function ckEval(c,t,st){if(!CK||!ckAuto(t))return null;CKX={c:cU(c),st:st||null};const P=ckParse(t),m=ckM(c),k=CK.mkt;if(!m)return{v:null,why:'',miss:'沒有這檔的資料',auto:1};{const J=ckJump(m,t);if(J)return J}
  const o=ckRun(P,m,k);return o?Object.assign(o,{auto:1}):null}
 function ckRun(P,m,k){if(!P)return null;if(typeof P=='function'){const o=P(m,k);return o.skip?null:o}
  const fx=new Set(),add=o=>{if(o&&o.v==null&&o.fix)o.fix.forEach(f=>fx.add(f))};
@@ -333,7 +336,7 @@ function exCtx(T){const p=stPerf(S,T),c=cU(T.code),avg=p.q>0?p.cost/p.q:null;let
  if(p.first&&typeof PXH!='undefined')for(const d in PXH){if(d>=p.first&&num(PXH[d][c])!=null)peak=Math.max(peak??-Infinity,num(PXH[d][c]))}
  const px=num((S.px||{})[c]);if(px!=null&&p.first)peak=Math.max(peak??-Infinity,px);return{c,st:stStrat(S,T.sid),T,avg,first:p.first,start:T.baseD||p.first||T.created||'',peak,hi0:num(T.hi0),mg0:num(T.mg0)}}
 function exEval(T){const st=stStrat(S,T.sid);if(!st||!CK)return[];const L=exRules(st);if(!L.length)return[];const c=cU(T.code),m=ckM(c),k=CK.mkt,X=exCtx(T);
- return L.map(x=>{const t=exNorm(x.cond);let r=null,hit='';if(ckAuto(t)){if(!m)r={v:null,why:'',miss:'沒有這檔的資料'};else{CKX=X;EXPRE=false;r=ckRun(ckParse(t),m,k);if(r&&r.v!==true&&EXPRE)r=Object.assign({},r,{pre:1});
+ return L.map(x=>{const t=exNorm(x.cond);let r=null,hit='';if(ckAuto(t)){if(!m)r={v:null,why:'',miss:'沒有這檔的資料'};else if(ckJump(m,t))r=ckJump(m,t);else{CKX=X;EXPRE=false;r=ckRun(ckParse(t),m,k);if(r&&r.v!==true&&EXPRE)r=Object.assign({},r,{pre:1});
   // 「或」的條件：找出是哪一段成立，提醒只寫那一段
   if(r&&r.v===true){for(const p of ckN(t).split(/,或者?/)){const P=ckParse(p);if(!P)continue;CKX=X;const o=ckRun(P,m,k);if(o&&o.v===true){hit=o.why;break}}}}}
   return Object.assign({},x,{r,hit})})}
@@ -366,7 +369,7 @@ function ckExitHtml(T,st){if(!st||T.status!='hold')return'';const L=exRules(st);
 
 // ---------- 今天的觸發價：和價格有關的出場規則，今天收盤到哪個價位就成立
 // 均線用最近一次檢核資料的均線估（今天的收盤會讓均線移動一點，所以標「約」）；均價、最高點、停損價、本益比上緣是精確的
-function exTrig(T){const st=stStrat(S,T.sid),c=cU(T.code),m=CK?ckM(c):null,X=exCtx(T),out=[];
+function exTrig(T){const st=stStrat(S,T.sid),c=cU(T.code),m0=CK?ckM(c):null,m=m0&&m0.jp?null:m0,X=exCtx(T),out=[];
  const add=(px,dir,what,act,ap)=>{if(px!=null&&isFinite(px)&&px>0)out.push({px:+px.toFixed(2),dir,what,act,ap:!!ap})};
  if(num(T.stop)!=null)add(num(T.stop),'≤','論點停損價','全部賣出');
  for(const x of exRules(st)){if((exAckOf(T,x.key)||{}).k=='na')continue;for(const p of ckN(exNorm(x.cond)).split(/,或者?/)){if(/,且/.test(p))continue;let g;

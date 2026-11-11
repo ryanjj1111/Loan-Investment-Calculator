@@ -7,7 +7,7 @@ let src=['js/engine.js','js/strategy-engine.js','js/check.js'].map(f=>fs.readFil
 const noop=()=>null,el={style:{},classList:{add(){},remove(){},toggle(){}},appendChild(){},setAttribute(){}};
 const ctx=vm.createContext({console,document:{getElementById:noop,querySelector:noop,querySelectorAll:()=>[],addEventListener(){},createElement:()=>el,body:el},localStorage:{getItem:noop,setItem(){}},navigator:{},location:{href:''},setTimeout,fetch:async()=>({ok:false})});ctx.window=ctx;
 vm.runInContext(src,ctx);const run=c=>vm.runInContext(c,ctx);
-const F=['c','m20','m60','m120','gm','ry','rLag','epsQ'];
+const F=['c','m20','m60','m120','gm','ry','rLag','epsQ','jp','hi250'];
 function m(o){return o}
 // 每個案例：條件文字、這檔的資料、前瞻資料、論點（起算日、kn）→ 預期 v（true／false／null）與 pre
 function check(name,text,o,want){
@@ -38,4 +38,13 @@ C.push(check('月營收轉負連 2 個月','月營收年增率轉負連 2 個月
 C.push(check('月營收沒有轉負','月營收年增率轉負連 2 個月',{m:{c:100,ry:[5,3,1,2,1,-3],rLag:0}},{v:false}));
 // 或：任一段成立
 C.push(check('或：EPS 沒到、毛利率成立 → 成立','月營收年增率轉負連 2 個月、法人 EPS 預估下修 > 10%、或毛利率連 2 季下滑',{m:{c:100,gm,ry:[5,3,1,2,1,3],rLag:0},outlook:{'9999':{eps:[e(2027,100,'2026-08-20','FactSet'),e(2027,95,'2026-11-01','FactSet')]}}},{v:true}));
+// 跳動保險：近一年有單日漲跌 > 10.5%、還沒還原 → 和價格有關的條件不判斷；大盤條件、基本面條件照常
+function evalCk(name,text,o,want){ctx.__o=o;run(`for(const k in CKM)delete CKM[k];S={outlook:{},theses:[],strategies:[],trades:[]};CK={f:${JSON.stringify(F)},s:{'9999':${JSON.stringify(F)}.map(k=>__o.m[k]??null)},rM:'2026-10',mkt:{taiex:{c:100,m20:110,m60:120,hi250:130}},ind:{}};__r=ckEval('9999',${JSON.stringify(text)},null);`);
+ const r=ctx.__r,v=r?r.v:undefined,ok=v===want.v&&!!(r&&r.jump)===!!want.jump;console.log(`${ok?'✓':'✗'} ${name}${ok?'':`：預期 ${JSON.stringify(want)}，得到 ${JSON.stringify(r)}`}`);return ok}
+const J={c:1680,m20:1868,m60:3209,m120:4215,hi250:7800,jp:['2026-09-02',-66.5],gm};
+C.push(evalCk('跳動：季線條件不判斷','〔技〕收盤低於季線 20% 以上',{m:J},{v:null,jump:true}));
+C.push(evalCk('跳動：52 週高點條件不判斷','〔技〕個股從 52 週高點回落 ≥ 20%',{m:J},{v:null,jump:true}));
+C.push(evalCk('跳動：大盤條件照常判斷','〔盤〕大盤從高點回檔 ≥ 10%',{m:J},{v:true}));
+C.push(evalCk('跳動：毛利率條件照常判斷','〔基〕毛利率沒有連 2 季下滑',{m:J},{v:false}));
+C.push(evalCk('沒有跳動：季線條件照常','〔技〕收盤低於季線 20% 以上',{m:Object.assign({},J,{jp:null})},{v:true}));
 const bad=C.filter(x=>!x).length;console.log(`\n${C.length-bad}／${C.length} 通過`);if(bad)process.exit(1);
