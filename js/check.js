@@ -393,7 +393,8 @@ function exTrig(T){const st=stStrat(S,T.sid),c=cU(T.code),m0=CK?ckM(c):null,m=m0
   else if(/^回到前高$/.test(p)&&(X.hi0??(m&&m.hi250))!=null)add(X.hi0??m.hi250,'≥','回到前高',x.act)
   else if(/^本益比(?:回)?到(?:近)?5年(?:本益比)?區間(?:的)?上緣$/.test(p)&&m&&m.pe>0&&m.peHi5)add(m.c*m.peHi5/m.pe,'≥','本益比到 5 年上緣',x.act)
   else if(/^股價淨值比到(?:近)?10年區間(?:的)?上1\/3$/.test(p)&&m&&m.pb>0&&m.pbQ&&m.pbQ[1]>0)add(m.c*m.pbQ[1]/m.pb,'≥','股價淨值比到近 10 年區間上 1/3',x.act)}}
- const px=num((S.px||{})[c])??(m&&m.c),U=[];for(const o of out){const d=U.find(u=>(u.dir=='≥')==(o.dir=='≥')&&Math.abs(u.px/o.px-1)<0.003);if(d){if(d.what=='論點停損價'){d.what=o.what+'（＝論點停損價）';d.act=o.act;d.ap=o.ap}else if(o.what=='論點停損價')d.what+='（＝論點停損價）';else d.what+='、'+o.what;continue}U.push(o)}
+ const px=num((S.px||{})[c])??(m&&m.c),U=[];for(const o of out){if(px!=null&&(o.dir=='≥'?px>=o.px:px<=o.px)&&o.what!='論點停損價')continue;// 已經過了的觸發價不列（那條規則已經成立）
+ const d=U.find(u=>(u.dir=='≥')==(o.dir=='≥')&&Math.abs(u.px/o.px-1)<0.003);if(d){if(d.what=='論點停損價'){d.what=o.what+'（＝論點停損價）';d.act=o.act;d.ap=o.ap}else if(o.what=='論點停損價')d.what+='（＝論點停損價）';else d.what+='、'+o.what;continue}U.push(o)}
  U.forEach(o=>{o.gap=px?(o.px/px-1)*100:null;o.hit=o.gap!=null&&(o.dir=='≥'?o.gap<=0:o.gap>=0)});return U.sort((a,b)=>(b.hit-a.hit)||Math.abs(a.gap??99)-Math.abs(b.gap??99))}
 function exTrigHtml(T,n){const L=exTrig(T).slice(0,n||9);if(!L.length)return'';
  return`<div class=h style="margin-top:4px"><b>今天收盤的觸發價</b>（收盤判斷，回測也是隔天開盤成交）</div>${L.map(o=>`<div class=ckl style="font-size:12.5px">${o.hit?'🔴 ':''}收盤 ${o.dir} <b>${o.ap?'約 ':''}${f2(o.px)}</b>${o.gap!=null?` <span class=h>（${o.hit?'現價已經到了':'距現價 '+(o.gap>=0?'+':'')+o.gap.toFixed(1)+'%'}）</span>`:''}：${esc(o.what)}${o.act?' → '+esc(o.act):''}</div>`).join('')}`}
