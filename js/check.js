@@ -205,7 +205,7 @@ function ckCardHtml(T,st){if(!st)return'';const c=cU(T.code),C=stConds(st);if(!C
   <div class=h style="margin-top:4px">自動檢核只看公開資料，僅供參考，不是投資建議。</div></div>`}
 // 買進時記下的條件（收起來，點開才看）
 function ckMetRec(T,st){const L=T.met||[];if(!L.length)return'';const cur=new Set(st?stConds(st).flatMap(g=>g.items):[]),old=L.filter(t=>!cur.has(t));
- return`<details class=ckrec><summary class=h>買進時（${esc(T.metAt||T.created||'')}）記錄符合 ${L.length} 項${old.length?`，其中 ${old.length} 項是舊版本的條件`:''}</summary>${L.map(t=>`<div class=h>✓ ${ckT(t)}${(T.metNote||{})[t]?' <i>（'+esc(T.metNote[t])+'）</i>':''}</div>`).join('')}</details>`}
+ return`<details class=ckrec><summary class=h>買進時（${esc(T.metAt||T.created||'')}）記錄符合 ${L.length} 項${old.length?`，其中 ${old.length} 項是舊版本的條件`:''}${T.metLate?` <span class=wn>📝 ${esc(T.metLate)}</span>`:''}</summary>${L.map(t=>`<div class=h>✓ ${ckT(t)}${(T.metNote||{})[t]?' <i>（'+esc(T.metNote[t])+'）</i>':''}</div>`).join('')}</details>`}
 // ---------- 要補資料：在條件下面直接填
 const ckFixable=r=>!!(r&&r.v==null&&r.fix&&r.fix.length);
 const CK_ATTR={growth:'產業有 2 年以上結構性成長',cyc:'景氣循環股',lead:'產業龍頭或寡占'};
@@ -349,7 +349,10 @@ function exEval(T){const st=stStrat(S,T.sid);if(!st||!CK)return[];const L=exRule
 //   sell＝照規則賣出（記賣出時自動寫入）；na＝這條不適用（一直有效，不算進照規則比例）；skip＝不照做＋原因
 //   舊版的「✓ 已處理」是日期字串，當成 ack。sell、skip、ack 在條件不成立後自動解除；每次決定另外記在 exLog
 const exAckOf=(T,key)=>{const v=(T.exAck||{})[key];return v==null?null:typeof v=='string'?{d:v,k:'ack',n:''}:v};
-function exMark(T,key,k,n,d){if(!T)return;T.exAck=T.exAck||{};const x=(exRules(stStrat(S,T.sid))||[]).find(z=>z.key==key);T.exAck[key]={d:d||TODAY,k,n:n||''};T.exLog=T.exLog||[];T.exLog.push({d:d||TODAY,key,lb:x?x.lb:'',k,n:n||''})}
+function exMark(T,key,k,n,d){if(!T)return;T.exAck=T.exAck||{};const x=(exRules(stStrat(S,T.sid))||[]).find(z=>z.key==key);T.exAck[key]={d:d||TODAY,k,n:n||''};T.exLog=T.exLog||[];const L={d:d||TODAY,key,lb:x?x.lb:'',k,n:n||''};
+ // 從「問 AI」接著做的決定：把 AI 當時的看法一起記下（之後檢討「照 AI／不照 AI」的結果）
+ if(typeof AA_CTX!='undefined'&&AA_CTX&&AA_CTX.from=='exit'&&AA_CTX.th==T.id&&AA_CTX.rule==key){if(AA_CTX.view)L.aiV=T.exAck[key].aiV=AA_CTX.view;if(AA_CTX.ai)L.aiN=AA_CTX.ai;AA_CTX=null}
+ T.exLog.push(L)}
 const EX_RS=lb=>/停損/.test(lb)?'sl':/理由失效/.test(lb)?'inv':/期限|事件/.test(lb)?'to':/停利|減碼|高峰|籌碼|趨勢|跌破|移動/.test(lb)?'tp':'adj';
 window.exDecide=(id,key,k)=>{const T=stThesis(S,id);if(!T)return;const x=(exRules(stStrat(S,T.sid))||[]).find(z=>z.key==key)||{lb:'',act:'',frac:1};
  if(k=='sell'){const c=cU(T.code),h=holdings(S).filter(o=>o.ac=='a'&&cU(o.n)==c).reduce((a,o)=>a+(+o.q||0),0),fr=x.frac||1;
@@ -369,7 +372,7 @@ function ckExitHtml(T,st){if(!st||T.status!='hold')return'';const L=exRules(st);
  const E=exEval(T),X=exCtx(T);
  const p=stPerf(S,T),rm=typeof stRmul=='function'?stRmul(T,p.ret):null;
  return`<div class="asck ckc"><b>🚪 出場條件</b> <span class=h>策略均價 ${X.avg!=null?f2(X.avg):'—'}${X.peak!=null?`｜持有期間最高 ${f2(X.peak)}`:''}${num(T.risk0)?`｜進場停損 ${f2(num(T.stop0))}（每股風險 ${f1(num(T.risk0))}%${T.rec0=='補記'?'，補記':''}）${rm!=null?`，目前 ${rm>=0?'+':''}${rm.toFixed(2)}R`:''}`:''}</span><div class=h style="font-size:11.5px">🔴 成立（照規則處理）　✓ 沒有成立　⏸ 起算前就已知、等新資料　⏳ 資料不足　❔ 要自己判斷</div>${E.map(x=>{const r=x.r,ic=(exAckOf(T,x.key)||{}).k=='na'?'🚫':!r?'❔':r.v===true?'🔴':r.pre?'⏸':r.v===false?'✓':'⏳';
-  return`<div class=ckl>${ic} ${x.lb?`<b>${esc(x.lb)}</b>：`:''}${ckT(x.cond)}${x.act?` → <b>${esc(x.act)}</b>`:''}${r?`<div class=h>${esc(r.why)}${r.miss?' <i>'+esc(r.miss)+'</i>':''}</div>`:'<div class=h>要自己判斷</div>'}${(()=>{const a=exAckOf(T,x.key);if(a&&a.k=='na')return`<div class=h>🚫 ${ckMD(a.d)} 標為不適用${a.n?'：'+esc(a.n):''} <button class=lk onclick="exUndo('${T.id}','${x.key}')">改</button></div>`;if(!(r&&r.v===true))return'';return a?`<div class=h>${ckMD(a.d)} ${EX_KN[a.k]||'已處理'}${a.n?'：'+esc(a.n):''}（條件不成立後自動解除） <button class=lk onclick="exUndo('${T.id}','${x.key}')">改</button></div>`:`<div>${exBtns(T.id,x.key)}</div>`})()}</div>`}).join('')}
+  return`<div class=ckl>${ic} ${x.lb?`<b>${esc(x.lb)}</b>：`:''}${ckT(x.cond)}${x.act?` → <b>${esc(x.act)}</b>`:''}${r?`<div class=h>${esc(r.why)}${r.miss?' <i>'+esc(r.miss)+'</i>':''}</div>`:'<div class=h>要自己判斷</div>'}${(()=>{const a=exAckOf(T,x.key);if(a&&a.k=='na')return`<div class=h>🚫 ${ckMD(a.d)} 標為不適用${a.n?'：'+esc(a.n):''}${a.aiV?'｜當時 AI：'+esc(a.aiV):''} <button class=lk onclick="exUndo('${T.id}','${x.key}')">改</button></div>`;if(!(r&&r.v===true))return'';return a?`<div class=h>${ckMD(a.d)} ${EX_KN[a.k]||'已處理'}${a.n?'：'+esc(a.n):''}${a.aiV?'｜當時 AI：'+esc(a.aiV):''}（條件不成立後自動解除） <button class=lk onclick="exUndo('${T.id}','${x.key}')">改</button></div>`:`<div>${exBtns(T.id,x.key)}</div>`})()}</div>`}).join('')}
   ${exTrigHtml(T)}<div class=h style="margin-top:4px">自動判斷只看公開資料與你記的交易，僅供參考，不是投資建議。</div></div>`}
 
 // ---------- 今天的觸發價：和價格有關的出場規則，今天收盤到哪個價位就成立
