@@ -157,6 +157,9 @@ const ema=(a,n)=>{const k=2/(n+1),o=[];let e=null;for(const x of a){e=e==null?x:
 // 連幾日沒有創 20 日新低（收盤高於前 20 日最低收盤）
 const dNL=c=>{let k=0;for(let i=c.length-1;i>=20&&k<20;i--){if(c[i]>Math.min(...c.slice(i-20,i)))k++;else break}return k};
 function macdHist(c){if(c.length<35)return[];const e12=ema(c,12),e26=ema(c,26),dif=c.map((_,i)=>e12[i]-e26[i]),sig=ema(dif,9);return dif.map((x,i)=>x-sig[i])}
+// 跳動保險（2026-11-11）：單日漲跌超過 10.5%（漲跌幅限制 10%），多半是除權、分割、減資讓原始收盤價不連續；
+// 回傳最近一次的［日期, 漲跌 %］，網頁上和價格有關的條件改標 ❔。上市後前 5 個交易日沒有漲跌幅限制，不算
+function jumpOf(cl,cd){let r=null;for(let i=5;i<cl.length;i++){const q=cl[i]/cl[i-1]-1;if(Math.abs(q)>0.105)r=[cd[i],Math.round(q*1000)/10]}return r}
 // 收盤價：data/px（收盤價流程）＋ 補抓的較早月份
 const PD=CAL.filter(d=>d<=today).slice(-N_PX);const pxS=series('data/px',PD),vS=series('data/ck/vol',PD);
 const CH=PD.slice(-N_CH),fiS=series('data/ck/fi',CH),itS=series('data/ck/it',CH),mgS=series('data/ck/mg',CH);
@@ -197,9 +200,9 @@ function valOf(c,f){const cur=VL&&VL.s[c];const pe=cur?cur[0]:null,pb=cur?cur[1]
 // 同產業月營收年增率中位數（近 4 個月）
 const INDF=rd('data/industry.json'),IND2=INDF?INDF.ind:{},INDM={};{const ms=Object.keys(RV).sort().slice(-4),G={};for(const c in IND2){(G[IND2[c]]=G[IND2[c]]||[]).push(c)}
  for(const g in G){const a=ms.map(m=>{const L=G[g].map(c=>RV[m][c]&&RV[m][c][1]).filter(x=>x!=null);return L.length>=5?r1(med(L)):null});if(a.every(x=>x!=null))INDM[g]=a}}
-const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag','lo20','hi20','lo250','dNL','pe','pb','peMed5','pbPct10','dps3','pay3','gm','eps4','epsY','debt','fcf','peHi5','epsQ'];
+const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag','lo20','hi20','lo250','dNL','pe','pb','peMed5','pbPct10','dps3','pay3','gm','eps4','epsY','debt','fcf','peHi5','epsQ','jp'];
 const out={};
-for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[],vl=[];raw.forEach((x,i)=>{if(x!=null){cl.push(x);vl.push(vv[i])}});if(!cl.length||raw[iP]==null)continue;
+for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[],vl=[],cd=[];raw.forEach((x,i)=>{if(x!=null){cl.push(x);vl.push(vv[i]);cd.push(PD[i])}});if(!cl.length||raw[iP]==null)continue;
  const n=cl.length,cur=cl[n-1],rs=rsiSeries(cl),mh=macdHist(cl),vols=vl.filter(x=>x!=null);
  const fi=fiS(c).slice(0,iC+1).slice(-10),it=itS(c).slice(0,iC+1).slice(-10),mgA=mgS(c).slice(0,iM+1);
  const mgV=k=>mgA.length>k?mgA[mgA.length-1-k]:null;
@@ -210,7 +213,8 @@ for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[
   n>1?Math.max(...cl.slice(Math.max(0,n-61),n-1)):null,Math.max(...cl.slice(-250)),n,vl[n-1],vols.length>1?Math.round(avg(vl.slice(Math.max(0,n-21),n-1).filter(x=>x!=null))||0):null,
   fi.some(x=>x!=null)?fi:null,it.some(x=>x!=null)?it:null,mgA.length?[mgV(0),mgV(10),mgV(20)]:null,ry,rHi,rN,bh&&bh.some(x=>x!=null)?bh:null,rLag,
   n>1?Math.min(...cl.slice(Math.max(0,n-21),n-1)):null,n>1?Math.max(...cl.slice(Math.max(0,n-21),n-1)):null,Math.min(...cl.slice(-250)),dNL(cl),
-  fd.pe,fd.pb,fd.peMed5,fd.pbPct10,fd.dps3,fd.pay3,fn.gm,fn.eps4,fn.epsY,fn.debt,fn.fcf,fd.peHi5,fn.epsQ]}
+  fd.pe,fd.pb,fd.peMed5,fd.pbPct10,fd.dps3,fd.pay3,fn.gm,fn.eps4,fn.epsY,fn.debt,fn.fcf,fd.peHi5,fn.epsQ,jumpOf(cl,cd)]}
+{const J=Object.entries(out).filter(([c,a])=>a[a.length-1]).map(([c,a])=>c+' '+a[a.length-1].join(' '));if(J.length)say(`跳動保險：${J.length} 檔近一年有單日漲跌超過 10.5%（價格相關條件標 ❔）：${J.slice(0,20).join('、')}${J.length>20?'…':''}`)}
 const tx=CAL.filter(d=>d<=today).map(d=>MK.taiex[d]),fxD=Object.keys(MK.fx).sort(),fxL=fxD.slice(-250).map(d=>MK.fx[d]),fxT=fxL[fxL.length-1];
 const mkt={d:CAL.filter(d=>d<=today).slice(-1)[0],taiex:{c:tx[tx.length-1],m20:r2(sma(tx,20)),m60:r2(sma(tx,60)),hi250:Math.max(...tx.slice(-250)),n:tx.length},
  fx:fxL.length?{d:fxD[fxD.length-1],v:fxT,rank:fxL.filter(x=>x<fxT).length+1,n:fxL.length}:null};
