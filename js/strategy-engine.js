@@ -64,7 +64,7 @@ function stRun(S,code,events,opt){opt=opt||{};const asOf=opt.asOf||events.reduce
 // 論點的事件：期初持股（選擇納入時）＋歸屬此論點的交易＋沒歸類的配息依股數比例分配
 // 策略起算：撥款前就有的持股，在建立論點那天（或自己填的起算日）才歸到策略，
 // 策略的損益、持有天數、vs 0050、均價都從起算日的收盤價開始算；實際帳戶損益看資產頁的「📦 我的庫存」
-function stBaseClose(S,c,d){if(typeof PXH!='undefined'&&PXH[d]&&num(PXH[d][c])!=null)return{v:num(PXH[d][c]),fix:1};
+function stBaseClose(S,c,d){const K=typeof ckAdjF=='function'?ckAdjF(c,d):1;if(typeof PXH!='undefined'&&PXH[d]&&num(PXH[d][c])!=null)return{v:+(num(PXH[d][c])*K).toFixed(2),fix:1};
  const pd=(S.pxd||{})[c],v=num((S.px||{})[c]);if(v!=null&&pd==d)return{v,fix:1};if(v!=null&&d>=TODAY&&(!pd||pd<=d))return{v,fix:0};return null}
 function stBase(S,T){if(!+T.useInit||!hasInit(S))return null;const d=T.baseD||T.created;if(!d||!S.dd||d<=S.dd)return null;
  const m=num(T.basePx),au=String(T.baseAuto||'');if(m!=null&&!(au&&au.endsWith('|'+m)&&au!=d+'|'+m))return{d,px:m,src:au==d+'|'+m?'收盤':'填'};const b=stBaseClose(S,cU(T.code),d);return b?{d,px:b.v,src:b.fix?'收盤':'暫用現價'}:{d,px:null,src:''}}
@@ -86,7 +86,7 @@ const stMD=d=>d?String(d).slice(5).replace('-','/'):'';
 // 加碼的限制：間隔幾個交易日、比上一批低或高幾 %、跌破第 1 批買價 −N% 暫停加碼
 // 回傳 {wait:'還不能加碼的原因', halt:'暫停加碼的原因'}，都沒有＝null
 function stAddGate(S,T,st){if(!st||T.status!='hold')return null;const B=(S.trades||[]).filter(x=>x.thesisId==T.id&&x.k=='buy'&&x.dt&&num(x.px)!=null).sort((a,b)=>a.dt<b.dt?-1:a.dt>b.dt?1:0),bs=stBase(S,T);
- const first=B.length?{d:B[0].dt,px:num(B[0].px),lb:'第 1 批'}:bs&&bs.px!=null?{d:bs.d,px:bs.px,lb:'起算價'}:null,last=B.length?{d:B[B.length-1].dt,px:num(B[B.length-1].px),lb:'上一批'}:first;
+ const AK=(d,v)=>typeof ckAdjF=='function'?+(v*ckAdjF(T.code,d)).toFixed(2):v,first=B.length?{d:B[0].dt,px:AK(B[0].dt,num(B[0].px)),lb:'第 1 批'}:bs&&bs.px!=null?{d:bs.d,px:bs.px,lb:'起算價'}:null,last=B.length?{d:B[B.length-1].dt,px:AK(B[B.length-1].dt,num(B[B.length-1].px)),lb:'上一批'}:first;
  if(!last)return null;const px=num((S.px||{})[cU(T.code)]),o={},nd=num(st.addDays),pp=num(st.addPxPct),hp=num(st.addHalt),lb=last.lb=='起算價'?'起算日':'上一批';
  if(nd){const n=stTD(last.d,TODAY);if(n<nd)o.wait=`${lb} ${stMD(last.d)} ${n?`買（隔 ${n} 個交易日）`:'才買'}，要隔 ${nd} 個交易日，約 ${stMD(stTDAdd(last.d,nd))} 後再看`}
  if(!o.wait&&pp&&(st.addPx=='down'||st.addPx=='up')&&px!=null&&last.px){const dn=st.addPx=='down',th=last.px*(dn?1-pp/100:1+pp/100);if(dn?px>th:px<th)o.wait=`要比${lb=='起算日'?'起算價':'上一批買價'} ${last.px} ${dn?'低':'高'} ${pp}% 以上（${dn?'≤':'≥'} ${th.toFixed(1)}），現價 ${px}`}
@@ -165,7 +165,21 @@ function stAlerts(S){const A=[],E=stExposure(S),nm=c=>c+(typeof nameOf=='functio
  try{const lr=(S.rules||[]).find(x=>x.k=='liq');if(lr&&lr.on&&typeof liqOf=='function'){const q=liqOf(settle(S,curEff()));if(q&&q.m<+lr.th)A.push({k:'liq',lv:'bad',t:`現金只夠付 ${q.m.toFixed(1)} 個月信貸月付金（門檻 ${lr.th} 個月）：先補現金，不再加碼`})}}catch(e){}
  if(typeof asHeatCap=='function'){const H=asHeatCap(S);if(H.over)A.push({k:'heat',lv:'bad',t:`壓力虧損 ${W2(H.tot)} 萬（只算信貸資金），超過剩下的虧損額度 ${W2(H.cap)} 萬：先降風險再加碼`})}
  for(const T of S.theses||[])if(T.status=='exit'&&!(T.exit&&T.exit.reason))A.push({k:'exr',lv:'wn',th:T.id,t:`${T.id} ${nm(cU(T.code))} 已出場，還沒選出場原因與有沒有照規則做`});
+ // 配股、減資、分割（2026-11-11）：持有中的論點，事件日之後要把停損價、目標價等換算成新的股價單位，並記一筆配股
+ if(typeof ckAdjEv=='function')for(const T of S.theses||[]){if(T.status!='hold')continue;const E2=stAdjPend(T);if(!E2.length)continue;const K=E2.reduce((a,e)=>a*e[2],1),d=E2[E2.length-1][0];
+  A.push({k:'adj',lv:'bad',th:T.id,t:`${T.id} ${nm(cU(T.code))}：${stMD(d)} 有配股、減資或分割，股數約變成 ${(1/K).toFixed(2)} 倍、股價約 ×${K.toFixed(3)}；論點的停損價 ${T.stop||'—'}、目標價等要換算，不然會被判成跌破停損`})}
  return A}
+const stAdjPend=T=>{const from=T.adjD||T.baseD||T.created||'';return typeof ckAdjEv=='function'?ckAdjEv(T.code).filter(e=>e[0]>from&&e[0]<=TODAY):[]};
+// 換算論點裡用舊股價單位存的數字，並建議記一筆配股（股數以券商 App 為準）
+window.stAdjApply=id=>{const T=stThesis(S,id);if(!T)return;const E2=stAdjPend(T);if(!E2.length)return;const K=E2.reduce((a,e)=>a*e[2],1),d=E2[E2.length-1][0],c=cU(T.code);
+ const F=[['stop','停損價'],['tgtPx','目標價'],['stop0','進場停損'],['px0','進場價'],['hi0','進場時 52 週高點']];if(!(T.baseAuto&&String(T.baseAuto).endsWith('|'+T.basePx)))F.push(['basePx','起算價']);
+ const ch=F.filter(([k])=>num(T[k])!=null).map(([k,l])=>[k,l,num(T[k]),+(num(T[k])*K).toFixed(2)]);
+ if(!confirm(`${c} ${nameOf(c)}：${stMD(d)} 股價單位改變（×${K.toFixed(4)}）。換算這些數字？\n`+(ch.map(x=>`${x[1]}：${x[2]} → ${x[3]}`).join('\n')||'（沒有要換算的數字）')))return;
+ T.adjLog=(T.adjLog||[]).concat([{d:TODAY,ev:E2.map(e=>e[0]),k:+K.toFixed(6),ch:ch.map(x=>[x[0],x[2],x[3]])}]);for(const x of ch)T[x[0]]=x[3];T.adjD=d;
+ const has=(S.trades||[]).some(x=>x.k=='sdiv'&&cU(x.n)==c&&x.dt>=E2[0][0]);if(!has){const pd=new Date(d+'T00:00:00Z');pd.setUTCDate(pd.getUTCDate()-1);const q0=(sharesAt(S,pd.toISOString().slice(0,10))['a|'+c]||0),add=Math.round(q0*(1/K-1));
+  if(add>0&&confirm(`同時記一筆配股 ${add.toLocaleString()} 股（${stMD(d)}，${q0.toLocaleString()} 股 × ${(1/K-1).toFixed(4)}）？\n股數以券商 App 為準，之後可以在交易紀錄修改。`)){const x=NEW.trades();Object.assign(x,{dt:d,ac:'a',k:'sdiv',n:c,q:String(add),px:'',note:'配股／分割（換算時自動建議）',thesisId:T.id});S.trades.push(x)}}
+ save();if(typeof stBuild=='function')stBuild();if(typeof upd=='function')upd();if(typeof asCalc=='function')asCalc();toast(`${T.id} 已換算`,0)};
+window.stAdjSkip=id=>{const T=stThesis(S,id);if(!T)return;const E2=stAdjPend(T);if(!E2.length)return;if(!confirm('不換算？之後不再提醒這次的事件（例如你已經自己改好了）。'))return;T.adjD=E2[E2.length-1][0];save();if(typeof upd=='function')upd();if(typeof asCalc=='function')asCalc()};
 
 // ---------- 減少手填：策略條件、預設值、狀態自動
 // 策略規則：第一行可寫【標題：全部符合／至少 N 項】，下面一行一個條件「1. …」

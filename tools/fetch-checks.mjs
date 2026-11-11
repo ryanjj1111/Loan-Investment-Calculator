@@ -84,6 +84,44 @@ for(const [k,d] of D.entries()){if(left()<60e3){stop=true;break}
  if(nReq&&nReq%40==0){saveArcs();say(`…已處理到 ${d}（${nReq} 次請求，剩 ${Math.round(left()/6e4)} 分鐘）`)}}
 saveArcs();say(`每日資料：${nReq} 次請求${stop?'（時間到，下次繼續）':''}`);
 
+// ---------- 還原事件（2026-11-11）：除權息、減資、面額變更、ETF 分割的「前一日收盤 → 參考價」
+// 證交所 TWT49U（除權除息計算結果）、TWTAUU（減資恢復買賣）、TWTB8U（變更面額恢復買賣）、TWTCAU（ETF 分割）；
+// 櫃買中心 bulletin/exDailyQ（除權除息計算結果）、bulletin/revivt（減資）。每月一次請求，最近 2 個月每次重抓。
+// f＝參考價 ÷ 前一日收盤（之前的股價乘上 f 就是還原價，含現金股利）；fs＝只算股數變動的部分（配股、減資、分割），每股數字（EPS、股利）用這個換算
+// 抓不到的事件由跳動保險（jp）擋住
+const ADJ=rd('data/ck/adj.json')||{ev:{},mon:{}};ADJ.ev=ADJ.ev||{};ADJ.mon=ADJ.mon||{};
+const anyIso=s=>{s=String(s??'').trim();let m=s.match(/^(\d{4})[-/]?(\d{2})[-/]?(\d{2})$/);if(m&&+m[1]>1990)return`${m[1]}-${m[2]}-${m[3]}`;
+ m=s.match(/^(\d{2,3})\D+(\d{1,2})\D+(\d{1,2})/);if(m)return(+m[1]+1911)+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0');m=s.match(/^(\d{3})(\d{2})(\d{2})$/);return m?(+m[1]+1911)+'-'+m[2]+'-'+m[3]:''};
+const lastDay=m=>new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7),0)).getUTCDate();
+const ymd=(m,d)=>m.replace('-','')+String(d).padStart(2,'0'),slash=(m,d)=>m.replace('-','/')+'/'+String(d).padStart(2,'0');
+// 欄位：先用欄名找，找不到用固定位置
+function adjRows(j){if(!j)return null;const T=Array.isArray(j.tables)?j.tables[0]:j;if(!T)return[];const F=(T.fields||[]).map(x=>String(x).trim());return{F,data:T.data||[]}}
+const col=(F,re,def)=>{const i=F.findIndex(f=>re.test(f));return i>=0?i:def};
+const ADJ_SRC=[
+ {k:'tse-x',u:m=>`https://www.twse.com.tw/rwd/zh/exRight/TWT49U?response=json&startDate=${ymd(m,1)}&endDate=${ymd(m,lastDay(m))}`,
+  row:(F,a)=>{const pr=nz(a[col(F,/除權息前收盤價/,3)]),rf=nz(a[col(F,/^除權息參考價$/,4)]),kd=String(a[col(F,/權\/息/,6)]||''),xd=nz(a[col(F,/減除股利參考價/,10)]);
+   return{d:anyIso(a[col(F,/資料日期/,0)]),c:String(a[col(F,/股票代號/,1)]).trim(),pr,rf,fs:/權/.test(kd)&&xd>0&&rf>0?rf/xd:1,kd:'x'}}},
+ {k:'tse-r',u:m=>`https://www.twse.com.tw/rwd/zh/reducation/TWTAUU?response=json&startDate=${ymd(m,1)}&endDate=${ymd(m,lastDay(m))}`,
+  row:(F,a)=>({d:anyIso(a[0]),c:String(a[1]).trim(),pr:nz(a[3]),rf:nz(a[4]),kd:'r'})},
+ {k:'tse-p',u:m=>`https://www.twse.com.tw/rwd/zh/change/TWTB8U?response=json&startDate=${ymd(m,1)}&endDate=${ymd(m,lastDay(m))}`,
+  row:(F,a)=>({d:anyIso(a[0]),c:String(a[1]).trim(),pr:nz(a[3]),rf:nz(a[4]),kd:'p'})},
+ {k:'tse-e',u:m=>`https://www.twse.com.tw/rwd/zh/split/TWTCAU?response=json&startDate=${ymd(m,1)}&endDate=${ymd(m,lastDay(m))}`,
+  row:(F,a)=>({d:anyIso(a[0]),c:String(a[1]).trim(),pr:nz(a[4]),rf:nz(a[5]),kd:'p'})},
+ {k:'otc-x',u:m=>`https://www.tpex.org.tw/www/zh-tw/bulletin/exDailyQ?startDate=${slash(m,1)}&endDate=${slash(m,lastDay(m))}&response=json`,
+  row:(F,a)=>{const pr=nz(a[col(F,/除權息前收盤價/,3)]),rf=nz(a[col(F,/^除權息參考價$/,4)]),kd=String(a[col(F,/權\/息/,8)]||''),dv=nz(a[col(F,/^息值$/,6)])||0;
+   return{d:anyIso(a[col(F,/除權息日期/,0)]),c:String(a[col(F,/^代號$/,1)]).trim(),pr,rf,fs:/權/.test(kd)&&pr-dv>0&&rf>0?rf/(pr-dv):1,kd:'x'}}},
+ {k:'otc-r',u:m=>`https://www.tpex.org.tw/www/zh-tw/bulletin/revivt?startDate=${slash(m,1)}&endDate=${slash(m,lastDay(m))}&response=json`,
+  row:(F,a)=>({d:anyIso(a[0]),c:String(a[1]).trim(),pr:nz(a[3]),rf:nz(a[4]),kd:'r'})}];
+{let nA=0,got={};const MS=monthsBack(13).filter(m=>m>='2025-10'),recent=new Set(MS.slice(-2));
+ for(const m of MS)for(const S0 of ADJ_SRC){const key=S0.k+'|'+m;if(ADJ.mon[key]&&!recent.has(m))continue;if(left()<50e3)break;
+  const j=await get(S0.u(m));nA++;const R0=adjRows(j);if(!R0){say(`還原事件 ${key}：抓不到`);continue}
+  const st=String(j.stat||'');if(!R0.data.length&&!/ok|沒有符合|查無/i.test(st)&&st){say(`還原事件 ${key}：${st}`)}
+  let n=0;for(const a of R0.data){const o=S0.row(R0.F,a);if(!o||!o.d||!keep(o.c)||!(o.pr>0)||!(o.rf>0))continue;const f=o.rf/o.pr,fs=o.fs!=null?o.fs:f;if(Math.abs(f-1)<5e-4&&Math.abs(fs-1)<5e-4)continue;
+   const L=ADJ.ev[o.c]=ADJ.ev[o.c]||[];const i=L.findIndex(e=>e[0]==o.d&&e[3]==o.kd);const e=[o.d,+f.toFixed(6),+fs.toFixed(6),o.kd];if(i>=0)L[i]=e;else L.push(e);n++}
+  ADJ.mon[key]=1;got[S0.k]=(got[S0.k]||0)+n}
+ for(const c in ADJ.ev)ADJ.ev[c].sort((a,b)=>a[0]<b[0]?-1:1);ADJ.upd=today;
+ fs.writeFileSync('data/ck/adj.json',JSON.stringify(ADJ));say(`還原事件：${nA} 次請求；這次新增或更新 ${Object.entries(got).map(([k,v])=>k+' '+v).join('、')||'0'}；共 ${Object.values(ADJ.ev).reduce((a,L)=>a+L.length,0)} 筆、${Object.keys(ADJ.ev).length} 檔`)}
+
 // ---------- 月營收（公開資訊觀測站，每月一個檔案；最近 2 個月每次重抓，因為公司陸續公布）
 const RV=rd('data/ck/rev.json')||{};// {'2026-09':{code:[營收（千元）, 年增率 %]}}
 const revMonths=monthsBack(38).slice(0,-1);
@@ -185,8 +223,8 @@ function finOf(c){// 季資料：每季的營收、毛利（累計數相減）
  let fcf=null;for(const k of FK.slice().reverse()){const t=FIN[k].sb20&&FIN[k].sb20[c];if(!t)continue;const[y,s]=k.split('-').map(Number),cf=x=>x?(x[0]??0)+(x[1]??0):null,now=cf(t);
   if(s==4){fcf=now;break}const a=FIN[(y-1)+'-4'],b=FIN[(y-1)+'-'+s];const A=a&&a.sb20&&a.sb20[c],B=b&&b.sb20&&b.sb20[c];if(A&&B){fcf=now+cf(A)-cf(B);break}}
  // 近 8 季單季 EPS（出場條件「EPS 連 N 季年減」用）
- const epsQ=Q.slice(-8).map(q=>q.eq==null?null:r2(q.eq));
- return{gm:gm.length?gm:null,eps4,epsY:epsY&&epsY.every(v=>v!=null)?epsY:null,debt,fcf,Y4,epsQ:epsQ.length>=6&&epsQ.some(v=>v!=null)?epsQ:null}}
+ const epsQ=Q.slice(-8).map(q=>q.eq==null?null:r2(q.eq)),qk=Q.slice(-8).map(q=>q.k);
+ return{gm:gm.length?gm:null,eps4,epsY:epsY&&epsY.every(v=>v!=null)?epsY:null,debt,fcf,Y4,epsQ:epsQ.length>=6&&epsQ.some(v=>v!=null)?epsQ:null,qk}}
 function valOf(c,f){const cur=VL&&VL.s[c];const pe=cur?cur[0]:null,pb=cur?cur[1]:null;
  const P5=VM.slice(-61,-1).map(v=>v.s[c]&&v.s[c][0]).filter(x=>x>0),B10=VM.slice(-121).map(v=>v.s[c]&&v.s[c][1]).filter(x=>x>0);
  const pct=(a,p)=>{a=a.slice().sort((x,y)=>x-y);if(!a.length)return null;const i=(a.length-1)*p,lo=Math.floor(i),hi=Math.ceil(i);return a[lo]+(a[hi]-a[lo])*(i-lo)};
@@ -196,25 +234,39 @@ function valOf(c,f){const cur=VL&&VL.s[c];const pe=cur?cur[0]:null,pb=cur?cur[1]
  const D={};for(const v of VM){const x=v.s[c];if(x&&x[3]!=null&&x[2]!=null)D[x[3]]=x[2]}const dy=Object.keys(D).map(Number).sort((a,b)=>a-b).slice(-3);
  const dps3=dy.length==3?r2((D[dy[0]]+D[dy[1]]+D[dy[2]])/3):null;
  let pay3=null;if(dy.length==3&&f.epsY){const E={};f.Y4.forEach((y,i)=>E[y]=f.epsY[i]);const P=dy.map(y=>E[y]>0?D[y]/E[y]*100:null);if(P.every(x=>x!=null))pay3=r1((P[0]+P[1]+P[2])/3)}
- return{pe,pb,peMed5,pbPct10,dps3,pay3,peHi5}}
+ return{pe,pb,peMed5,pbPct10,dps3,pay3,peHi5,dy,D}}
 // 同產業月營收年增率中位數（近 4 個月）
 const INDF=rd('data/industry.json'),IND2=INDF?INDF.ind:{},INDM={};{const ms=Object.keys(RV).sort().slice(-4),G={};for(const c in IND2){(G[IND2[c]]=G[IND2[c]]||[]).push(c)}
  for(const g in G){const a=ms.map(m=>{const L=G[g].map(c=>RV[m][c]&&RV[m][c][1]).filter(x=>x!=null);return L.length>=5?r1(med(L)):null});if(a.every(x=>x!=null))INDM[g]=a}}
-const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag','lo20','hi20','lo250','dNL','pe','pb','peMed5','pbPct10','dps3','pay3','gm','eps4','epsY','debt','fcf','peHi5','epsQ','jp'];
+// 每股數字換算成最新的股數單位：事件日之後才公布的不用換（季報用法定期限估公布日）
+const qDue=(y,s)=>{y=+y+1911;return s==1?`${y}-05-15`:s==2?`${y}-08-14`:s==3?`${y}-11-14`:`${y+1}-03-31`};
+const shareK=(c,d)=>{let k=1;for(const e of ADJ.ev[c]||[])if(e[0]>d&&e[0]<=today)k*=e[2];return k};
+function perShare(c,fn,fd){if(!(ADJ.ev[c]||[]).some(e=>Math.abs(e[2]-1)>0.02))return;const r2_=v=>v==null?v:Math.round(v*100)/100;
+ if(fn.epsQ&&fn.qk)fn.epsQ=fn.epsQ.map((v,i)=>v==null?v:r2_(v*shareK(c,qDue(...fn.qk[i].split('-')))));
+ if(fn.eps4!=null&&fn.qk&&fn.qk.length){const[y,s]=fn.qk[fn.qk.length-1].split('-');fn.eps4=r2_(fn.eps4*shareK(c,qDue(y,s)))}
+ if(fn.epsY&&fn.Y4)fn.epsY=fn.epsY.map((v,i)=>v==null?v:r2_(v*shareK(c,qDue(fn.Y4[i],4))));
+ if(fd.dps3!=null&&fd.dy)fd.dps3=r2_(fd.dy.reduce((a,y)=>a+fd.D[y]*shareK(c,(+y+1912)+'-07-01'),0)/3)}
+// 給網頁的事件（近一年多）：［日期, f, fs］
+const adjOut=c=>{const L=(ADJ.ev[c]||[]).filter(e=>e[0]>=PD[0]).map(e=>[e[0],e[1],e[2]]);return L.length?L:null};
+const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag','lo20','hi20','lo250','dNL','pe','pb','peMed5','pbPct10','dps3','pay3','gm','eps4','epsY','debt','fcf','peHi5','epsQ','jp','adj'];
 const out={};
 for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[],vl=[],cd=[];raw.forEach((x,i)=>{if(x!=null){cl.push(x);vl.push(vv[i]);cd.push(PD[i])}});if(!cl.length||raw[iP]==null)continue;
+ // 還原價：每個事件日之前的收盤乘上 f（只用在算指標；data/px 保留原始價）
+ const EV=(ADJ.ev[c]||[]).filter(e=>e[0]>cd[0]&&e[0]<=cd[cd.length-1]);if(EV.length){for(let i=0;i<cl.length;i++){let k=1;for(const e of EV)if(cd[i]<e[0])k*=e[1];if(k!=1)cl[i]=+(cl[i]*k).toFixed(4)}}
+ // 股數變動（配股、減資、分割）的事件日落在視窗裡：張數類的指標（20 日均量、法人、融資）不判斷
+ const SH=EV.filter(e=>Math.abs(e[2]-1)>0.02).map(e=>e[0]),shIn=n0=>SH.some(d=>d>cd[Math.max(0,cd.length-n0)]);
  const n=cl.length,cur=cl[n-1],rs=rsiSeries(cl),mh=macdHist(cl),vols=vl.filter(x=>x!=null);
  const fi=fiS(c).slice(0,iC+1).slice(-10),it=itS(c).slice(0,iC+1).slice(-10),mgA=mgS(c).slice(0,iM+1);
  const mgV=k=>mgA.length>k?mgA[mgA.length-1-k]:null;
  let ry=null,rHi=null,rN=0,rLag=null;if(RM.length){const s=RM.map(m=>RV[m][c]||null);rN=s.filter(Boolean).length;const lastI=s.map(Boolean).lastIndexOf(true);if(lastI>=0){rLag=RM.length-1-lastI;ry=s.slice(Math.max(0,lastI-5),lastI+1).map(x=>x?x[1]:null);const rev=s.slice(0,lastI+1).filter(Boolean).map(x=>x[0]);rHi=rev[rev.length-1]>=Math.max(...rev)?1:0}}
  const bh=BW.length?BW.map(d=>BH[d][c]??null):null;
- const fn=finOf(c),fd=valOf(c,fn);
+ const fn=finOf(c),fd=valOf(c,fn);perShare(c,fn,fd);
  out[c]=[cur,r2(sma(cl,20)),r2(sma(cl,60)),r2(sma(cl,120)),r2(sma(cl,20,n-5)),r2(sma(cl,60,n-5)),r1(rs[n-1]),r1(Math.min(...rs.slice(-20).filter(x=>x!=null))),r2(mh[n-1]),r2(mh.length>3?Math.min(...mh.slice(-4,-1)):null),
-  n>1?Math.max(...cl.slice(Math.max(0,n-61),n-1)):null,Math.max(...cl.slice(-250)),n,vl[n-1],vols.length>1?Math.round(avg(vl.slice(Math.max(0,n-21),n-1).filter(x=>x!=null))||0):null,
-  fi.some(x=>x!=null)?fi:null,it.some(x=>x!=null)?it:null,mgA.length?[mgV(0),mgV(10),mgV(20)]:null,ry,rHi,rN,bh&&bh.some(x=>x!=null)?bh:null,rLag,
+  n>1?Math.max(...cl.slice(Math.max(0,n-61),n-1)):null,Math.max(...cl.slice(-250)),n,vl[n-1],vols.length>1&&!shIn(21)?Math.round(avg(vl.slice(Math.max(0,n-21),n-1).filter(x=>x!=null))||0):null,
+  fi.some(x=>x!=null)&&!shIn(11)?fi:null,it.some(x=>x!=null)&&!shIn(11)?it:null,mgA.length&&!shIn(21)?[mgV(0),mgV(10),mgV(20)]:null,ry,rHi,rN,bh&&bh.some(x=>x!=null)?bh:null,rLag,
   n>1?Math.min(...cl.slice(Math.max(0,n-21),n-1)):null,n>1?Math.max(...cl.slice(Math.max(0,n-21),n-1)):null,Math.min(...cl.slice(-250)),dNL(cl),
-  fd.pe,fd.pb,fd.peMed5,fd.pbPct10,fd.dps3,fd.pay3,fn.gm,fn.eps4,fn.epsY,fn.debt,fn.fcf,fd.peHi5,fn.epsQ,jumpOf(cl,cd)]}
-{const J=Object.entries(out).filter(([c,a])=>a[a.length-1]).map(([c,a])=>c+' '+a[a.length-1].join(' '));if(J.length)say(`跳動保險：${J.length} 檔近一年有單日漲跌超過 10.5%（價格相關條件標 ❔）：${J.slice(0,20).join('、')}${J.length>20?'…':''}`)}
+  fd.pe,fd.pb,fd.peMed5,fd.pbPct10,fd.dps3,fd.pay3,fn.gm,fn.eps4,fn.epsY,fn.debt,fn.fcf,fd.peHi5,fn.epsQ,jumpOf(cl,cd),adjOut(c)]}
+{const iJ=F.indexOf('jp'),J=Object.entries(out).filter(([c,a])=>a[iJ]).map(([c,a])=>c+' '+a[iJ].join(' '));if(J.length)say(`跳動保險：${J.length} 檔近一年有單日漲跌超過 10.5%（價格相關條件標 ❔）：${J.slice(0,20).join('、')}${J.length>20?'…':''}`)}
 const tx=CAL.filter(d=>d<=today).map(d=>MK.taiex[d]),fxD=Object.keys(MK.fx).sort(),fxL=fxD.slice(-250).map(d=>MK.fx[d]),fxT=fxL[fxL.length-1];
 const mkt={d:CAL.filter(d=>d<=today).slice(-1)[0],taiex:{c:tx[tx.length-1],m20:r2(sma(tx,20)),m60:r2(sma(tx,60)),hi250:Math.max(...tx.slice(-250)),n:tx.length},
  fx:fxL.length?{d:fxD[fxD.length-1],v:fxT,rank:fxL.filter(x=>x<fxT).length+1,n:fxL.length}:null};
