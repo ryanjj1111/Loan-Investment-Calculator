@@ -251,7 +251,7 @@ window.ckGo=(c,f,old)=>{asStock(c,'a');setTimeout(()=>{const b=$('asOvB');if(!b)
  if(!el){const d=b.querySelector('details.olc');if(d){d.open=true;el=f=='eps'?b.querySelector('#olV'):f=='guide'?d.querySelector('.olf input[type=date]'):d}}
  if(el){let p=el.parentNode;while(p&&p!==b){if(p.tagName=='DETAILS')p.open=true;p=p.parentNode}el.scrollIntoView({block:'center'});const i=el.matches&&el.matches('input')?el:el.querySelector&&el.querySelector('input');if(i)i.focus();(el.closest('.ckfx')||el).classList.add('ckhi')}},60)};
 // 複製一段請求給 AI：列出缺的與要更新的資料，要求附來源、用投資帳本 v1 輸出
-window.ckAiAsk=()=>{const L=ckTodo(),y=+TODAY.slice(0,4),nm=c=>c+' '+nameOf(c),by=f=>L.filter(o=>o.f==f),uniq=a=>[...new Set(a)];
+function ckAiText(){const L=ckTodo(),y=+TODAY.slice(0,4),nm=c=>c+' '+nameOf(c),by=f=>L.filter(o=>o.f==f),uniq=a=>[...new Set(a)];
  const eps=uniq(by('eps').map(o=>nm(o.c))),gd=uniq(by('guide').map(o=>nm(o.c))),th=by('theme').map(o=>`${o.n}（${o.cs.map(nm).join('、')}）`),at=L.filter(o=>o.f.startsWith('attr:')).map(o=>nm(o.c)+'：'+(o.f=='attr:theme'?'所屬主題':CK_ATTR[o.f.slice(5)]));
  const t=`請幫我收集以下台股資料（今天是 ${TODAY}）。只用公開網頁上寫明「哪家機構、哪一天、多少」的數字，每筆附來源與日期；找不到就說找不到，不要推算或自己湊數字。
 ${eps.length?`
@@ -266,7 +266,9 @@ ${eps.length?`
 `:''}
 最後請用「投資帳本 v1」格式輸出一個 json（只放有找到的），例如：
 {"format":"投資帳本 v1","outlook":[{"code":"2301","eps":[{"year":${y},"eps":11.19,"src":"FactSet 中位數（鉅亨網）","date":"${TODAY}"}],"guide":{"rev":"up","gm":"flat","date":"${TODAY}","src":"法說會","note":"一句重點"},"attr":{"growth":true,"cyc":false,"lead":true,"theme":"AI 伺服器"}}],"themes":[{"name":"PC","status":"down","date":"${TODAY}","src":"IDC","note":"一句重點"}]}`;
- asOvOpen(`<div class=ovh><button onclick="asClose()">✕</button><b>🤖 請 AI 幫我找</b></div><div class=h>按「複製」後貼到任何 AI 對話；拿到結果後，用「📥 從 AI 貼上」匯入，可以先預覽、也可以整批復原。</div><textarea id=ckAiT rows=14 style="width:100%;font-size:12.5px">${esc(t)}</textarea><div class=asbtn><button class=pri onclick="ckAiCopy()">📋 複製</button><button onclick="asClose()">關閉</button></div>`)};
+ return t}
+// 「🤖 請 AI 幫我找」改成打開 🤖 AI 討論的「補資料」
+window.ckAiAsk=()=>aiOpen({q:'fill'});
 window.ckAiCopy=()=>{const e=$('ckAiT');e.select();const ok=()=>toast('已複製，貼到 AI 對話就可以',0);if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(e.value).then(ok,()=>{document.execCommand('copy');ok()});else{document.execCommand('copy');ok()}};
 window.ckMetTog=(id,gi,ii)=>{const T=stThesis(S,id),st=T&&stStrat(S,T.sid),g=st&&stConds(st)[gi],t=g&&g.items[ii];if(!t)return;const on=!(T.met||[]).includes(t);stMetT(id,t,on);ckRefresh()};
 // 檢核資料讀到後，重畫用得到的地方
@@ -352,7 +354,7 @@ window.exUndo=(id,key)=>{const T=stThesis(S,id);if(!T||!T.exAck)return;delete T.
 window.exAck=(id,key)=>exDecide(id,key,'skip');
 function exRearm(T){if(!T.exAck||!CK)return 0;let ch=0;for(const x of exEval(T)){const a=exAckOf(T,x.key);if(a&&a.k!='na'&&x.r&&x.r.v===false){delete T.exAck[x.key];ch++}}return ch}
 const EX_KN={sell:'照規則賣出',na:'這條不適用',skip:'不照做',ack:'已處理'};
-const exBtns=(id,key)=>`<button class=ckmb onclick="exDecide('${id}','${key}','sell')">照規則賣出</button><button class=ckmb onclick="exDecide('${id}','${key}','na')">這條不適用</button><button class=ckmb onclick="exDecide('${id}','${key}','skip')">不照做</button>`;
+const exBtns=(id,key)=>`<button class=ckmb onclick="exDecide('${id}','${key}','sell')">照規則賣出</button><button class=ckmb onclick="exDecide('${id}','${key}','na')">這條不適用</button><button class=ckmb onclick="exDecide('${id}','${key}','skip')">不照做</button><button class=ckmb onclick="aiOpen({q:'exit',th:'${id}',rule:'${key}'})">🤖 問 AI</button>`;
 // 個股頁、完整論點：出場條件卡
 function ckExitHtml(T,st){if(!st||T.status!='hold')return'';const L=exRules(st);if(!L.length)return'';
  if(!CK)return`<div class="asck ckc"><b>🚪 出場條件</b><div class=h>${ckErr?'讀不到自動檢核資料。':'資料讀取中…'}</div></div>`;
