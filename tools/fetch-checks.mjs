@@ -151,7 +151,9 @@ async function valDay(d){const a=await get(`https://www.twse.com.tw/rwd/zh/after
  return s}
 {const months=monthsBack(N_VAL-1),cur=months[months.length-1];let nv=0;
  // 這個月：每次更新成最近一個交易日
- const dl=CAL.filter(d=>d<=today).slice(-1)[0];const fc=`data/ck/val/${cur}.json`,oc=rd(fc);if(dl&&(!oc||oc.d<dl)&&left()>60e3){const s=await valDay(dl);nv++;if(s){fs.writeFileSync(fc,JSON.stringify({d:dl,s}));say(`估值 ${dl}：${Object.keys(s).length} 檔`)}}
+ // 估值日不超過收盤價檔（data/px）的最新日期：本益比、股價淨值比要和 c 同一天的收盤，不然會把兩天的數字混在一起（2026-11-11）
+ const pxLast=(()=>{for(const m of[today.slice(0,7),monthsBack(1)[0]]){const j=rd(`data/px/${m}.json`);if(j&&j.d){const k=Object.keys(j.d).sort();if(k.length)return k[k.length-1]}}return''})();
+ const dl=CAL.filter(d=>d<=today&&(!pxLast||d<=pxLast)).slice(-1)[0];const fc=`data/ck/val/${cur}.json`,oc=rd(fc);if(dl&&(!oc||oc.d!=dl)&&left()>60e3){const s=await valDay(dl);nv++;if(s){fs.writeFileSync(fc,JSON.stringify({d:dl,s}));say(`估值 ${dl}：${Object.keys(s).length} 檔`)}}
  for(const m of months.slice(0,-1).reverse()){if(left()<90e3)break;const f=`data/ck/val/${m}.json`;if(fs.existsSync(f)||failed('v|'+m))continue;
   const[y,mm]=m.split('-').map(Number);let s=null,dd='';for(let k=0;k<8&&!s;k++){const t=new Date(Date.UTC(y,mm,0-k)),wd=t.getUTCDay();if(wd==0||wd==6)continue;dd=t.toISOString().slice(0,10);s=await valDay(dd);nv++}
   if(s){fs.writeFileSync(f,JSON.stringify({d:dd,s}));delete ST.fail['v|'+m]}else fail('v|'+m)}
@@ -234,7 +236,10 @@ function valOf(c,f){const cur=VL&&VL.s[c];const pe=cur?cur[0]:null,pb=cur?cur[1]
  const D={};for(const v of VM){const x=v.s[c];if(x&&x[3]!=null&&x[2]!=null)D[x[3]]=x[2]}const dy=Object.keys(D).map(Number).sort((a,b)=>a-b).slice(-3);
  const dps3=dy.length==3?r2((D[dy[0]]+D[dy[1]]+D[dy[2]])/3):null;
  let pay3=null;if(dy.length==3&&f.epsY){const E={};f.Y4.forEach((y,i)=>E[y]=f.epsY[i]);const P=dy.map(y=>E[y]>0?D[y]/E[y]*100:null);if(P.every(x=>x!=null))pay3=r1((P[0]+P[1]+P[2])/3)}
- return{pe,pb,peMed5,pbPct10,dps3,pay3,peHi5,dy,D}}
+ // 股價淨值比「區間上 1/3、下 1/3」的門檻（和 pbPct10 同一個定義：低於現值的樣本比例，四捨五入到小數 2 位）
+ // 網頁上有比檢核資料新的價格時，用現價換算的股價淨值比和這兩個門檻比，也用來算觸發價
+ let pbQ=null;if(B10.length>=36){const s=B10.slice().sort((x,y)=>x-y),n=s.length,k=Math.ceil(0.665*n-1e-9),j=Math.ceil(0.335*n-1e-9)-1;pbQ=[j>=0&&j<n?s[j]:null,k>=1&&k<=n?s[k-1]:null]}
+ return{pe,pb,peMed5,pbPct10,dps3,pay3,peHi5,dy,D,pbQ}}
 // 同產業月營收年增率中位數（近 4 個月）
 const INDF=rd('data/industry.json'),IND2=INDF?INDF.ind:{},INDM={};{const ms=Object.keys(RV).sort().slice(-4),G={};for(const c in IND2){(G[IND2[c]]=G[IND2[c]]||[]).push(c)}
  for(const g in G){const a=ms.map(m=>{const L=G[g].map(c=>RV[m][c]&&RV[m][c][1]).filter(x=>x!=null);return L.length>=5?r1(med(L)):null});if(a.every(x=>x!=null))INDM[g]=a}}
@@ -248,9 +253,9 @@ function perShare(c,fn,fd){if(!(ADJ.ev[c]||[]).some(e=>Math.abs(e[2]-1)>0.02))re
  if(fd.dps3!=null&&fd.dy)fd.dps3=r2_(fd.dy.reduce((a,y)=>a+fd.D[y]*shareK(c,(+y+1912)+'-07-01'),0)/3)}
 // 給網頁的事件（近一年多）：［日期, f, fs］
 const adjOut=c=>{const L=(ADJ.ev[c]||[]).filter(e=>e[0]>=PD[0]).map(e=>[e[0],e[1],e[2]]);return L.length?L:null};
-const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag','lo20','hi20','lo250','dNL','pe','pb','peMed5','pbPct10','dps3','pay3','gm','eps4','epsY','debt','fcf','peHi5','epsQ','jp','adj'];
+const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag','lo20','hi20','lo250','dNL','pe','pb','peMed5','pbPct10','dps3','pay3','gm','eps4','epsY','debt','fcf','peHi5','epsQ','jp','adj','pbQ'];
 const out={};
-for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[],vl=[],cd=[];raw.forEach((x,i)=>{if(x!=null){cl.push(x);vl.push(vv[i]);cd.push(PD[i])}});if(!cl.length||raw[iP]==null)continue;
+for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[],vl=[],cd=[];raw.forEach((x,i)=>{if(x!=null){cl.push(x);vl.push(vv[i]);cd.push(PD[i])}});if(!cl.length||raw[iP]==null)continue;const clRaw=cl.slice();
  // 還原價：每個事件日之前的收盤乘上 f（只用在算指標；data/px 保留原始價）
  const EV=(ADJ.ev[c]||[]).filter(e=>e[0]>cd[0]&&e[0]<=cd[cd.length-1]);if(EV.length){for(let i=0;i<cl.length;i++){let k=1;for(const e of EV)if(cd[i]<e[0])k*=e[1];if(k!=1)cl[i]=+(cl[i]*k).toFixed(4)}}
  // 股數變動（配股、減資、分割）的事件日落在視窗裡：張數類的指標（20 日均量、法人、融資）不判斷
@@ -261,11 +266,13 @@ for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[
  let ry=null,rHi=null,rN=0,rLag=null;if(RM.length){const s=RM.map(m=>RV[m][c]||null);rN=s.filter(Boolean).length;const lastI=s.map(Boolean).lastIndexOf(true);if(lastI>=0){rLag=RM.length-1-lastI;ry=s.slice(Math.max(0,lastI-5),lastI+1).map(x=>x?x[1]:null);const rev=s.slice(0,lastI+1).filter(Boolean).map(x=>x[0]);rHi=rev[rev.length-1]>=Math.max(...rev)?1:0}}
  const bh=BW.length?BW.map(d=>BH[d][c]??null):null;
  const fn=finOf(c),fd=valOf(c,fn);perShare(c,fn,fd);
+ // 估值日和收盤日不同：本益比、股價淨值比換算成 c 那天的收盤（還沒有估值日收盤的就不給）
+ if(VL&&VL.d&&VL.d!=cd[cd.length-1]&&(fd.pe!=null||fd.pb!=null)){const i=cd.indexOf(VL.d),r=i>=0&&clRaw[i]>0?clRaw[clRaw.length-1]/clRaw[i]:null;if(r!=null){if(fd.pe!=null)fd.pe=r2(fd.pe*r);if(fd.pb!=null)fd.pb=r2(fd.pb*r)}else{fd.pe=null;fd.pb=null}}
  out[c]=[cur,r2(sma(cl,20)),r2(sma(cl,60)),r2(sma(cl,120)),r2(sma(cl,20,n-5)),r2(sma(cl,60,n-5)),r1(rs[n-1]),r1(Math.min(...rs.slice(-20).filter(x=>x!=null))),r2(mh[n-1]),r2(mh.length>3?Math.min(...mh.slice(-4,-1)):null),
   n>1?Math.max(...cl.slice(Math.max(0,n-61),n-1)):null,Math.max(...cl.slice(-250)),n,vl[n-1],vols.length>1&&!shIn(21)?Math.round(avg(vl.slice(Math.max(0,n-21),n-1).filter(x=>x!=null))||0):null,
   fi.some(x=>x!=null)&&!shIn(11)?fi:null,it.some(x=>x!=null)&&!shIn(11)?it:null,mgA.length&&!shIn(21)?[mgV(0),mgV(10),mgV(20)]:null,ry,rHi,rN,bh&&bh.some(x=>x!=null)?bh:null,rLag,
   n>1?Math.min(...cl.slice(Math.max(0,n-21),n-1)):null,n>1?Math.max(...cl.slice(Math.max(0,n-21),n-1)):null,Math.min(...cl.slice(-250)),dNL(cl),
-  fd.pe,fd.pb,fd.peMed5,fd.pbPct10,fd.dps3,fd.pay3,fn.gm,fn.eps4,fn.epsY,fn.debt,fn.fcf,fd.peHi5,fn.epsQ,jumpOf(cl,cd),adjOut(c)]}
+  fd.pe,fd.pb,fd.peMed5,fd.pbPct10,fd.dps3,fd.pay3,fn.gm,fn.eps4,fn.epsY,fn.debt,fn.fcf,fd.peHi5,fn.epsQ,jumpOf(cl,cd),adjOut(c),fd.pbQ]}
 {const iJ=F.indexOf('jp'),J=Object.entries(out).filter(([c,a])=>a[iJ]).map(([c,a])=>c+' '+a[iJ].join(' '));if(J.length)say(`跳動保險：${J.length} 檔近一年有單日漲跌超過 10.5%（價格相關條件標 ❔）：${J.slice(0,20).join('、')}${J.length>20?'…':''}`)}
 const tx=CAL.filter(d=>d<=today).map(d=>MK.taiex[d]),fxD=Object.keys(MK.fx).sort(),fxL=fxD.slice(-250).map(d=>MK.fx[d]),fxT=fxL[fxL.length-1];
 const mkt={d:CAL.filter(d=>d<=today).slice(-1)[0],taiex:{c:tx[tx.length-1],m20:r2(sma(tx,20)),m60:r2(sma(tx,60)),hi250:Math.max(...tx.slice(-250)),n:tx.length},

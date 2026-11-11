@@ -7,13 +7,13 @@ let src=['js/engine.js','js/strategy-engine.js','js/check.js'].map(f=>fs.readFil
 const noop=()=>null,el={style:{},classList:{add(){},remove(){},toggle(){}},appendChild(){},setAttribute(){}};
 const ctx=vm.createContext({console,document:{getElementById:noop,querySelector:noop,querySelectorAll:()=>[],addEventListener(){},createElement:()=>el,body:el},localStorage:{getItem:noop,setItem(){}},navigator:{},location:{href:''},setTimeout,fetch:async()=>({ok:false})});ctx.window=ctx;
 vm.runInContext(src,ctx);const run=c=>vm.runInContext(c,ctx);
-const F=['c','m20','m60','m120','gm','ry','rLag','epsQ','jp','hi250','adj'];
+const F=['c','m20','m60','m120','gm','ry','rLag','epsQ','jp','hi250','adj','pe','pb','peHi5','peMed5','pbPct10','pbQ'];
 function m(o){return o}
 // 每個案例：條件文字、這檔的資料、前瞻資料、論點（起算日、kn）→ 預期 v（true／false／null）與 pre
 function check(name,text,o,want){
- ctx.__o=o;run(`for(const k in CKM)delete CKM[k];S={outlook:__o.outlook||{},theses:[],strategies:[],trades:[]};CK={f:${JSON.stringify(F)},s:{'9999':${JSON.stringify(F)}.map(k=>__o.m[k]??null)},rM:'2026-10',mkt:{},ind:{}};
+ ctx.__o=o;run(`for(const k in CKM)delete CKM[k];S={outlook:__o.outlook||{},theses:[],strategies:[],trades:[],px:__o.px?{'9999':__o.px}:{},pxd:__o.px?{'9999':'2026-11-11'}:{},pxa:__o.px?{'9999':'證交所'}:{}};CK={d:'2026-11-10',f:${JSON.stringify(F)},s:{'9999':${JSON.stringify(F)}.map(k=>__o.m[k]??null)},rM:'2026-10',mkt:{},ind:{}};
   CKX={c:'9999',st:null,T:__o.T||null,start:(__o.T&&__o.T.baseD)||'',first:'',avg:null};EXPRE=false;__r=ckRun(ckParse(exNorm(${JSON.stringify(text)})),ckM('9999'),CK.mkt);`);
- const r=ctx.__r,got={v:r?r.v:undefined,pre:!!(r&&r.pre)},ok=got.v===want.v&&got.pre===!!want.pre;
+ const r=ctx.__r,got={v:r?r.v:undefined,pre:!!(r&&r.pre)},ok=got.v===want.v&&got.pre===!!want.pre&&(want.fix===undefined||JSON.stringify((r&&r.fix)||null)===JSON.stringify(want.fix));
  console.log(`${ok?'✓':'✗'} ${name}${ok?'':`：預期 ${JSON.stringify(want)}，得到 ${JSON.stringify(got)}｜${r&&(r.why||r.miss)}`}`);return ok}
 const e=(y,v,d,src)=>({y,v,d,src});
 const C=[];
@@ -26,6 +26,19 @@ C.push(check('嘉澤：兩筆都在起算前 → ⏸','法人 EPS 預估下修 >
 C.push(check('跨年：舊預估只有 2026 年 → 不比','法人 EPS 預估下修 > 10%',{m:{c:100},outlook:{'9999':{eps:[e(2026,100,'2026-08-20','FactSet'),e(2027,70,'2026-11-01','FactSet')]}}},{v:null}));
 C.push(check('沒有 EPS 預估 → 資料不足','法人 EPS 預估下修 > 10%',{m:{c:100},outlook:{}},{v:null}));
 C.push(check('預估超過 4 個月 → 資料不足','法人 EPS 預估下修 > 10%',{m:{c:100},outlook:{'9999':{eps:[e(2027,100,'2026-05-01','FactSet')]}}},{v:null}));
+// 只有一批預估：沒有新預估可以比較，不能當成「沒有下修」（2026-11-11 零壹）
+C.push(check('只有一批、超過 60 天 → 資料不足並列入待補','法人 EPS 預估下修 > 10%',{m:{c:125},outlook:{'9999':{eps:[e(2027,8.44,'2026-08-31','群益證券')]}},T:{baseD:'2026-11-06'}},{v:null,fix:['eps']}));
+C.push(check('只有一批、起算前 20 天 → 資料不足、不列待補','法人 EPS 預估下修 > 10%',{m:{c:125},outlook:{'9999':{eps:[e(2027,8.44,'2026-10-22','群益證券')]}},T:{baseD:'2026-11-06'}},{v:null,fix:null}));
+C.push(check('理由失效三項中 EPS 沒得比 → 整條資料不足','月營收年增率轉負連 2 個月、法人 EPS 預估下修 > 10%、或毛利率連 2 季下滑',{m:{c:125,ry:[27.4,13.6,59.2,44.4,38.6,91.1],gm:[14.3,11.8,12.8,10.6]},outlook:{'9999':{eps:[e(2027,8.44,'2026-08-31','群益證券')]}},T:{baseD:'2026-11-06'}},{v:null}));
+// 現價比檢核資料新：本益比、股價淨值比照比例換算（零壹 11/10 收盤 125、本益比 16.71；11/11 收盤 135）
+const ZY={c:125,pe:16.71,peHi5:20.2,peMed5:15.7,pb:3.7,pbPct10:0.6,pbQ:[3.1,3.9]};
+C.push(check('現價 135：本益比 18.05 沒到上緣 20.2','本益比回到近 5 年區間上緣',{m:ZY,px:135},{v:false}));
+C.push(check('現價 152：本益比 20.32 到上緣','本益比回到近 5 年區間上緣',{m:ZY,px:152},{v:true}));
+C.push(check('現價 135：本益比 18.05 > 中位數 15.7','本益比 ≤ 近 5 年本益比中位數',{m:ZY,px:135},{v:false}));
+C.push(check('現價 135：股價淨值比 4.0 超過上 1/3 門檻 3.9','股價淨值比到近 10 年區間上 1/3',{m:ZY,px:135},{v:true}));
+C.push(check('沒有新價格：股價淨值比照檢核資料的位置 60%','股價淨值比到近 10 年區間上 1/3',{m:ZY},{v:false}));
+{run(`for(const k in CKM)delete CKM[k];S.px={'9999':135};S.pxd={'9999':'2026-11-11'};S.pxa={'9999':'證交所'};CK.d='2026-11-10';CK.s['9999']=CK.f.map(k=>(${JSON.stringify(ZY)})[k]??null);__m=ckM('9999');__t=__m.c*__m.peHi5/__m.pe`);
+ const t=ctx.__t,ok=Math.abs(t-151.1)<0.3;console.log(`${ok?'✓':'✗'} 停利觸發價用同一天的價格與本益比：${t.toFixed(1)}（應約 151.1，不是 163.2）`);C.push(ok)}
 // 配股、分割：事件日之前的 EPS 預估換算成新股數單位，不會被判成下修
 const ADJ=[['2026-09-02',0.335256,0.333333]];
 C.push(check('分割前後的預估換算後比較（1 拆 3）','法人 EPS 預估下修 > 10%',{m:{c:1680,adj:ADJ},outlook:{'9999':{eps:[e(2027,300,'2026-08-20','FactSet'),e(2027,99,'2026-11-01','FactSet')]}},T:{baseD:'2026-07-01'}},{v:false}));
