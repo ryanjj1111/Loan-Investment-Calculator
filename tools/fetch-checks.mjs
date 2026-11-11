@@ -234,7 +234,10 @@ function valOf(c,f){const cur=VL&&VL.s[c];const pe=cur?cur[0]:null,pb=cur?cur[1]
  const D={};for(const v of VM){const x=v.s[c];if(x&&x[3]!=null&&x[2]!=null)D[x[3]]=x[2]}const dy=Object.keys(D).map(Number).sort((a,b)=>a-b).slice(-3);
  const dps3=dy.length==3?r2((D[dy[0]]+D[dy[1]]+D[dy[2]])/3):null;
  let pay3=null;if(dy.length==3&&f.epsY){const E={};f.Y4.forEach((y,i)=>E[y]=f.epsY[i]);const P=dy.map(y=>E[y]>0?D[y]/E[y]*100:null);if(P.every(x=>x!=null))pay3=r1((P[0]+P[1]+P[2])/3)}
- return{pe,pb,peMed5,pbPct10,dps3,pay3,peHi5,dy,D}}
+ // 股價淨值比「區間上 1/3、下 1/3」的門檻（和 pbPct10 同一個定義：低於現值的樣本比例，四捨五入到小數 2 位）
+ // 網頁上有比檢核資料新的價格時，用現價換算的股價淨值比和這兩個門檻比，也用來算觸發價
+ let pbQ=null;if(B10.length>=36){const s=B10.slice().sort((x,y)=>x-y),n=s.length,k=Math.ceil(0.665*n-1e-9),j=Math.ceil(0.335*n-1e-9)-1;pbQ=[j>=0&&j<n?s[j]:null,k>=1&&k<=n?s[k-1]:null]}
+ return{pe,pb,peMed5,pbPct10,dps3,pay3,peHi5,dy,D,pbQ}}
 // 同產業月營收年增率中位數（近 4 個月）
 const INDF=rd('data/industry.json'),IND2=INDF?INDF.ind:{},INDM={};{const ms=Object.keys(RV).sort().slice(-4),G={};for(const c in IND2){(G[IND2[c]]=G[IND2[c]]||[]).push(c)}
  for(const g in G){const a=ms.map(m=>{const L=G[g].map(c=>RV[m][c]&&RV[m][c][1]).filter(x=>x!=null);return L.length>=5?r1(med(L)):null});if(a.every(x=>x!=null))INDM[g]=a}}
@@ -248,7 +251,7 @@ function perShare(c,fn,fd){if(!(ADJ.ev[c]||[]).some(e=>Math.abs(e[2]-1)>0.02))re
  if(fd.dps3!=null&&fd.dy)fd.dps3=r2_(fd.dy.reduce((a,y)=>a+fd.D[y]*shareK(c,(+y+1912)+'-07-01'),0)/3)}
 // 給網頁的事件（近一年多）：［日期, f, fs］
 const adjOut=c=>{const L=(ADJ.ev[c]||[]).filter(e=>e[0]>=PD[0]).map(e=>[e[0],e[1],e[2]]);return L.length?L:null};
-const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag','lo20','hi20','lo250','dNL','pe','pb','peMed5','pbPct10','dps3','pay3','gm','eps4','epsY','debt','fcf','peHi5','epsQ','jp','adj'];
+const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag','lo20','hi20','lo250','dNL','pe','pb','peMed5','pbPct10','dps3','pay3','gm','eps4','epsY','debt','fcf','peHi5','epsQ','jp','adj','pbQ'];
 const out={};
 for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[],vl=[],cd=[];raw.forEach((x,i)=>{if(x!=null){cl.push(x);vl.push(vv[i]);cd.push(PD[i])}});if(!cl.length||raw[iP]==null)continue;
  // 還原價：每個事件日之前的收盤乘上 f（只用在算指標；data/px 保留原始價）
@@ -265,7 +268,7 @@ for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[
   n>1?Math.max(...cl.slice(Math.max(0,n-61),n-1)):null,Math.max(...cl.slice(-250)),n,vl[n-1],vols.length>1&&!shIn(21)?Math.round(avg(vl.slice(Math.max(0,n-21),n-1).filter(x=>x!=null))||0):null,
   fi.some(x=>x!=null)&&!shIn(11)?fi:null,it.some(x=>x!=null)&&!shIn(11)?it:null,mgA.length&&!shIn(21)?[mgV(0),mgV(10),mgV(20)]:null,ry,rHi,rN,bh&&bh.some(x=>x!=null)?bh:null,rLag,
   n>1?Math.min(...cl.slice(Math.max(0,n-21),n-1)):null,n>1?Math.max(...cl.slice(Math.max(0,n-21),n-1)):null,Math.min(...cl.slice(-250)),dNL(cl),
-  fd.pe,fd.pb,fd.peMed5,fd.pbPct10,fd.dps3,fd.pay3,fn.gm,fn.eps4,fn.epsY,fn.debt,fn.fcf,fd.peHi5,fn.epsQ,jumpOf(cl,cd),adjOut(c)]}
+  fd.pe,fd.pb,fd.peMed5,fd.pbPct10,fd.dps3,fd.pay3,fn.gm,fn.eps4,fn.epsY,fn.debt,fn.fcf,fd.peHi5,fn.epsQ,jumpOf(cl,cd),adjOut(c),fd.pbQ]}
 {const iJ=F.indexOf('jp'),J=Object.entries(out).filter(([c,a])=>a[iJ]).map(([c,a])=>c+' '+a[iJ].join(' '));if(J.length)say(`跳動保險：${J.length} 檔近一年有單日漲跌超過 10.5%（價格相關條件標 ❔）：${J.slice(0,20).join('、')}${J.length>20?'…':''}`)}
 const tx=CAL.filter(d=>d<=today).map(d=>MK.taiex[d]),fxD=Object.keys(MK.fx).sort(),fxL=fxD.slice(-250).map(d=>MK.fx[d]),fxT=fxL[fxL.length-1];
 const mkt={d:CAL.filter(d=>d<=today).slice(-1)[0],taiex:{c:tx[tx.length-1],m20:r2(sma(tx,20)),m60:r2(sma(tx,60)),hi250:Math.max(...tx.slice(-250)),n:tx.length},

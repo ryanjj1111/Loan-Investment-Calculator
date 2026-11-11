@@ -9,8 +9,14 @@ function ckM0(c){c=cU(c);if(!CK||!c)return null;if(CKM[c]!==undefined)return CKM
 // 檢核資料是前一個交易日收盤；之後有新價格（手填的盤中價，或網頁抓到的當天收盤）時，和價格有關的條件改用新價格試算
 // RSI、MACD、均線、法人、融資、營收維持用檢核資料
 function ckM(c){const o=ckM0(c);if(!o)return o;c=cU(c);const px=num((S.px||{})[c]),d=(S.pxd||{})[c]||'',auto=!!(S.pxa||{})[c];
- if(px==null||px==o.c)return o;if(auto?d>CK.d:d>=CK.d||!d)return Object.assign({},o,{c:px,live:{px,d,auto,c0:o.c}});return o}
-const ckLive=m=>m&&m.live?(m.live.auto?`價格條件用 ${ckMD(m.live.d)} 收盤 ${f2(m.live.px)} 試算（檢核資料是 ${ckMD(CK.d)} 收盤 ${f2(m.live.c0)}）`:`價格條件用你填的現價 ${f2(m.live.px)} 試算（檢核資料是 ${ckMD(CK.d)} 收盤 ${f2(m.live.c0)}）`):'';
+ if(px==null||px==o.c)return o;if(auto?d>CK.d:d>=CK.d||!d){const r=o.c>0?px/o.c:1;
+  // 本益比、股價淨值比是用檢核資料那天的收盤算的；換成新價格時一起等比例換算，不然觸發價和判斷會把兩天的數字混在一起（2026-11-11 零壹）
+  return Object.assign({},o,{c:px,live:{px,d,auto,c0:o.c,pe:o.pe,pb:o.pb},pe:o.pe!=null?Math.round(o.pe*r*100)/100:o.pe,pb:o.pb!=null?Math.round(o.pb*r*100)/100:o.pb})}return o}
+// 股價淨值比在近 10 年區間的位置：用現價換算時改用門檻比較（pbQ＝下 1/3、上 1/3 的門檻，和 pbPct10 同一個定義）
+const ckPbLo=m=>m.live&&m.pbQ&&m.pbQ[0]!=null&&m.pb!=null?m.pb<=m.pbQ[0]:m.pbPct10<=1/3,ckPbHi=m=>m.live&&m.pbQ&&m.pbQ[1]!=null&&m.pb!=null?m.pb>m.pbQ[1]:m.pbPct10>=2/3;
+// 「區間的位置」是百分位：高於近 10 年每月樣本的幾成（不是最低到最高之間的線性位置）
+const ckPbTx=m=>m.live&&m.pbQ&&m.pb!=null?`股價淨值比 ${f2(m.pb)}（用現價換算；檢核資料那天 ${f2(m.live.pb)}，高於近 10 年 ${Math.round(m.pbPct10*100)}% 的月份）；下 1/3 門檻 ${f2(m.pbQ[0])}、上 1/3 門檻 ${f2(m.pbQ[1])}`:`股價淨值比 ${f2(m.pb)}${m.live?'（用現價換算）':''}，${m.live?`檢核資料那天 ${f2(m.live.pb)} `:''}高於近 10 年 ${Math.round(m.pbPct10*100)}% 的月份（百分位）`;
+const ckLive=m=>m&&m.live?(m.live.auto?`價格條件用 ${ckMD(m.live.d)} 收盤 ${f2(m.live.px)} 試算，本益比、股價淨值比照比例換算（檢核資料是 ${ckMD(CK.d)} 收盤 ${f2(m.live.c0)}）`:`價格條件用你填的現價 ${f2(m.live.px)} 試算，本益比、股價淨值比照比例換算（檢核資料是 ${ckMD(CK.d)} 收盤 ${f2(m.live.c0)}）`):'';
 const ckMD=d=>d?String(d).slice(5).replace('-','/'):'';
 // 資料日期一句話
 function ckAsOf(){if(!CK)return'';return`收盤 ${ckMD(CK.d)}${CK.f&&CK.f.includes('adj')?'（價格指標已還原權息）':''}｜法人 ${ckMD(CK.dC)||'—'}｜融資 ${ckMD(CK.dM)||'—'}｜月營收 ${CK.rM||'—'}${CK.bW&&CK.bW.length?'｜大戶 '+ckMD(CK.bW[CK.bW.length-1]):''}`}
@@ -81,7 +87,7 @@ const CK_ATOMS=[
  [/^負債比<(\d+)%$/,x=>m=>m.debt==null?NA('財報資料不足'):R_(m.debt<+x[1],`負債比 ${f1(m.debt)}%（最新一季）`)],
  [/^自由現金流為正$/,x=>m=>m.fcf==null?NA('現金流量資料不足'):R_(m.fcf>0,`近 4 季營業＋投資現金流 ${f1(m.fcf/1e5)} 億元`)],
  [/^本益比≤近5年本益比中位數$/,x=>m=>m.pe==null||m.peMed5==null?NA(m.pe==null?'本益比資料不足（可能虧損）':'本益比歷史資料不足'):R_(m.pe<=m.peMed5,`本益比 ${f1(m.pe)} 倍，近 5 年中位數 ${f1(m.peMed5)} 倍（近四季實際 EPS）`)],
- [/^股價淨值比落在近10年區間的下1\/3$/,x=>m=>m.pbPct10==null?NA('股價淨值比歷史資料不足'):R_(m.pbPct10<=1/3,`股價淨值比 ${f2(m.pb)}，在近 10 年區間的 ${Math.round(m.pbPct10*100)}% 位置`)],
+ [/^股價淨值比落在近10年區間的下1\/3$/,x=>m=>m.pbPct10==null?NA('股價淨值比歷史資料不足'):R_(ckPbLo(m),ckPbTx(m))],
  [/^同產業月營收年增率中位數連(\d+)個月改善$/,x=>m=>{const g=typeof indOf=='function'?indOf(CKX.c):'',a=g&&CK.ind?CK.ind[g]:null,n=+x[1];if(!a||a.length<n+1)return NA('產業資料不足');const L=a.slice(-n-1);return R_(L.every((v,i)=>!i||v>L[i-1]),`${g}營收年增率中位數 ${L.map(v=>v+'%').join(' → ')}`)}],
  [/^(?:最新)?月營收年增率連(\d+)個月放緩$/,x=>m=>{const n=+x[1],y=m.ry;if(!y||y.length<n+1)return NA('月營收資料不足');const L=y.slice(-n-1);return R_(L.every((v,i)=>!i||v<L[i-1]),`年增率 ${L.map(v=>v+'%').join(' → ')}`)}],
  // ---------- 股票屬性（每檔確認一次）
@@ -147,7 +153,7 @@ function exEpsRev(c,th,start){const E=ckEpsAdj(c,(((S.outlook||{})[cU(c)]||{}).e
   if(b.src.length==1&&nowB.src.length==1&&b.src[0]!=nowB.src[0])return{lb,unk:1,t:`${lb} ${f2(b.v)}（${b.lb}）和最新 ${f2(nowB.v)}（${nowB.lb}）來源不同，不比較`};
   const d=(nowB.v/b.v-1)*100;return{lb,d,t:`${lb} ${f2(b.v)}（${ckMD(b.d)}${b.after?'，起算後第一批':''}）→ 最新 ${f2(nowB.v)}（${ckMD(nowB.d)}）${pc(d)}`}};
  const C=[cmp(oldB,'3 個月前'),cmp(stB,'起算時')].filter(Boolean),V=C.filter(o=>o.d!=null),why=`${y} 年：${C.length?C.map(o=>o.t).join('；'):'最新 '+f2(nowB.v)+'（'+ckMD(nowB.d)+'）'}；門檻下修 ${th}%（${nowB.lb}）`;
- if(!V.length){if(C.some(o=>o.unk))return Object.assign(R_(null,why,'新舊預估來源不同，無法判斷有沒有下修'),{});if(C.some(o=>o.same))return R_(false,why);return NA(`還沒有可以比較的舊預估（${ckMD(nowB.d)} 那筆約 ${ckMD(ckAddD(nowB.d,60))} 起可以和之後的新預估比較）`)}
+ if(!V.length){if(C.some(o=>o.unk))return Object.assign(R_(null,why,'新舊預估來源不同，無法判斷有沒有下修'),{});if(C.some(o=>o.same)){const age=dDays(nowB.d,TODAY);return Object.assign(NA(`${y} 年只有 ${ckMD(nowB.d)} 一批預估（${nowB.lb}，${f2(nowB.v)}），沒有新預估可以比較，${age>=60?`已經 ${age} 天沒有新預估，請補`:'等之後有新預估再比較'}`,age>=60?'eps':null),{why})}return NA(`還沒有可以比較的舊預估（${ckMD(nowB.d)} 那筆約 ${ckMD(ckAddD(nowB.d,60))} 起可以和之後的新預估比較）`)}
  const hit=V.some(o=>o.d<-th),r=R_(hit,why);
  if(hit&&start&&nowB.d<=start){EXPRE=true;return Object.assign({},r,{v:false,pre:1,why:`${why}｜⏸ 最新一批預估在論點起算（${ckMD(start)}）以前就有了，不算成立；之後有新預估再判斷`})}
  return r}
@@ -159,7 +165,7 @@ function ckAtom(s){for(const[re,mk]of CK_ATOMS){const x=s.match(re);if(x)return 
 function ckParse(t){const s=ckN(t);if(CKC[s]!==undefined)return CKC[s];let r=ckAtom(s);
  const ko=!r&&s.match(/^(?:(?:下面)?\d+項中)?至少(\d+)項:(.+)$/);if(ko){const parts=ko[2].split(';').filter(Boolean);return CKC[s]={kof:+ko[1],parts:parts.map(p=>({t:p,P:ckParse(p)}))}}
  if(!r){const ors=s.split(/,或者?/).map(p=>{const parts=p.split(/,且|,|、/).filter(Boolean),fs=[];for(let i=0;i<parts.length;i++){let f=ckAtom(parts[i]),j=i;while(!f&&j+1<parts.length){j++;f=ckAtom(parts.slice(i,j+1).join(','))}if(!f)return null;fs.push(f);i=j}return fs});
-  if(ors.every(a=>a===null))r=null;else r={or:ors}}
+  if(ors.every(a=>a===null))r=null;else r={or:ors,ot:s.split(/,或者?/)}}
  return CKC[s]=r}
 // 判斷一個條件：{v:true／false／null, why, miss, auto}；null＝不是自動條件（要自己勾）
 const ckAuto=t=>!/（手動）|\(手動\)/.test(t)&&!!ckParse(t);
@@ -175,9 +181,9 @@ function ckRun(P,m,k){if(!P)return null;if(typeof P=='function'){const o=P(m,k);
   const v=ok>=P.kof?true:ok+u>=P.kof?null:false;return Object.assign({v,why:`${P.parts.length} 項中符合 ${ok} 項（需要 ${P.kof} 項）：${W.join('；')}`,miss:u&&v==null?`${u} 項判斷不了`:''},v==null&&fx.size?{fix:[...fx]}:{})}
  // 或：有一段成立就成立；且：有一段不成立就不成立
  let any=false,unk=false,whys=[],miss=[],man=false;
- for(const fs of P.or){if(!fs){man=true;continue}let ok=true,u=false;for(const f of fs){const o=ckRun(f,m,k);if(!o)continue;if(o.why)whys.push(o.why);if(o.miss)miss.push(o.miss);if(o.v===false)ok=false;else if(o.v==null){u=true;add(o)}}
+ const mt=[];for(const[oi,fs]of P.or.entries()){if(!fs){man=true;if(P.ot&&P.ot[oi])mt.push(P.ot[oi]);continue}let ok=true,u=false;for(const f of fs){const o=ckRun(f,m,k);if(!o)continue;if(o.why)whys.push(o.why);if(o.miss)miss.push(o.miss);if(o.v===false)ok=false;else if(o.v==null){u=true;add(o)}}
   if(ok&&!u){any=true}else if(ok&&u)unk=true}
- const v=any?true:(unk||man)?null:false;return Object.assign({v,why:whys.join('；'),miss:miss.join('；')+(man&&!any?'（有一部分要自己判斷）':'')},v==null&&fx.size?{fix:[...fx]}:{})}
+ const v=any?true:(unk||man)?null:false;return Object.assign({v,why:whys.join('；'),miss:miss.join('；')+(man&&!any?(mt.length?`${miss.length?'；':''}要自己判斷：${mt.join('、')}`:'（有一部分要自己判斷）'):'')},v==null&&fx.size?{fix:[...fx]}:{})}
 // 策略的每一組條件，加上自動判斷結果
 function ckGroups(st,c){return stConds(st).map(g=>({sec:g.sec,need:g.need,rule:g.rule,items:g.items.map(t=>({t,r:ckEval(c,t,st)}))}))}
 // 條件文字：〔基〕〔技〕〔籌〕〔盤〕顯示成小標籤
@@ -316,7 +322,7 @@ CK_ATOMS.push(
  [/^月營收年增率?轉負連(\d+)個月$|^(?:月營收)?年增率連(\d+)個月(?:<0%?|為負|轉負)$/,x=>m=>{const n=+(x[1]||x[2]),y=(m.ry||[]).filter(v=>v!=null);if(y.length<n)return NA('月營收資料不足');const L=y.slice(-n);return exPre(R_(L.every(v=>v<0),`年增率 ${L.map(v=>v+'%').join(' → ')}`),'ry',m)}],
  [/^月營收年增率(?:轉負|<0%?)$/,x=>m=>{const y=(m.ry||[]).filter(v=>v!=null);if(!y.length)return NA('月營收資料不足');const v=y[y.length-1];return R_(v<0,`最新年增率 ${v}%`)}],
  [/^回到前高$/,x=>m=>{const h=CKX.hi0??m.hi250;if(h==null)return NA('資料不足');return R_(m.c>=h,`收盤 ${f2(m.c)}，${CKX.hi0!=null?'進場前 52 週最高':'近一年最高'}收盤 ${f2(h)}`)}],
- [/^股價淨值比到(?:近)?10年區間(?:的)?上1\/3$/,x=>m=>m.pbPct10==null?NA('股價淨值比歷史資料不足'):R_(m.pbPct10>=2/3,`股價淨值比 ${f2(m.pb)}，在近 10 年區間的 ${Math.round(m.pbPct10*100)}% 位置`)],
+ [/^股價淨值比到(?:近)?10年區間(?:的)?上1\/3$/,x=>m=>m.pbPct10==null?NA('股價淨值比歷史資料不足'):R_(ckPbHi(m),ckPbTx(m))],
  [/^持有(?:超過|滿)(\d+)個月.*$/,x=>m=>{const f=CKX.first;if(!f)return NA('要在論點裡判斷（需要第一次買進日）');const mo=dDays(f,TODAY)/30.44;return R_(mo>=+x[1],`${ckMD(f)} 起持有 ${f1(mo)} 個月`)}],
  [/^EPS連(\d+)季年減$/,x=>m=>{const q=m.epsQ,n=+x[1];if(!q||q.length<n+4||q.slice(-n-4).some(v=>v==null))return NA('季 EPS 資料下次更新檢核資料後才有');const L=q.slice(-n).map((v,i)=>[v,q[q.length-n-4+i]]);return exPre(R_(L.every(([a,b])=>a<b),`近 ${n} 季 EPS ${L.map(([a,b])=>f2(a)+'（去年同季 '+f2(b)+'）').join('、')}`),'eq',m)}],
  [/^(?:近3年平均)?配息率(?:降到|<)(\d+)%以下?$/,x=>m=>m.pay3==null?NA('股利資料不足'):R_(m.pay3<+x[1],`近 3 年平均配息率 ${f1(m.pay3)}%`)],
@@ -385,7 +391,8 @@ function exTrig(T){const st=stStrat(S,T.sid),c=cU(T.code),m0=CK?ckM(c):null,m=m0
   else if((g=p.match(/^(?:現價|收盤價?|股價)?跌破(?:策略)?均價[−-](\d+(?:\.\d+)?)%$/))&&X.avg!=null)add(X.avg*(1-g[1]/100),'<',`跌破均價 −${g[1]}%`,x.act)
   else if((g=p.match(/^(?:從)?(?:持有期間)?(?:的)?最高(?:點|收盤)?回落(\d+(?:\.\d+)?)%(?:時)?$/))&&X.peak!=null)add(X.peak*(1-g[1]/100),'≤',`從最高點回落 ${g[1]}%`,x.act)
   else if(/^回到前高$/.test(p)&&(X.hi0??(m&&m.hi250))!=null)add(X.hi0??m.hi250,'≥','回到前高',x.act)
-  else if(/^本益比(?:回)?到(?:近)?5年(?:本益比)?區間(?:的)?上緣$/.test(p)&&m&&m.pe>0&&m.peHi5)add(m.c*m.peHi5/m.pe,'≥','本益比到 5 年上緣',x.act)}}
+  else if(/^本益比(?:回)?到(?:近)?5年(?:本益比)?區間(?:的)?上緣$/.test(p)&&m&&m.pe>0&&m.peHi5)add(m.c*m.peHi5/m.pe,'≥','本益比到 5 年上緣',x.act)
+  else if(/^股價淨值比到(?:近)?10年區間(?:的)?上1\/3$/.test(p)&&m&&m.pb>0&&m.pbQ&&m.pbQ[1]>0)add(m.c*m.pbQ[1]/m.pb,'≥','股價淨值比到近 10 年區間上 1/3',x.act)}}
  const px=num((S.px||{})[c])??(m&&m.c),U=[];for(const o of out){const d=U.find(u=>(u.dir=='≥')==(o.dir=='≥')&&Math.abs(u.px/o.px-1)<0.003);if(d){if(d.what=='論點停損價'){d.what=o.what+'（＝論點停損價）';d.act=o.act;d.ap=o.ap}else if(o.what=='論點停損價')d.what+='（＝論點停損價）';else d.what+='、'+o.what;continue}U.push(o)}
  U.forEach(o=>{o.gap=px?(o.px/px-1)*100:null;o.hit=o.gap!=null&&(o.dir=='≥'?o.gap<=0:o.gap>=0)});return U.sort((a,b)=>(b.hit-a.hit)||Math.abs(a.gap??99)-Math.abs(b.gap??99))}
 function exTrigHtml(T,n){const L=exTrig(T).slice(0,n||9);if(!L.length)return'';

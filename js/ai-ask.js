@@ -21,9 +21,19 @@ function aaActive(){const o=[];for(const h of holdings(S))if(h.ac=='a'&&h.q>0&&!
 function aaCodes(){if(AA.q=='fill')return[];if(AA.scope=='alert')return aaAlertCodes();if(AA.scope=='all')return aaActive();return AA.codes.filter(Boolean)}
 
 // ---------- 文字
+// 論點跟隨的策略版本的【何時賣】原文
+function aaExitText(T,st){const v=+(T.sver||st.ver);if(v&&v!=+st.ver){const h=(st.hist||[]).find(h=>+h.ver==v);if(h&&h.snap&&h.snap.exit)return h.snap.exit}return st.exit||''}
+// 接下來會改變判斷的資料公布日：月營收、財報期限、已記錄的事件（財報期限是一般公司的法定期限，金融業不同）
+function aaNext(c){const out=[],y=+TODAY.slice(0,4),m=+TODAY.slice(5,7),d=+TODAY.slice(8,10),p2=n=>String(n).padStart(2,'0');
+ {const nm=d<=10?m:m%12+1,ny=d<=10||m<12?y:y+1,rm=nm==1?12:nm-1;out.push({d:`${ny}-${p2(nm)}-10`,t:`${rm} 月營收公布期限`})}
+ const FQ=[['03-31','年報（第四季）'],['05-15','第一季財報'],['08-14','第二季財報'],['11-14','第三季財報']],fs=[];
+ for(const yy of[y,y+1])for(const[md,t]of FQ){const dd=`${yy}-${md}`;if(dd>=TODAY)fs.push({d:dd,t:t+'期限'})}
+ out.push(...fs.slice(0,2));
+ for(const e of(S.events||[]))if(!e.done&&cU(e.code)==c&&e.date>=TODAY)out.push({d:e.date,t:e.type+(e.note?'（'+e.note.slice(0,60)+'）':'')});
+ return out.sort((a,b)=>a.d<b.d?-1:1).slice(0,5).map(o=>`${o.d} ${o.t}`)}
 const aaPct=v=>v==null||!isFinite(v)?'—':(v>=0?'+':'')+v.toFixed(1)+'%';
 function aaMarket(){const L=[],t=CK&&CK.mkt&&CK.mkt.taiex;
- if(t&&t.c)L.push(`加權指數 ${f2(t.c)}，離 250 日高點 ${aaPct((t.c/t.hi250-1)*100)}，${t.c>=t.m20?'在月線之上':'低於月線'}、${t.c>=t.m60?'在季線之上':'低於季線'}`);
+ if(t&&t.c)L.push(`加權指數 ${f2(t.c)}（${ckMD(CK.d)} 收盤），離 250 日高點 ${aaPct((t.c/t.hi250-1)*100)}，${t.c>=t.m20?'在月線之上':'低於月線'}、${t.c>=t.m60?'在季線之上':'低於季線'}`);
  try{const H=asHeatCap(S);if(H.tot!=null&&H.cap!=null)L.push(AA.amt?`壓力虧損 ${W2(H.tot)} 萬／剩下的虧損額度 ${W2(H.cap)} 萬（信貸虧損上限已用 ${H.L?H.L.used.toFixed(0):'—'}%）`:`壓力虧損約是剩下虧損額度的 ${H.cap>0?(H.tot/H.cap*100).toFixed(0):'—'}%（信貸虧損上限已用 ${H.L?H.L.used.toFixed(0):'—'}%）`)}catch(e){}
  const es=asExitStat(S);if(es.n)L.push(`出場訊號照規則賣出 ${es.f}／${es.n} 次`);
  return L.length?'【大環境】\n'+L.map(s=>'- '+s).join('\n'):''}
@@ -31,18 +41,19 @@ function aaStock(c){const T=aaThOf(c),st=T?stStrat(S,T.sid):(AA.sid?stStrat(S,AA
  const r=asRows(S).filter(o=>o.c==c&&o.open),qty=r.reduce((a,o)=>a+o.q,0),mv=r.reduce((a,o)=>a+(o.mv||0),0);
  const p=T?stPerf(S,T):null,avg=p&&p.q>0?p.cost/p.q:null,stop=T?num(T.stop):null;
  L.push(`■ ${c} ${nameOf(c)}${!T&&st?`｜還沒有論點，打算用 ${st.id} ${st.name} v${st.ver} 買進`:''}${T?`｜${T.id}｜${st?st.id+' '+st.name+' v'+(T.sver||st.ver):T.sid}｜${+T.useInit===1?'撥款前持股，'+(T.baseD||T.created)+' 歸入策略':'起算 '+(T.baseD||(p&&p.first)||T.created)}${T.status=='plan'?'｜規劃中（還沒買）':''}`:'｜沒有論點'}`);
- const pos=[];if(E.tot>0&&E.by[c])pos.push(`占主動資本 ${(E.by[c]/E.tot*100).toFixed(1)}%`);if(px!=null)pos.push(`現價 ${f2(px)}`);if(avg!=null){pos.push(`策略均價 ${f2(avg)}`);if(px!=null)pos.push(`損益 ${aaPct((px/avg-1)*100)}`)}
+ const pos=[];if(E.tot>0&&E.by[c])pos.push(`占主動資本 ${(E.by[c]/E.tot*100).toFixed(1)}%`);if(px!=null){const pd=(S.pxd||{})[c]||'',pa=(S.pxa||{})[c];pos.push(`現價 ${f2(px)}（${pd?ckMD(pd)+' ':''}${pa?'收盤':'自己填的'}）`)}if(avg!=null){pos.push(`策略均價 ${f2(avg)}`);if(px!=null)pos.push(`起算後損益 ${aaPct((px/avg-1)*100)}`)}
  if(stop!=null&&px!=null){pos.push(`停損 ${f2(stop)}（距現價 ${aaPct((stop/px-1)*100)}）`);if(E.tot>0&&qty)pos.push(`停損風險占主動資本 ${(qty*Math.max(0,px-stop)/E.tot*100).toFixed(1)}%${st&&num(st.riskPct)!=null?'（策略每筆 '+st.riskPct+'%）':''}`)}
  const rm=T&&p&&typeof stRmul=='function'?stRmul(T,p.ret):null;if(rm!=null)pos.push(`${rm>=0?'+':''}${rm.toFixed(2)}R`);
  if(AA.amt&&qty)pos.push(`股數 ${qty.toLocaleString()}｜市值 ${W2(mv)} 萬`);
  if(pos.length)L.push(pos.join('｜'));
- if(T){if(T.metLate)L.push(`註記：${T.metLate}`);if(T.why)L.push(`買進理由：${T.why}`);if(T.wrongIf)L.push(`什麼情況代表我錯了：${T.wrongIf}`)}
- if(T&&st&&T.status=='hold'&&(q=='exit'||q=='review'||q=='free'||q=='buy')){const X=exEval(T),ok=[];if(X.length){L.push('出場條件（'+st.id+' 何時賣）：');
+ if(T){if(T.metLate)L.push(`註記：${T.metLate}`);const wd=T.created||T.baseD||'';if(T.why)L.push(`買進理由（${wd} 建立論點時寫的，裡面的數字不是現況）：${T.why}`);if(T.wrongIf)L.push(`什麼情況代表我錯了：${T.wrongIf}`)}
+ if(T&&st&&T.status=='hold'&&(q=='exit'||q=='review'||q=='free'||q=='buy')){const X=exEval(T);if(X.length){L.push('出場條件（'+st.id+' 何時賣，逐條附判斷用的數字）：');
   for(const x of X){const a=exAckOf(T,x.key),r0=x.r,ic=a&&a.k=='na'?'🚫':!r0?'❔':r0.v===true?'🔴':r0.pre?'⏸':r0.v===false?'✓':'⏳';
-   if(ic=='✓'&&AA.merge&&!(AA.th==T.id&&AA.rule==x.key)){ok.push(X.filter(z=>z.lb==x.lb).length>1?`${x.lb}（${x.cond.length>16?x.cond.slice(0,16)+'…':x.cond}）`:x.lb);continue}
-   L.push(`  ${ic} ${x.lb}：${x.cond}${x.act?' → '+x.act:''}${r0&&(r0.why||r0.miss)?`\n     （${[r0.why,r0.miss].filter(Boolean).join('；')}）`:''}${a?`\n     ［我已決定：${EX_KN[a.k]||'已處理'}${a.n?'：'+a.n:''}，${a.d}］`:''}${AA.th==T.id&&AA.rule==x.key?'\n     ← 這次要討論的訊號':''}`)}
-  if(ok.length)L.push(`  ✓ 沒有成立：${ok.join('、')}`)}
-  const G=typeof exTrig=='function'?exTrig(T).slice(0,4):[];if(G.length)L.push('今天收盤的觸發價：'+G.map(o=>`收盤 ${o.dir} ${o.ap?'約 ':''}${f2(o.px)}${o.gap!=null?'（距現價 '+aaPct(o.gap)+'）':''} ${o.what}`).join('；'))}
+   let ms=r0&&r0.miss||'';if(ms&&+T.useInit===1&&/進場前/.test(ms))ms+='（補記的論點沒有買進日，這一部分不判斷）';
+   const nt=ic=='✓'?'沒有成立':ic=='⏳'?'資料不足':ic=='⏸'?'起算前就已公布的資料，不算':'';
+   L.push(`  ${ic} ${x.lb}：${x.cond}${x.act?' → '+x.act:''}${nt?'｜'+nt:''}${r0&&(r0.why||ms)?`\n     （${[r0.why,ms].filter(Boolean).join('；')}）`:''}${a?`\n     ［我已決定：${EX_KN[a.k]||'已處理'}${a.n?'：'+a.n:''}${a.aiV?'；當時 AI：'+a.aiV:''}，${a.d}］`:''}${AA.th==T.id&&AA.rule==x.key?'\n     ← 這次要討論的訊號':''}`)}}
+  if(q=='exit'){const tx=aaExitText(T,st);if(tx)L.push(`策略原文（${st.id} v${T.sver||st.ver}【何時賣】，規則適用與否只能引用這段）：\n${tx.split('\n').map(l=>'  '+l).join('\n')}`)}
+  const G=typeof exTrig=='function'?exTrig(T).slice(0,4):[];if(G.length)L.push('收盤觸發價（均線、本益比用 '+ckMD(CK.d)+' 的檢核資料換算）：'+G.map(o=>`收盤 ${o.dir} ${o.ap?'約 ':''}${f2(o.px)}${o.gap!=null?'（距現價 '+aaPct(o.gap)+'）':''} ${o.what}`).join('；'))}
  if(st&&(q=='buy'||q=='review'||q=='free')&&CK){const G=ckGroups(st,c),M=new Set((T&&T.met)||(AT_DRAFT&&AT_DRAFT.met)||[]);L.push(`今日條件檢核（${st.id}）：`);
   for(const g of G){const ok=[],rows=[];for(const i of g.items){const r0=i.r;let ic;if(r0)ic=g.need=='none'?(r0.v===true?'⛔':r0.v===false?'✓':'⏳'):(r0.v===true?'✅':r0.v===false?'❌':'⏳');else ic=M.has(i.t)?'☑️':'❔';
     if((ic=='✅'||ic=='✓')&&AA.merge){ok.push(i.t.replace(/〔[^〕]*〕/g,''));continue}rows.push(`    ${ic} ${i.t}${r0&&(r0.why||r0.miss)?'（'+[r0.why,r0.miss].filter(Boolean).join('；')+'）':!r0?(M.has(i.t)?'（我確認過符合）':'（要自己判斷）'):''}`)}
@@ -52,8 +63,8 @@ function aaStock(c){const T=aaThOf(c),st=T?stStrat(S,T.sid):(AA.sid?stStrat(S,AA
  if(ep.length)L.push('法人 EPS 預估：'+ep.map(e=>`${e.y} 年 ${e.v}（${e.src||'未註明'}，${e.d}）`).join('；'));
  if(o.guide&&o.guide.d)L.push(`法說指引（${o.guide.d}）：營收${olDirN(o.guide.rev)}、毛利率${olDirN(o.guide.gm)}${o.guide.note?'｜'+o.guide.note:''}`);
  const at=(S.attr||{})[c]||{},th=at.theme&&(S.themes||{})[at.theme];
- const ab=[['growth','結構性成長'],['cyc','景氣循環'],['lead','產業龍頭']].filter(([k])=>at[k]!=null&&at[k]!=='').map(([k,n])=>n+(+at[k]?'：是':'：否'));if(at.theme)ab.push(`主題：${at.theme}${th?'（'+olDirN(th.st)+'，'+(th.d||'')+(th.note?'，'+th.note:'')+'）':'（還沒有狀態）'}`);if(ab.length)L.push('股票屬性：'+ab.join('、'));
- const ev=(S.events||[]).filter(e=>!e.done&&cU(e.code)==c&&e.date>=ckAddD(TODAY,-3)).slice(0,3);if(ev.length)L.push('事件：'+ev.map(e=>`${e.date} ${e.type}${e.note?'（'+e.note.slice(0,80)+'）':''}`).join('；'));
+ const ab=[['growth','結構性成長'],['cyc','景氣循環'],['lead','產業龍頭']].filter(([k])=>at[k]!=null&&at[k]!=='').map(([k,n])=>n+(+at[k]?'：是':'：否'));if(at.theme)ab.push(`主題：${at.theme}${th&&th.st?'（'+olDirN(th.st)+(th.d?'，'+th.d:'')+(th.note?'，'+th.note:'')+'）':'（狀態還沒填）'}`);if(ab.length)L.push('股票屬性：'+ab.join('、'));
+ const nx=aaNext(c);if(nx.length)L.push('接下來的資料公布日：'+nx.join('；'));
  if(T){const lg=(T.exLog||[]).slice(-4);if(lg.length)L.push('過去的出場決定：'+lg.map(x=>`${x.d} ${x.lb||''} ${EX_KN[x.k]||x.k}${x.n?'（'+x.n+'）':''}${x.aiV?`［當時 AI：${x.aiV}］`:''}`).join('；'));
   const rv=(T.aiRev||[]).slice(-3);if(rv.length)L.push('之前 AI 的看法：'+rv.map(x=>`${x.d} ${x.rule||''}：${x.view}${x.ai?'（'+x.ai+'）':''}`).join('；'))}
  return L.join('\n')}
@@ -61,13 +72,18 @@ function aaPortfolio(){const L=['【組合】'],E=stExposure(S);const by={};for(
  for(const st of S.strategies||[])if(by[st.id])L.push(`- ${st.id} ${st.name} v${st.ver}：${by[st.id].join('、')}`);
  const pas=holdings(S).filter(h=>h.ac=='p'&&h.q>0).map(h=>cU(h.n));if(pas.length)L.push(`- 被動：${[...new Set(pas)].join('、')}`);
  return L.join('\n')}
+function aaRed(){for(const c of aaCodes()){const T=aaThOf(c);if(!T||T.status!='hold')continue;for(const x of exEval(T)){const a=exAckOf(T,x.key);if(x.r&&x.r.v===true&&!(a&&a.k=='na'))return true}}return false}
 function aaAsk(){const q=AA.q,T=AA.th?stThesis(S,AA.th):null,x=T&&AA.rule?(exEval(T).find(z=>z.key==AA.rule)||null):null,ex=(AA.free||'').trim();
  if(q=='exit')return`【要你做的事】
-${x?`這次要討論的是 ${T.id} ${cU(T.code)} ${nameOf(T.code)} 的「${x.lb}：${x.cond}」。`:'上面標 🔴 的出場訊號。'}請只查三件事，決定由我做：
+${x||aaRed()?`${x?`這次要討論的是 ${T.id} ${cU(T.code)} ${nameOf(T.code)} 的「${x.lb}：${x.cond}」。`:'上面標 🔴 的出場訊號。'}請只查三件事，決定由我做：
 1. App 給的資料對不對（附來源和日期）。
-2. 這條規則的適用前提成不成立（只能引用上面的策略條文）。
+2. 這條規則的適用前提成不成立（只能引用上面的策略原文）。
 3. 有沒有一次性因素（例如存貨跌價、匯兌、業外）。
-以上三項都查不到，預設照規則。${ex?'\n補充：'+ex:''}`;
+以上三項都查不到，預設照規則。`:`目前沒有成立的出場訊號（沒有 🔴），不要自己找一條當成訊號。請查三件事：
+1. App 給的資料對不對（附來源和日期），特別是 ✓ 和 ⏳ 那幾條用到的數字。
+2. 哪一條最接近成立、還差多少，下一次可能成立是哪一天（看「接下來的資料公布日」）。
+3. 有沒有一次性因素讓數字失真（例如存貨跌價、匯兌、業外、專案認列時點）。`}
+回答開頭請先用三行：① 資料有沒有錯 ② 有沒有規則成立 ③ 最接近成立的條件和日期。之後才寫細節。${ex?'\n補充：'+ex:''}`;
  if(q=='buy')return`【要你做的事】
 上面這幾檔目前 ❌、⏳、❔ 的條件，請查有沒有最新、有來源的資料可以更新（法人 EPS 預估、法說指引、主題狀態）。
 要自己判斷的條件（❔），請說明你的判斷和依據，但不要在 json 裡替我勾。
@@ -85,13 +101,13 @@ const AA_RULES=`【回答規則】
 3. 不建議放寬停損或延後出場；認為規則不適用時，只能引用策略條文或指出資料錯誤。
 4. EPS 預估只輸出寫明機構、日期、數字的；未具名來源不要輸出。查不到就寫查不到，不要推算。
 5. 決定由我做，不用替我選「照規則賣出／不適用／不照做」。`;
-function aaFmt(snap){const q=AA.q,y=+TODAY.slice(0,4),Ts=(S.theses||[]).filter(T=>T.status!='exit').map(T=>{const st=stStrat(S,T.sid);return`${T.id} ${cU(T.code)} ${T.sid} v${T.sver||(st&&st.ver)||''}`});
+function aaFmt(snap){const q=AA.q,y=+TODAY.slice(0,4),CS=new Set(aaCodes()),Ts=(S.theses||[]).filter(T=>T.status!='exit'&&(CS.has(cU(T.code))||T.id==AA.th)).map(T=>{const st=stStrat(S,T.sid);return`${T.id} ${cU(T.code)} ${T.sid} v${T.sver||(st&&st.ver)||''}`});
  const ex={format:'投資帳本 v1',ai:'你的名稱（例如 Claude、Gemini）',q,snap};
  const T0=(AA.th&&stThesis(S,AA.th))||aaThOf(aaCodes()[0]||'')||(S.theses||[])[0]||{id:'T001',code:'2301'},x0=AA.th&&AA.rule&&T0?(exRules(stStrat(S,T0.sid))||[]).find(z=>z.key==AA.rule):null,c0=cU(T0.code||'2301');
- const rv={thesis:T0.id,rule:x0?x0.lb:'理由失效',view:'資料無誤且適用',why:'一句話',src:[{name:'來源',date:TODAY,url:'https://…'}]},ol={code:c0,eps:[{year:y+1,eps:12.34,src:'FactSet 分析師中位數（鉅亨網）',date:TODAY}],guide:{rev:'up',gm:'flat',date:TODAY,src:'法說會',note:'一句重點'}},
-  tm={name:'AI 伺服器',status:'up',date:TODAY,src:'來源',note:'一句重點'},ev={date:TODAY,code:c0,type:'法說',note:'一句重點'},up={thesis:T0.id,stop:123.4};
+ const D0='<YYYY-MM-DD>',rv={thesis:T0.id,rule:x0?x0.lb:'<規則名稱>',view:'<五種看法之一>',why:'<一句話>',src:[{name:'<來源>',date:D0,url:'<網址>'}]},ol={code:c0,eps:[{year:'<年度>',eps:'<數字>',src:'<機構（引用的媒體）>',date:D0}],guide:{rev:'<up/flat/down>',gm:'<up/flat/down>',date:D0,src:'<法說會或公告>',note:'<一句重點>'}},
+  tm={name:'<主題名稱>',status:'<up/flat/down>',date:D0,src:'<來源>',note:'<一句重點>'},ev={date:D0,code:c0,type:'<法說／財報／除息／營收>',note:'<一句重點>'},up={thesis:T0.id,stop:'<新的停損價>'};
  const K=q=='exit'?['review','outlook','events']:q=='buy'?['manual','outlook','themes','events','updates']:q=='review'?['outlook','themes','events','updates']:q=='fill'?['outlook','themes']:['review','outlook','themes','events','updates'];
- const mn={code:c0,cond:'條件原文（照上面的寫法）',ok:true,why:'一句話',src:[{name:'來源',date:TODAY}]};
+ const mn={code:c0,cond:'<條件原文（照上面的寫法）>',ok:'<true/false/null>',why:'<一句話>',src:[{name:'<來源>',date:D0}]};
  const D={manual:'manual：要自己判斷的條件（❔）你的看法，一條一筆，cond 照抄條件原文；App 只顯示你的看法，不會替我勾',review:`review：每一條討論的訊號一筆。view 只能是「${AA_VIEW.join('／')}」其中一個，每一筆都要附 src（來源、日期）`,outlook:'outlook：有查到才放；eps 要寫明機構與日期，guide 的 rev、gm 用 up／flat／down',themes:'themes：主題狀態 status 用 up／flat／down，附來源與日期',events:'events：之後要注意的日期（法說、財報、除息）',updates:'updates：只能把停損價往上調（收緊），不要往下調'};
  const eg=Object.assign({},ex);for(const k of K)eg[k]=[{manual:mn,review:rv,outlook:ol,themes:tm,events:ev,updates:up}[k]];
  return`【輸出格式】
@@ -99,10 +115,9 @@ function aaFmt(snap){const q=AA.q,y=+TODAY.slice(0,4),Ts=(S.theses||[]).filter(T
 - 一定要有 "format"、"ai"（你的名稱）、"q":"${q}"、"snap":"${snap}"（照抄，App 用來檢查資料有沒有變）
 ${K.map(k=>'- '+D[k]).join('\n')}
 - 不要輸出 strategies、trades、theses：策略修改只在每季檢討時做，交易我自己記。
-範例：
-${JSON.stringify(eg)}
-現有論點與策略版本：${Ts.join('｜')||'（沒有）'}`}
-function aaText(){const snap=aaSnap(),q=AA.q,P=[`【投資帳本｜${AA_Q[q]}】${TODAY}｜資料日 ${CK?CK.d:'—'}｜快照 ${snap}`,'分工：App 管數字和規則，AI 管查資料和挑毛病，我管決定和紀錄。'];
+範例（只示範格式；< > 裡要換成真實內容，數字和 true/false 不加引號，查不到的欄位整個拿掉，不要照抄）：
+${JSON.stringify(eg)}${Ts.length?'\n這次範圍內的論點與策略版本：'+Ts.join('｜'):''}`}
+function aaText(){const snap=aaSnap(),q=AA.q,P=[`【投資帳本｜${AA_Q[q]}】${TODAY}｜現價各檔另標日期；其他指標（均線、本益比、法人、營收、財報）是 ${CK?CK.d:'—'} 的檢核資料｜快照 ${snap}`,'分工：App 管數字和規則，AI 管查資料和挑毛病，我管決定和紀錄。'];
  if(q=='fill'){let t=typeof ckAiText=='function'?ckAiText():'';const k=t.indexOf('最後請用');if(k>0)t=t.slice(0,k).trim();P.push(t||'目前沒有待補資料。');P.push(AA_RULES);P.push(aaFmt(snap));return P.join('\n\n')}
  P.push(aaMarket());if(q=='review')P.push(aaPortfolio());const C=aaCodes();
  if(!C.length&&q!='free')P.push('（這個範圍沒有股票）');for(const c of C)P.push(aaStock(c));
@@ -123,7 +138,7 @@ function aaRender(){const el=$('aiAsk');if(!el)return;const t=aaText(),al=aaAler
  ${AA.scope=='pick'?`<div class=aipk>${aaActive().map(c=>`<label class=ck><input type=checkbox ${AA.codes.includes(c)?'checked':''} onchange="aaPick('${c}',this.checked)">${nm(c)}</label>`).join('')}</div>`:''}`}
  ${AA.q=='free'?`<div class=sub>你的問題</div><textarea id=aaFree rows=3 style="width:100%" oninput="AA.free=this.value" onchange="aaRender()">${esc(AA.free)}</textarea>`:`<details ${AA.free?'open':''}><summary class=h>補充問題（可不填）</summary><textarea id=aaFree rows=2 style="width:100%" oninput="AA.free=this.value" onchange="aaRender()">${esc(AA.free)}</textarea></details>`}
  <label class=ck><input type=checkbox ${AA.amt?'checked':''} onchange="aaSet('amt',this.checked?1:0)">附上股數與金額（預設只放比例；貼給其他公司的 AI 時建議不勾）</label>
- <label class=ck><input type=checkbox ${AA.merge?'checked':''} onchange="aaSet('merge',this.checked?1:0)">✓ 的條件合併成一行（只展開 🔴、❔、⏸）</label>
+ <label class=ck><input type=checkbox ${AA.merge?'checked':''} onchange="aaSet('merge',this.checked?1:0)">買進條件裡已符合的合併成一行（出場條件一律逐條附數字）</label>
  <div class=asbtn><button class=pri onclick="aaCopy()">📋 複製</button>${navigator.share?'<button onclick="aaShare()">📤 分享到 AI App</button>':''}</div>
  <details class=aapv><summary class=h>預覽（${t.length.toLocaleString()} 字）</summary><pre>${esc(t)}</pre></details>`}
 function aaMark(){try{ls('lcaiask',JSON.stringify({q:AA.q,th:AA.th,rule:AA.rule,snap:aaSnap(),at:new Date().toISOString()}))}catch(e){}}
