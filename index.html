@@ -108,6 +108,7 @@ button.lk{border:0;background:none;color:var(--pri);padding:0 2px;font-size:12px
 .aiseg{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}.aiseg button{padding:6px 10px;font-size:13px}.aiseg button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
 .aitg{font-size:11px;font-weight:600;border-radius:8px;padding:1px 6px;white-space:nowrap}.aitg.t1{background:#fde68a;color:#78350f}.aitg.t2{background:#dbeafe;color:#1e3a8a}.aitg.t3{background:#e5e7eb;color:#374151}
 .aapv pre{white-space:pre-wrap;word-break:break-word;max-height:55vh;overflow:auto;font-size:12px;background:var(--bg);padding:8px;border-radius:6px}.aipk{display:flex;flex-wrap:wrap;gap:4px 12px;margin:4px 0}.ovh .aiq{margin-left:auto;font-size:13px;padding:4px 10px}
+.aidf{border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:8px 0;font-size:12.5px}.aidf:empty{display:none}.aidl{margin-top:3px}.aidok{color:var(--ok)}.aih{margin:0 0 4px 22px}.asck .aiq{font-size:12.5px;padding:3px 8px}
 .asfab{position:fixed;left:0;right:0;bottom:0;z-index:7;display:flex;gap:8px;justify-content:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);box-shadow:0 -2px 8px #0001}.asfab button{flex:1;max-width:220px;padding:10px 8px;font-size:14px}
 body.ws-as{padding-bottom:64px}body.ws-as #toast{bottom:76px}button.pri{background:var(--pri);color:#fff;border-color:var(--pri);font-weight:700}
 .ov{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:60;display:none;align-items:flex-start;justify-content:center;padding:16px 8px;overflow:auto}
@@ -301,6 +302,9 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li><b>📋 問 AI</b>（資產頁最下方「🤖 AI 討論」、個股頁「🤖 問 AI」、出場訊號旁的 🤖）：選要問什麼（出場訊號／買或加碼／月底復盤／補資料／自由提問）和範圍（有提醒的持股／這一檔／自己勾／整個組合），按「📋 複製」或「📤 分享到 AI App」。文字裡有 App 已經算好的條件結果、觸發價、前瞻資料、過去的決定，以及給 AI 的回答規則與格式說明；預設只放比例，不放股數和金額。出場訊號只請 AI 查三件事（資料對不對、規則前提成不成立、有沒有一次性因素），決定由你做。</li><li>在分析股票的對話裡說「用投資帳本 v1 格式輸出今天的紀錄」（格式在專案文件〈工具說明與結算流程〉第 10 節）。每月或每季也可以請 AI 收集持股的法人 EPS 預估、法說指引和主題指標，用 outlook、themes 區塊匯入前瞻資料。</li>
 <li>在「🤖 AI 討論 → 📥 貼上回覆」：AI 有整理好檔案就按「📂 選擇檔案」；沒有就把整段回覆複製貼上（工具會自己找出 JSON，手機複製時被拆開的換行會自動接回）→「解析並預覽」。</li>
 <li>預覽每一筆都可以取消勾選。會提醒：<b>可能重複</b>（同日期、代號、買賣、股數、價格、部位，預設不匯入）、同一天同一檔但數字不同、價格超過前一日收盤 ±10%、買進後超過上限、策略條件未達門檻；格式錯誤會指出第幾行、缺什麼欄位。每一筆標 <b>🎯 會改變自動判斷</b>、<b>🔔 會改變提醒</b> 或 <b>📝 只是紀錄</b>；🎯 有疑點的預設不勾（沒有寫明機構或日期、超過 45 天、和同年度現有預估差超過 15%、AI 替你勾要自己判斷的條件、停損往下調、出場訊號討論裡的策略修改）。AI 的看法（review）只記在論點裡，不改判斷。複製時附的快照編號對不上（持股、停損、策略版本或資料日期變了）會提醒；認不得的欄位也會提醒。</li>
+<li><b>這次匯入會改變的判斷</b>：預覽下方先試算一次，列出匯入後哪些判斷會變（可以買／不買、出場條件、提醒、停損距離、壓力虧損），每一條標是哪一筆造成的；取消勾選會跟著重算。都沒變就顯示「這次匯入不會改變任何判斷」。</li>
+<li><b>從出場訊號問 AI</b>：貼回來匯入後直接顯示 AI 的看法和三個選擇（照規則賣出／這條不適用／不照做），決定時會一起記下「當時 AI 的看法」，之後檢討照不照 AI 的結果。</li>
+<li><b>從記交易表單問 AI</b>：買進時按條件上方的「🤖 問 AI（帶著這張表單）」，填到一半的表單會先保留；貼回 AI 對「要自己判斷」條件的看法（manual）後按「↩ 回到交易表單」，每個條件下方會顯示 AI 的看法和來源，<b>要自己點「勾選」才算</b>。原本「選什麼」沒達標、問 AI 後才補齊的，論點會註記「買進當下問 AI 後才補齊」。</li>
 <li>可以一次匯入多筆交易、新論點（同代號、同策略已有進行中的論點時改成更新）、修改既有論點、事件（除息、財報）與庫存核對（逐檔比對券商 App 的股數與成本）。</li>
 <li>匯入是「加進去」，不會取代原本的資料；匯入前自動存還原點，「📜 匯入紀錄」可以整批復原。匯入後會問要不要匯出備份（可關掉）。</li></ul>
 <h3>③ 📒 交易紀錄（逐筆檢視與修改）</h3>
@@ -388,18 +392,18 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 
 <div class="asfab asw"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261111e"></script>
-<script src="data/stocks.js?v=20261111e"></script>
-<script src="js/engine.js?v=20261111e"></script>
-<script src="js/ui.js?v=20261111e"></script>
-<script src="js/strategy-engine.js?v=20261111e"></script>
-<script src="js/asset-engine.js?v=20261111e"></script>
-<script src="js/prices.js?v=20261111e"></script>
-<script src="js/check.js?v=20261111e"></script>
-<script src="js/outlook.js?v=20261111e"></script>
-<script src="js/strategy-ui.js?v=20261111e"></script>
-<script src="js/asset-ui.js?v=20261111e"></script>
-<script src="js/ai-import.js?v=20261111e"></script>
-<script src="js/ai-ask.js?v=20261111e"></script>
-<script src="js/main.js?v=20261111e"></script>
+<script src="data/etf-ref.js?v=20261111f"></script>
+<script src="data/stocks.js?v=20261111f"></script>
+<script src="js/engine.js?v=20261111f"></script>
+<script src="js/ui.js?v=20261111f"></script>
+<script src="js/strategy-engine.js?v=20261111f"></script>
+<script src="js/asset-engine.js?v=20261111f"></script>
+<script src="js/prices.js?v=20261111f"></script>
+<script src="js/check.js?v=20261111f"></script>
+<script src="js/outlook.js?v=20261111f"></script>
+<script src="js/strategy-ui.js?v=20261111f"></script>
+<script src="js/asset-ui.js?v=20261111f"></script>
+<script src="js/ai-import.js?v=20261111f"></script>
+<script src="js/ai-ask.js?v=20261111f"></script>
+<script src="js/main.js?v=20261111f"></script>
 </body></html>
