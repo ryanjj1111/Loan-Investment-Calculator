@@ -5,7 +5,7 @@
 
 const ST_CAP={stock:20,group:40};
 const ST_STATUS=[['plan','規劃中'],['hold','持有中'],['exit','已出場']];
-const ST_EXIT=[['invalid','理由失效'],['target','達到估值目標'],['stop','停損'],['timeout','超過持有期限'],['other','其他']];
+const ST_EXIT=[['invalid','理由失效'],['target','達到估值目標'],['stop','停損'],['timeout','超過持有期限'],['conv','轉換到其他策略'],['other','其他']];
 const ST_FIELDS=['name','logic','term','screen','entry','exit','holdMin','holdMax','capStock','capGroup','capStrat','stopPct','stopTech','riskPct','rr','addDays','addPx','addPxPct','addHalt'];
 // 期別：買之前先決定打算持有多久，再選對應的策略
 const ST_TERM=[['短','短期（1～8 週）'],['中','中期（2～12 個月）'],['長','長期（1 年以上）']];
@@ -24,7 +24,9 @@ function stSnapOf(st){const o={};ST_FIELDS.forEach(k=>o[k]=st[k]??'');return o}
 // 目前內容和最新一個版本的內容不同＝有尚未存成版本的修改
 function stDirty(st){const h=(st.hist||[]).slice(-1)[0];return!h||JSON.stringify(stSnapOf(h.snap))!=JSON.stringify(stSnapOf(st))}
 function stNewStrategy(S,tpl,date){const st=Object.assign({id:stNextId(S.strategies,'S',2),ver:1,on:1},stSnapOf(tpl||{name:'新策略',holdMin:3,holdMax:12,capStock:ST_CAP.stock,capGroup:ST_CAP.group}));st.hist=[{ver:1,date:date||TODAY,reason:'初版',snap:stSnapOf(st)}];return st}
-function stNewThesis(S,o){return Object.assign({id:stNextId(S.theses,'T',3),code:'',sid:'',sver:1,status:'plan',created:TODAY,why:'',wrongIf:'',expectM:'',plan:[],target:'',tgtPx:'',stop:'',useInit:0,reviews:[],exit:{date:'',reason:'',followed:'',note:''}},o||{})}
+// 論點編號不重複使用：合併刪掉的編號記在 S.thMax（之前刪掉 T010 再建新論點，會又叫 T010，紀錄裡的「原 T010」就對不上）
+const stThId=S=>{let id=stNextId(S.theses,'T',3);const n=+id.slice(1),m=+S.thMax||0;return n>m?id:'T'+String(m+1).padStart(3,'0')};
+function stNewThesis(S,o){return Object.assign({id:stThId(S),code:'',sid:'',sver:1,status:'plan',created:TODAY,why:'',wrongIf:'',expectM:'',plan:[],target:'',tgtPx:'',stop:'',useInit:0,reviews:[],exit:{date:'',reason:'',followed:'',note:''}},o||{})}
 const addMon=(d,m)=>{const t=new Date(d+'T00:00:00Z');t.setUTCMonth(t.getUTCMonth()+(+m||0));return t.toISOString().slice(0,10)};
 const dDays=(a,b)=>(Date.parse(b)-Date.parse(a))/864e5;
 
@@ -51,6 +53,7 @@ function stRun(S,code,events,opt){opt=opt||{};const asOf=opt.asOf||events.reduce
   if(e.k=='buy'){if(!first)first=e.d;const amt=e.g+e.fee;q+=e.q;cost+=amt;inv+=amt;fl.push({d:e.d,v:-amt});if(e.bm!=null){bmU+=amt/e.bm;bmCost+=amt}else miss.push(e)}
   else if(e.k=='sell'){const u=Math.min(e.q,q);if(u<=0)continue;const avg=cost/q,fr=u/q,cash=e.cash*(u/e.q);cost-=avg*u;real+=cash-avg*u;q-=u;fl.push({d:e.d,v:cash});last=e.d;if(e.bm!=null){const su=bmU*fr;bmCash+=su*e.bm;bmU-=su}else miss.push(e)}
   else if(e.k=='sdiv'){if(q>0||first)q+=e.q}
+  else if(e.k=='convOut'){if(q<=0)continue;const cash=q*e.px;real+=cash-cost;cost=0;fl.push({d:e.d,v:cash});last=e.d;if(e.bm!=null){bmCash+=bmU*e.bm;bmU=0}else miss.push(e);q=0}
   else if(e.k=='div'){div+=e.cash;fl.push({d:e.pd||e.d,v:e.cash})}
   else if(e.k=='divU'){const m=tradeAmt(S,e.x),tot=m.q||0;if(tot>0&&q>0){const v=m.cash*Math.min(1,q/tot);div+=v;fl.push({d:e.x.pdt||e.x.dt,v})}}
   else if(e.k=='bmdiv'){if(bmU>0)bmCash+=bmU*e.dps}}
@@ -69,6 +72,8 @@ function stBaseClose(S,c,d){const K=typeof ckAdjF=='function'?ckAdjF(c,d):1;if(t
 function stBase(S,T){if(!+T.useInit||!hasInit(S))return null;const d=T.baseD||T.created;if(!d||!S.dd||d<=S.dd)return null;
  const m=num(T.basePx),au=String(T.baseAuto||'');if(m!=null&&!(au&&au.endsWith('|'+m)&&au!=d+'|'+m))return{d,px:m,src:au==d+'|'+m?'收盤':'填'};const b=stBaseClose(S,cU(T.code),d);return b?{d,px:b.v,src:b.fix?'收盤':'暫用現價'}:{d,px:null,src:''}}
 function stThesisEvents(S,T,B){const c=cU(T.code),ev=[];if(B===undefined)B=stBase(S,T);const on=B&&B.px!=null;
+ // 轉換來的論點：承接舊論點的股數，用轉換當天收盤當起算價（不產生交易）
+ if(T.convFrom&&num(T.convFrom.px)!=null&&(+T.convFrom.q||0)>0){const z=T.convFrom,q=+z.q;ev.push({d:z.d,k:'buy',q,g:q*z.px,fee:0,tax:0,cash:-q*z.px,bm:stBmPx(S,z.d,null),conv:1})}
  if(+T.useInit&&hasInit(S)){let q=0,cost=0;for(const r of S.init)if(r.ac=='a'&&cU(r.n)==c){q+=+r.q||0;cost+=(+r.q||0)*(+r.px||0)}
   if(on){for(const x of S.trades||[])if(x.thesisId==T.id&&x.dt&&x.dt<B.d){const n=num(x.q)||0;if(x.k=='buy'||x.k=='sdiv')q+=n;else if(x.k=='sell')q-=n}
    if(q>0)ev.push({d:B.d,k:'buy',q,g:q*B.px,fee:0,tax:0,cash:-q*B.px,bm:stBmPx(S,B.d,null),init:1,base:1})}
@@ -77,6 +82,8 @@ function stThesisEvents(S,T,B){const c=cU(T.code),ev=[];if(B===undefined)B=stBas
   if(on&&x.k=='div'&&x.dt==B.d)continue;
   if(x.thesisId==T.id){const m=tradeAmt(S,x);if(x.k=='buy'||x.k=='sell')ev.push({d:x.dt,k:x.k,q:num(x.q)||0,g:m.g,fee:m.fee,tax:m.tax,cash:m.cash,bm:stBmPx(S,x.dt,x.bmPx),id:x.id});else if(x.k=='sdiv')ev.push({d:x.dt,k:'sdiv',q:num(x.q)||0});else if(x.k=='div')ev.push({d:x.dt,pd:x.pdt||x.dt,k:'div',cash:m.cash})}
   else if(!x.thesisId&&x.k=='div'&&x.ac=='a')ev.push({d:x.dt,k:'divU',x})}
+ // 轉換結案的論點：當天收盤把剩下的股數結算（不產生交易）
+ if(T.exit&&T.exit.reason=='conv'&&num(T.exit.px)!=null&&T.exit.date)ev.push({d:T.exit.date,k:'convOut',px:num(T.exit.px),bm:stBmPx(S,T.exit.date,null)});
  return ev}
 function stPerf(S,T,opt){const B=stBase(S,T),r=stRun(S,cU(T.code),stThesisEvents(S,T,B),Object.assign({exitDate:T.status=='exit'&&T.exit&&T.exit.date?T.exit.date:null},opt||{}));r.base=B&&B.px!=null?B:null;return r}
 // 交易日（只扣週末，國定假日不扣）：a 之後到 b 有幾個交易日；a 加 n 個交易日是哪天
@@ -150,6 +157,7 @@ function stAlerts(S){const A=[],E=stExposure(S),nm=c=>c+(typeof nameOf=='functio
   for(const g in E.grp){const p=E.grp[g]/E.tot*100,cap=stCapGroup(S,g);if(p>cap)A.push({k:'cap',lv:'wn',t:`族群「${g}」占主動部位 ${p.toFixed(1)}%，超過族群上限 ${cap}%`})}
   // 策略合計上限（例如短打合計不超過 10%）
   for(const st of S.strategies||[]){const cs=num(st.capStrat);if(!cs)continue;const cs2=new Set((S.theses||[]).filter(T=>T.sid==st.id&&T.status!='exit').map(T=>cU(T.code)));let v=0;for(const c of cs2)v+=E.by[c]||0;const p=v/E.tot*100;if(p>cs)A.push({k:'cap',lv:'wn',t:`${st.id} ${st.name} 合計占主動部位 ${p.toFixed(1)}%，超過策略上限 ${cs}%`})}}
+ for(const g of stDups(S))A.push({k:'dup',lv:'bad',c:g.c,th:g.L[0].id,t:`${nm(g.c)} 有 ${g.L.length} 個沒出場的論點（${g.L.map(T=>`${T.id} ${T.sid||'未指定'}，停損 ${T.stop||'—'}`).join('；')}）；同一檔同時間只能有一個`});
  const rd=stRevDue(TODAY),fd=stFinDue(TODAY);
  for(const T of S.theses||[]){if(T.status=='exit'||T.status=='plan')continue;const p=stPerf(S,T),st=stStrat(S,T.sid),c=cU(T.code),since=p.first||T.created||TODAY;
   const mo=num(T.expectM)??(st?num(st.holdMax):null);if(p.first&&mo){const due=addMon(p.first,mo);if(TODAY>due)A.push({k:'due',lv:'wn',th:T.id,t:`${T.id} ${nm(c)} 已持有 ${(dDays(p.first,TODAY)/30.44).toFixed(1)} 個月，超過預計 ${mo} 個月`})}
@@ -220,4 +228,35 @@ function stEntryRec(S,T,p){let ch=0;const c=cU(T.code);
  if(T.hi0===undefined&&typeof CK!='undefined'&&CK&&typeof ckM0=='function'){const m=ckM0(c);if(m){T.hi0=m.hi250??'';T.mg0=m.mg&&m.mg[0]!=null?m.mg[0]:'';ch++}}
  return ch}
 // R 倍數：（報酬率）÷（進場時的每股風險 %）；沒有記到進場停損的回傳 null
+// ================= 同一檔只能有一個論點：找重複、合併、轉換（2026-11-12） =================
+// 補記：撥款前持股事後歸入策略（useInit），或從補記論點轉換來的（convBk）；不算進各策略的筆數、勝率
+const stBk=T=>+T.useInit===1||+T.convBk===1;
+// 補記論點裡撥款後才買的筆數（畫面上標「含撥款後加碼 N 筆」）
+const stBkPost=(S,T)=>stBk(T)?(S.trades||[]).filter(x=>x.thesisId==T.id&&x.k=='buy'&&x.dt&&(!S.dd||x.dt>=S.dd)).length:0;
+function stDups(S){const m={};for(const T of S.theses||[]){if(T.status=='exit')continue;const c=cU(T.code);if(!c)continue;(m[c]=m[c]||[]).push(T)}
+ return Object.entries(m).filter(([c,L])=>L.length>1).map(([c,L])=>({c,L:L.sort((a,b)=>(a.created||'')<(b.created||'')?-1:(a.created||'')>(b.created||'')?1:String(a.id)<String(b.id)?-1:1)}))}
+// 合併預覽：會留下什麼、會搬過去什麼、會丟掉什麼
+function stMergePlan(S,keepId,dropId){const K=stThesis(S,keepId),D=stThesis(S,dropId);if(!K||!D||K.id==D.id)return null;const sk=stStrat(S,K.sid),sd=stStrat(S,D.sid),f=T=>`${T.sid||'未指定'}${T.sver?' v'+T.sver:''}`;
+ const keep=[`策略 ${f(K)}`,`停損 ${K.stop||'—'}`,`已勾條件 ${(K.met||[]).length} 項`,K.why?'為什麼買：'+String(K.why).slice(0,40):'',stBk(K)?'補記（不算策略績效）':''].filter(Boolean);
+ const move=[`交易 ${(S.trades||[]).filter(x=>x.thesisId==D.id).length} 筆`,`出場決定紀錄 ${(D.exLog||[]).length} 筆`,`檢查紀錄 ${(D.reviews||[]).length} 筆`,(D.aiRev||[]).length?`AI 看法 ${D.aiRev.length} 筆`:'',+D.useInit&&!+K.useInit?'撥款前的期初持股（留下的論點會改成補記）':''].filter(Boolean);
+ const lose=[D.sid!=K.sid?`策略 ${f(D)}`:'',String(D.stop)!=String(K.stop)?`停損 ${D.stop||'—'}`:'',(D.met||[]).length?`已勾條件 ${(D.met||[]).length} 項`:'',Object.keys(D.exAck||{}).length?`目前的出場決定 ${Object.keys(D.exAck).length} 條（規則編號跟策略走，只留在紀錄）`:'',D.why&&D.why!=K.why?'為什麼買（會寫進檢查紀錄）':''].filter(Boolean);
+ return{K,D,keep,move,lose}}
+function stMerge(S,keepId,dropId){const P=stMergePlan(S,keepId,dropId);if(!P)return null;const{K,D}=P;
+ const tr=(S.trades||[]).filter(x=>x.thesisId==D.id);tr.forEach(x=>x.thesisId=K.id);
+ K.exLog=(K.exLog||[]).concat((D.exLog||[]).map(x=>Object.assign({},x,{from:D.id}))).sort((a,b)=>(a.d||'')<(b.d||'')?-1:1);
+ if(D.aiRev&&D.aiRev.length)K.aiRev=(K.aiRev||[]).concat(D.aiRev);
+ if(+D.useInit&&!+K.useInit){K.useInit=1;for(const k of['baseD','basePx','baseAuto'])if(D[k]!=null&&(K[k]==null||K[k]===''))K[k]=D[k]}
+ const note=`${TODAY} 合併：${D.id}（${D.sid||'未指定'}，停損 ${D.stop||'—'}）併入 ${K.id}；搬過來 ${tr.length} 筆交易、${(D.exLog||[]).length} 筆出場決定紀錄。${D.why&&D.why!=K.why?'原本的「為什麼買」：'+D.why:''}`;
+ K.reviews=[{date:TODAY,kind:'其他',ok:1,note}].concat(K.reviews||[],(D.reviews||[]).map(r=>Object.assign({},r,{note:`（原 ${D.id}）${r.note||''}`}))).sort((a,b)=>(b.date||'')<(a.date||'')?-1:(b.date||'')>(a.date||'')?1:0);
+ tr.filter(x=>x.k=='buy').sort((a,b)=>(a.dt||'')<(b.dt||'')?-1:1).forEach(x=>stLinkPlan(K,x));
+ {const m=/^T(\d+)$/.exec(D.id||'');if(m)S.thMax=Math.max(+S.thMax||0,+m[1])}S.theses=S.theses.filter(T=>T.id!=D.id);return K}
+// 轉換論點：舊論點以「轉換」結案（不產生交易，用當天收盤結算），新論點用當天收盤當起算價、承接股數
+// 用在 S04 事件結束轉 S01／S06、短期轉長期、改歸類；舊論點是補記的，新論點也算補記
+function stConvert(S,oldId,sid,px,d){const O=stThesis(S,oldId),st=stStrat(S,sid);px=num(px);d=d||TODAY;if(!O||!st||px==null||O.status=='exit')return null;
+ const p=stPerf(S,O);if(!(p.q>0))return null;
+ const N=stNewThesis(S,{code:O.code,sid,sver:st.ver,status:'hold',created:d,convFrom:{id:O.id,d,px,q:p.q},convBk:stBk(O)?1:0,why:O.why||'',expectM:''});
+ N.reviews=[{date:d,kind:'其他',ok:1,note:`由 ${O.id}（${O.sid||'未指定'} v${O.sver||''}）轉換；起算價 ${px}（${d} 收盤），承接 ${p.q} 股`}];
+ stThDefaults(S,N,px);N.stop0=num(N.stop)??'';N.px0=px;N.risk0=num(N.stop)!=null&&num(N.stop)<px?+((px-num(N.stop))/px*100).toFixed(2):'';N.rec0='轉換';N.rec0d=d;
+ O.status='exit';O.exit=Object.assign({},O.exit||{},{date:d,reason:'conv',followed:'',note:`轉換到 ${N.id}（${sid}）`,px});
+ S.theses.push(N);return N}
 const stRmul=(T,ret)=>{const r=num(T.risk0);return r&&ret!=null?ret/r:null};

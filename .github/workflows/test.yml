@@ -1,5 +1,5 @@
 # 計算核心回歸測試：改到 js/ 或測試檔時，用兩份虛構設定檔確認信貸與結算數字沒有變
-name: 計算與條件判斷測試
+name: 計算、條件判斷與 AI 文字測試
 on:
   pull_request:
     paths: ['js/**', 'tools/test/**', '.github/workflows/test.yml']
@@ -16,3 +16,4 @@ jobs:
           node-version: 20
       - run: node tools/test/engine-test.mjs
       - run: node tools/test/check-test.mjs
+      - run: node tools/test/ai-text-test.mjs
