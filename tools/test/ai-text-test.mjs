@@ -12,11 +12,11 @@ if(!src.includes(`const TODAY='${TODAY}'`))throw new Error('engine.js 的 TODAY 
 const el=()=>new Proxy(function(){},{get:(t,k)=>k==='style'||k==='dataset'||k==='classList'?new Proxy({},{get:()=>()=>{}}):k==='value'||k==='innerHTML'||k==='textContent'?'':k==='children'||k==='options'?[]:k===Symbol.toPrimitive?()=>'':el(),set:()=>true,apply:()=>el()});
 const ctx=vm.createContext({console,Math,JSON,Date,Intl,Promise,setTimeout:()=>0,clearTimeout(){},document:new Proxy({},{get:(t,k)=>k==='querySelectorAll'||k==='getElementsByClassName'?()=>[]:k==='getElementById'||k==='querySelector'?()=>el():k==='createElement'?()=>el():el()}),
  localStorage:{getItem:()=>null,setItem(){},removeItem(){}},navigator:{userAgent:''},location:{href:'',protocol:'file:',search:''},addEventListener(){},matchMedia:()=>({matches:false}),indexedDB:{open(){return{}}},fetch:async()=>({ok:false,json:async()=>({})}),alert(){},confirm:()=>true,prompt:()=>''});
-ctx.window=ctx;ctx.globalThis=ctx;
+ctx.window=ctx;ctx.globalThis=ctx;ctx.AS_HOUR=20;   // 固定「晚上 8 點」：資料日期判斷才不會跟著執行時間變
 vm.runInContext(src,ctx,{filename:'app.js'});const run=c=>vm.runInContext(c,ctx);
 ctx.__S=JSON.parse(fs.readFileSync(path.join(D,'settings.json'),'utf8'));ctx.__CK=JSON.parse(fs.readFileSync(path.join(D,'chk.json'),'utf8'));
 run(`S=migrate(__S).o;CK=__CK;for(const k in CKM)delete CKM[k];stSync(S);`);
-const cases={exit:`aaInit({q:'exit',codes:['2330']})`,exitNoRed:`aaInit({q:'exit',codes:['2454']})`,buy:`aaInit({q:'buy',codes:['2454']})`,review:`aaInit({q:'review'})`,fill:`aaInit({q:'fill'})`,free:`aaInit({q:'free'});AA.free='這兩檔接下來的法說會重點？'`,strat:`aaInit({q:'strat'});AA.perf=1;S.stratDoc='測試：共同規則。'`};
+const cases={exit:`aaInit({q:'exit',codes:['2330']})`,exitNoRed:`aaInit({q:'exit',codes:['2454']})`,buy:`aaInit({q:'buy',codes:['2454']})`,review:`aaInit({q:'review'})`,fill:`aaInit({q:'fill'})`,free:`aaInit({q:'free'});AA.free='這兩檔接下來的法說會重點？'`,strat:`aaInit({q:'strat'});AA.perf=1;S.stratDoc='測試：共同規則。'`,pre:`aaInit({q:'pre'})`};
 const up=process.argv.includes('--update');let bad=0;
 for(const [k,init] of Object.entries(cases)){run(`for(const k in CKM)delete CKM[k];AA_CTX=null;AT_DRAFT=null;${init};`);const got=run('aaText()').replace(/快照 K[0-9a-z]+/g,'快照 K—').replace(/"snap":"K[0-9a-z]+"/g,'"snap":"K—"');const f=path.join(D,k+'.txt');
  if(up||!fs.existsSync(f)){fs.writeFileSync(f,got);console.log('已寫入',k);continue}
