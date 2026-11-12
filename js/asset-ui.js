@@ -42,7 +42,7 @@ function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)s
   <div class=asl>和 ${bm} 比：如果撥款日的持股和之後每一筆買賣，都改成同一天、同金額買賣 ${bm}<div>・全部：${asBmTxt(all)}</div><div>・主動：${asBmTxt(act)}</div></div>
   <div class=asl>${loan} <button class=lk onclick="setWs('loan')">看信貸 ›</button></div>`:`<div class=asl style="margin-top:8px"><button class=lk onclick="asPostSet(1)">📅 顯示撥款後績效</button> <span class=h>（有用信貸投資時，看撥款日之後的損益和 vs ${bm}）</span></div>`}
   <div class=asl>現價：${pxStatus()} <button class=lk onclick="pxRefresh()">🔄 更新</button></div>`);
- const fx=$('asFix');if(fx)fx.innerHTML=typeof ckTodoHtml=='function'?ckTodoHtml():'';const A=stAlerts(S);$('asAl').innerHTML=A.length?`<div class=stal>${fold('al',`⚠️ 提醒（${A.length}）`,esc(A[0].t).slice(0,24)+'…',`${A.slice(0,4).map(asAlRow).join('')}${A.length>4?`<div><button onclick="setWs('st')">看全部 ${A.length} 則 ›</button></div>`:''}`)}</div>`:'';
+ const fx=$('asFix');if(fx)fx.innerHTML=typeof ckTodoHtml=='function'?ckTodoHtml():'';try{$('asAl').innerHTML=asTmrHtml()}catch(e){console.error(e);const A=stAlerts(S);$('asAl').innerHTML=A.length?`<div class=stal>${fold('al',`⚠️ 提醒（${A.length}）`,esc(A[0].t).slice(0,24)+'…',`${A.slice(0,4).map(asAlRow).join('')}`)}</div>`:''}
  // 配置
  const CS=asCash(),cash=CS.v!=null?Math.max(0,CS.v*1e4):null,tot=z.p.mv+z.a.mv+(cash||0),seg=(v,c,l)=>tot>0&&v>0?`<span style="width:${v/tot*100}%;background:${c}" title="${l}"></span>`:'';
  const W=(+S.Wp||0)+(+S.Wa||0)+(+S.Wc||0),G=asGroups(S);
@@ -328,3 +328,67 @@ window.asTrHov=e=>{if(!TRD)return;const sv=e.currentTarget,r=sv.getBoundingClien
  const ln=sv.querySelector('#trCur');if(ln){ln.setAttribute('x1',TRD.x(i));ln.setAttribute('x2',TRD.x(i));ln.setAttribute('visibility','visible')}
  const tx=(S.trades||[]).filter(x=>x.dt==p.d&&(x.k=='buy'||x.k=='sell')).map(x=>`${x.k=='buy'?'買':'賣'} ${esc(cU(x.n))} ${esc(nameOf(cU(x.n))||'')} ${x.q} 股`).join('、');
  $('trRd').innerHTML=`<b>${esc(asD(p.d))}</b>　${TRD.SER.map(s=>{const v=TRD.val(p,s.k);return v==null?'':`${esc(s.n)} ${W2(v)} 萬`}).filter(Boolean).join('｜')}${tx?`<div class=h>${tx}</div>`:''}`};
+
+// ================= 📅 明天要做的事（2026-11-12）=================
+// 取代資產頁的「⚠️ 提醒」：同樣的資料，改成「明天做什麼」排列。用資料日期檢查，不用固定時間（網頁只能在打開時計算）。
+// 規則一律收盤確認、隔天開盤執行（和回測一致）；固定停損價也一樣。
+const asWd=d=>new Date(d+'T00:00:00Z').getUTCDay();
+const asPrevTd=d=>{let x=ckAddD(d,-1);while(asWd(x)==0||asWd(x)==6)x=ckAddD(x,-1);return x};
+const asNextTd=d=>{let x=ckAddD(d,1);while(asWd(x)==0||asWd(x)==6)x=ckAddD(x,1);return x};
+// 應該已經有收盤資料的交易日：平日 15:00 後是今天，否則是前一個交易日（國定假日無法判斷）
+const asHour=()=>typeof AS_HOUR!='undefined'?AS_HOUR:new Date().getHours();// 測試時可以固定
+function asExpTd(){const w=asWd(TODAY),h=asHour();return w>=1&&w<=5&&h>=15?TODAY:(w>=1&&w<=5?asPrevTd(TODAY):asPrevTd(asNextTd(TODAY)))}
+function asDataStat(){const ex=asExpTd(),px=Object.entries(S.pxd||{}).filter(([c])=>(S.pxa||{})[c]).map(([,d])=>d).sort().pop()||'',ck=CK||{};
+ const it=[['收盤價',px,1],['指標',ck.d||'',1],['法人',ck.dC||'',0],['融資',ck.dM||'',0]].map(([n,d,need])=>({n,d,need,ok:!!d&&d>=ex}));
+ const final=it.filter(x=>x.need).every(x=>x.ok),w=asWd(TODAY),late=w>=1&&w<=5&&asHour()>=15&&px<TODAY;
+ return{ex,it,final,late,rM:ck.rM||'',bW:(ck.bW||[]).slice(-1)[0]||'',dC:ck.dC||'',dM:ck.dM||'',d:ck.d||''}}
+// 「暫定」：條件用到法人或融資，但那份資料比指標舊
+const asProv=(t,D)=>(/投信|外資|法人/.test(t)&&D.dC<D.d)||(/融資/.test(t)&&D.dM<D.d);
+function asTmr(){const D=asDataStat(),A=stAlerts(S),E=stExposure(S),act=[],near=[],watch=[],orders=[],H=typeof asHeatCap=='function'?asHeatCap(S):null;
+ const qOf=T=>{const p=stPerf(S,T);return p&&p.q>0?p.q:0},pxOf=c=>num((S.px||{})[cU(c)]);
+ // ① 要動作：收盤已觸發的出場規則、跌破停損
+ for(const a of A){if(a.k!='exit'&&a.k!='stop')continue;const T=stThesis(S,a.th);if(!T)continue;const c=cU(T.code),px=pxOf(c),x=a.key?(exRules(stStrat(S,T.sid))||[]).find(z=>z.key==a.key):null,fr=a.k=='stop'?1:(x&&x.frac!=null?x.frac:1),q=Math.floor(qOf(T)*fr);
+  act.push({a,T,c,q,amt:px!=null?q*px:null,lb:a.k=='stop'?`跌破停損 ${T.stop}`:(x?x.lb+'成立':'出場條件成立'),why:(String(a.t).match(/（([^（）]*)）$/)||[])[1]||'',act:a.k=='stop'?'全部賣出':(x&&x.act)||'照規則處理',prov:x?asProv(x.cond,D):false});if(q>0&&fr>0)orders.push({side:'賣',c,q,px,why:`${T.id} ${a.k=='stop'?'跌破停損':(x&&x.lb)||'出場條件'}`,key:a.key||'stop',th:T.id})}
+ // ② 接近觸發：明天收盤碰到就會成立的價位（距現價 5% 內）
+ for(const T of S.theses||[]){if(T.status!='hold')continue;const c=cU(T.code);for(const o of(typeof exTrig=='function'?exTrig(T):[])){if(o.hit||o.gap==null||Math.abs(o.gap)>5)continue;const fr=o.what=='論點停損價'?1:(typeof exFrac=='function'?exFrac(o.act||''):null),q=fr?Math.floor(qOf(T)*fr):null;near.push({T,c,o,q})}}
+ near.sort((a,b)=>Math.abs(a.o.gap)-Math.abs(b.o.gap));
+ // ③ 要注意：事件、資料公布日、重新評估日、大盤、虧損上限，以及其他提醒
+ const d7=ckAddD(TODAY,7);for(const e of S.events||[]){if(e.done||!e.date||e.date<TODAY||e.date>d7)continue;watch.push({d:e.date,t:`${e.code?cU(e.code)+' '+nameOf(e.code)+' ':''}${e.type||'事件'}${e.note?'：'+String(e.note).slice(0,40):''}`})}
+ {const m=+TODAY.slice(5,7),y=+TODAY.slice(0,4),dd=+TODAY.slice(8,10);if(dd>=6&&dd<=10)watch.push({d:`${y}-${String(m).padStart(2,'0')}-10`,t:`${m==1?12:m-1} 月營收公布期限（持股的營收條件會更新）`});
+  for(const[md,n]of[['03-31','年報（第四季）'],['05-15','第一季財報'],['08-14','第二季財報'],['11-14','第三季財報']]){const x=`${y}-${md}`;if(x>=TODAY&&x<=d7)watch.push({d:x,t:n+'公布期限'})}}
+ for(const T of S.theses||[])if(T.status=='hold'&&T.reviewD&&T.reviewD<=d7)watch.push({d:T.reviewD,t:`${T.id} ${cU(T.code)} ${nameOf(T.code)} 重新評估日${T.reviewD<=TODAY?'（到了）':''}`});
+ {const t=CK&&CK.mkt&&CK.mkt.taiex;if(t&&t.c&&t.hi250){const g=(t.c/t.hi250-1)*100;if(g<=-10)watch.push({t:`大盤離 250 日高點 ${g.toFixed(1)}%（回檔 10% 以上：不放寬規則；S04 的進場條件可能成立）`})}}
+ if(H&&H.L){const u=H.L.used;if(u>=50)watch.push({t:`信貸虧損上限已用 ${u.toFixed(0)}%：${u>=150?'④ 被動也出':u>=100?'③ 主動全出':u>=75?'② 主動減半':'① 停止加碼'}`})}
+ if(H&&H.over)watch.push({t:'壓力虧損超過剩下的虧損額度：先降風險再加碼'});
+ for(const a of A)if(a.k!='exit'&&a.k!='stop')watch.push({a,t:a.t});
+ // 還能買多少：壓力虧損剩餘、各候選最多幾股（風險、個股上限、主題上限、壓力虧損取最小）
+ const room=H&&H.cap!=null&&H.tot!=null?H.cap-H.tot:null,cand=[];
+ for(const T of S.theses||[]){if(T.status=='exit')continue;const v=typeof ckVerdict=='function'?ckVerdict(T):null;if(!v||v.cls!='ok')continue;const c=cU(T.code),px=pxOf(c),st=stStrat(S,T.sid);if(px==null||!st)continue;
+  const sc=typeof stStopCalc=='function'?stStopCalc(st,c,px):null,stop=num(T.status=='hold'?T.stop:null)??(sc&&sc.v!=null?sc.v:null);if(stop==null||stop>=px)continue;
+  const L=[],rq=Math.floor((num(st.riskPct)||0)/100*E.tot/(px-stop));L.push(['每筆風險',rq]);
+  const cs=Math.floor(Math.max(0,stCapStock(S,c)/100*E.tot-(E.by[c]||0))/px);L.push(['個股上限',cs]);
+  const g=stGrpOf(S,c)[0];if(g){const gc=stCapGroup(S,g);L.push([`主題「${g}」上限`,Math.floor(Math.max(0,gc/100*E.tot-(E.grp[g]||0))/px)])}
+  if(room!=null&&H.q)L.push(['壓力虧損剩餘',Math.floor(Math.max(0,room)/((px-stop)*H.q))]);
+  const mn=L.reduce((a,b)=>b[1]<a[1]?b:a);cand.push({T,c,px,stop,q:mn[1],by:mn[0],v});if(mn[1]>0)orders.push({side:'買',c,q:mn[1],px,why:`${T.id} ${v.t.replace(/^✅\s*/,'')}（最多 ${mn[1]} 股，受限於${mn[0]}）`,th:T.id,buy:1})}
+ return{D,act,near,watch,orders,room,cand,H}}
+// 計畫和實際對帳：資料定案時存當天的清單（只存代號、買賣、股數），隔天比對實際交易
+function asTmrLog(R){if(!R.D.final)return;const d=R.D.d;S.tmrLog=S.tmrLog||[];if(S.tmrLog.some(x=>x.d==d))return;
+ S.tmrLog.unshift({d,it:R.orders.map(o=>({c:o.c,s:o.side,q:o.q,th:o.th||'',k:o.key||'',b:o.buy?1:0}))});S.tmrLog=S.tmrLog.slice(0,30);try{save()}catch(e){}}
+function asTmrCheck(){const L=(S.tmrLog||[]).filter(x=>x.d<asExpTd()&&x.it.length).slice(0,1)[0];if(!L)return null;const nx=asNextTd(L.d);let done=0,dec=0,miss=[];
+ for(const o of L.it){const tr=(S.trades||[]).some(x=>cU(x.n)==o.c&&x.dt>L.d&&x.dt<=nx&&(o.s=='賣'?x.k=='sell':x.k=='buy'));const T=o.th?stThesis(S,o.th):null,ak=T&&o.k&&o.k!='stop'?(T.exAck||{})[o.k]:null;
+  if(tr)done++;else if(ak&&(ak.k=='skip'||ak.k=='na'))dec++;else if(!o.b)miss.push(o)}
+ const sells=L.it.filter(o=>!o.b).length;return{d:L.d,nx,n:L.it.length,sells,done,dec,miss}}
+const asAlBtns=a=>{const m=asAlRow(a).match(/<button[\s\S]*<\/button>/);return m?' '+m[0]:''};
+function asTmrHtml(){const R=asTmr();asTmrLog(R);const D=R.D,cm=asTmrCheck(),money=v=>v==null?'':`約 ${W2(v)} 萬`;
+ const st=`<div class=tmst>${D.it.map(x=>`<span class="${x.ok?'ok':x.need?'wn':'h'}">${x.n} ${x.ok?'✓':'⏳'} ${x.d?asD(x.d):'—'}</span>`).join('')}<span class=h>月營收 ${esc(D.rM)}｜股權分散 ${D.bW?asD(D.bW):'—'} 週</span></div>${D.late?'<div class=wn>今天的資料還沒到，或今天休市；下面是用上一個交易日算的。</div>':D.final?'':`<div class=wn>檢核資料還是 ${asD(D.d)}：均線、法人類的判斷是<b>暫定</b>，資料到了會再變。</div>`}`;
+ const row1=x=>`<div class=tmr><b>${esc(x.c)} ${esc(nameOf(x.c))}</b>（${esc(x.T.id)}）：${esc(x.lb)} → <b>${esc(x.act)}</b>${x.q?`｜${x.q.toLocaleString()} 股 ${money(x.amt)}`:''}${x.prov?' <span class=wn>暫定</span>':''}${x.why?`<div class=h>${esc(x.why)}</div>`:''}<div>${asAlBtns(x.a)}</div></div>`;
+ const row2=x=>`<div class=tmr><b>${esc(x.c)} ${esc(nameOf(x.c))}</b>：${esc(x.o.what)} ${x.o.ap?'約 ':''}${f2(x.o.px)}（距現價 ${x.o.gap>=0?'+':''}${x.o.gap.toFixed(1)}%）→ ${esc(x.o.act||'照規則')}${x.q?`｜${x.q.toLocaleString()} 股`:''}</div>`;
+ const sec=(n,t,L,f,max)=>L.length?`<div class=sub>${n} ${t}（${L.length}）</div>${L.slice(0,max||99).map(f).join('')}${L.length>(max||99)?`<div class=h>還有 ${L.length-max} 則：<button class=lk onclick="setWs('st')">看全部 ›</button></div>`:''}`:'';
+ const none=!R.act.length&&!R.near.length&&!R.watch.length;
+ const ord=R.orders.length?`<div class=sub>🧾 明天開盤要下的單（收盤確認、隔天開盤執行）</div>${R.orders.map(o=>`<div class=tmr>${o.side=='賣'?'🔻':'🔺'} <b>${o.side} ${esc(o.c)} ${esc(nameOf(o.c))} ${o.q.toLocaleString()} 股</b>${o.px!=null?`｜參考價 ${f2(o.px)}`:''}<div class=h>${esc(o.why)}</div></div>`).join('')}`:'';
+ const cap=`<div class=sub>💰 還能買多少</div><div class=tmr>壓力虧損剩餘額度 ${R.room!=null?`<b>${W2(R.room)} 萬</b>`:'—（先在結算填現金）'}${R.cand.length?'':'｜目前沒有「✅ 可以買／加碼」的論點'}</div>${R.cand.map(x=>`<div class=tmr>${esc(x.c)} ${esc(nameOf(x.c))}（${esc(x.T.id)}）：最多 <b>${x.q.toLocaleString()} 股</b>（受限於${esc(x.by)}；停損 ${f2(x.stop)}）</div>`).join('')}`;
+ const ck=cm?`<div class=h style="margin-top:6px">📋 ${asD(cm.d)} 的計畫（${asD(cm.nx)} 執行）：${cm.n} 項，照做 ${cm.done}${cm.dec?`、寫了不照做／不適用 ${cm.dec}`:''}${cm.miss.length?`、<span class=wn>沒做也沒寫原因 ${cm.miss.length}（${cm.miss.map(o=>o.c).join('、')}）</span>`:''}</div>`:'';
+ const body=`${st}${none?'<div class=ok style="margin:6px 0">✅ 明天沒有要做的事。</div>':''}${sec('🔴','要動作',R.act,row1)}${sec('🟠','接近觸發（明天收盤碰到就成立）',R.near,row2,6)}${sec('🟡','要注意',R.watch,x=>`<div class=tmr>${x.d?asD(x.d)+' ':''}${esc(x.t)}${x.a?asAlBtns(x.a):''}</div>`,6)}${ord}${cap}${ck}
+ <div class=asbtn style="margin-top:6px"><button class=aiq onclick="aiOpen({q:'pre'})">🤖 盤前問 AI</button><span class=h>附上這張清單，只請 AI 查隔夜消息有沒有改變任何一項</span></div>`;
+ const sum=none?'明天沒有要做的事':[R.act.length?`要動作 ${R.act.length}`:'',R.near.length?`接近 ${R.near.length}`:'',R.watch.length?`注意 ${R.watch.length}`:''].filter(Boolean).join('｜');
+ return`<div class=stal>${fold('tmr',`📅 明天要做的事${D.final?'':' <span class=wn>暫定</span>'}`,sum,body)}</div>`}

@@ -3,7 +3,7 @@
 // 分工：App 管數字和規則，AI 管查資料和挑毛病，你管決定和紀錄。
 // 依賴 check.js（exEval、exTrig、ckGroups、ckAiText）、strategy-engine.js、asset-engine.js、asset-ui.js、ai-import.js
 
-const AA_Q={exit:'出場訊號',buy:'買或加碼',review:'月底復盤',fill:'補資料',free:'自由提問',strat:'策略檢討'};
+const AA_Q={exit:'出場訊號',buy:'買或加碼',review:'月底復盤',fill:'補資料',free:'自由提問',strat:'策略檢討',pre:'盤前檢查'};
 const AA_SC={alert:'有提醒的持股',one:'這一檔',pick:'自己勾',all:'整個投資組合'};
 const AA_VIEW=['資料無誤且適用','前提不成立','資料有誤','有一次性因素','查不到'];
 let AA={q:'exit',scope:'alert',codes:[],th:'',rule:'',amt:0,merge:1,free:''};
@@ -123,11 +123,12 @@ const AA_RQ={exit:['先寫最不利於續抱的解讀，再寫另一面。','不
  review:['先寫照規則的看法，再寫例外。','已平倉的論點不到 20 筆，不評論策略有沒有效；不提出策略修改。',AA_REPS,'決定由我做。'],
  fill:[AA_REPS,'每一項寫年度、共識值或單一機構；和 App 現有資料差 15% 以上的另外列出；查不到的寫查過哪裡。'],
  free:[AA_REPS,'決定由我做。'],
+ pre:['只查隔夜消息有沒有改變清單上任何一項；不重算 App 的數字，不建議新的買賣。','不建議放寬停損、延後出場或取消照規則的單；規則是收盤確認、隔天開盤執行。','消息要附來源和時間（台灣時間）；查不到就寫查不到。','決定由我做。'],
  strat:['每一項修改都要標 dir（loosen 放寬／tighten 收緊）和 basis（logic 邏輯／limit 硬限制／test 事前登記的測試），沒有依據的不要提。','放寬的修改（停損變寬、條件變鬆、上限變大）只適用之後新建的部位；大盤從高點回檔 10% 以上的期間不放寬。','不接受「用同一段歷史資料再調一次參數」當依據；要測的寫成「待回測」，不要直接改。','已平倉的論點不到 20 筆時，不用勝率判斷策略好壞。','決定由我做。']};
 const aaRules=q=>'【回答規則】\n'+[AA_R0].concat(AA_RQ[q]||AA_RQ.free).map((t,i)=>`${i+1}. ${t}`).join('\n');
 // 每種問題可以匯回 App 的欄位；匯入端也用同一張表檢查（ai-import.js）
-const AA_QK={exit:['review','outlook','events'],buy:['manual','outlook','events'],review:['outlook','themes','events'],fill:['outlook','themes','events'],free:['outlook','events'],strat:['strategies']};
-function aaFmt(snap){const q=AA.q,y=+TODAY.slice(0,4),CS=new Set(q=='strat'?[]:aaCodes()),Ts=(S.theses||[]).filter(T=>q!='strat'&&T.status!='exit'&&(CS.has(cU(T.code))||T.id==AA.th)).map(T=>{const st=stStrat(S,T.sid);return`${T.id} ${cU(T.code)} ${T.sid} v${T.sver||(st&&st.ver)||''}`});
+const AA_QK={exit:['review','outlook','events'],buy:['manual','outlook','events'],review:['outlook','themes','events'],fill:['outlook','themes','events'],free:['outlook','events'],strat:['strategies'],pre:['events']};
+function aaFmt(snap){const q=AA.q,y=+TODAY.slice(0,4),CS=new Set(q=='strat'||q=='pre'?[]:aaCodes()),Ts=(S.theses||[]).filter(T=>q!='strat'&&q!='pre'&&T.status!='exit'&&(CS.has(cU(T.code))||T.id==AA.th)).map(T=>{const st=stStrat(S,T.sid);return`${T.id} ${cU(T.code)} ${T.sid} v${T.sver||(st&&st.ver)||''}`});
  const ex={format:'投資帳本 v1',ai:'你的名稱（例如 Claude、Gemini）',q,snap};
  const T0=(AA.th&&stThesis(S,AA.th))||aaThOf(aaCodes()[0]||'')||(S.theses||[])[0]||{id:'T001',code:'2301'},x0=AA.th&&AA.rule&&T0?(exRules(stStrat(S,T0.sid))||[]).find(z=>z.key==AA.rule):null,c0=cU(T0.code||'2301');
  const D0='<YYYY-MM-DD>',rv={thesis:T0.id,rule:x0?x0.lb:'<規則名稱>',view:'<五種看法之一>',why:'<一句話>',src:[{name:'<來源>',date:D0,url:'<網址>'}]},ol={code:c0,eps:[{year:'<年度>',eps:'<數字>',src:'<機構（引用的媒體）>',date:D0}],guide:{rev:'<up/flat/down>',gm:'<up/flat/down>',date:D0,src:'<法說會或公告>',note:'<一句重點>'}},
@@ -159,7 +160,20 @@ function aaStrat(){const L=[],dd=aaDD();
 2. 有依據的修改建議：每一項寫清楚改哪個欄位、改成什麼、放寬或收緊、依據是什麼。
 3. 只是想法、還需要驗證的，寫成「待回測」，不要放進 json。
 回答開頭請先用三行：① 有沒有矛盾或判斷不了的規則 ② 建議修改幾項（放寬幾項、收緊幾項）③ 建議回測的項目。之後才寫細節。${(AA.free||'').trim()?'\n補充：'+AA.free.trim():''}`);return L.join('\n\n')}
+// 盤前檢查（2026-11-12）：附「📅 明天要做的事」的清單，只請 AI 查隔夜消息有沒有改變任何一項
+function aaPre(){if(typeof asTmr!='function')return'（這個版本沒有「明天要做的事」）';const R=asTmr(),D=R.D,L=[];
+ L.push(`【明天要做的事】（資料：${D.it.map(x=>`${x.n} ${x.d?ckMD(x.d):'—'}${x.ok?'':'（還沒更新）'}`).join('、')}${D.final?'':'；判斷是暫定'}）`);
+ L.push('要動作（收盤已觸發）：'+(R.act.length?'\n'+R.act.map(x=>`- ${x.c} ${nameOf(x.c)}（${x.T.id}，${stSidN?stSidN(x.T):x.T.sid}）：${x.lb} → ${x.act}${x.q?`，${x.q} 股`:''}${x.why?`（${x.why}）`:''}`).join('\n'):'沒有'));
+ L.push('接近觸發（距現價 5% 內）：'+(R.near.length?'\n'+R.near.slice(0,8).map(x=>`- ${x.c} ${nameOf(x.c)}：${x.o.what} ${x.o.ap?'約 ':''}${f2(x.o.px)}（距現價 ${aaPct(x.o.gap)}）→ ${x.o.act||'照規則'}`).join('\n'):'沒有'));
+ L.push('要注意：'+(R.watch.length?'\n'+R.watch.slice(0,8).map(x=>`- ${x.d?x.d+' ':''}${x.t}`).join('\n'):'沒有'));
+ L.push('明天開盤要下的單：'+(R.orders.length?'\n'+R.orders.map(o=>`- ${o.side} ${o.c} ${nameOf(o.c)} ${o.q} 股（參考價 ${o.px!=null?f2(o.px):'—'}；${o.why}）`).join('\n'):'沒有'));
+ L.push(`【要你做的事】盤前檢查
+請只查隔夜消息（美股收盤、費城半導體指數、台股 ADR、公司公告、重大新聞）有沒有改變上面任何一項。
+- 每一項回答「沒有影響」或「有影響」，有影響的附來源與時間（台灣時間），說明影響的是哪一條規則用到的資料。
+- 不重算 App 的數字，不建議新的買賣。
+回答開頭請先用一行：① 有沒有任何一項受影響（有的話是哪幾項）。之後才寫細節。${(AA.free||'').trim()?'\n補充：'+AA.free.trim():''}`);return L.join('\n\n')}
 function aaText(){const snap=aaSnap(),q=AA.q,P=[q=='strat'?`【投資帳本｜${AA_Q[q]}】${TODAY}｜只有策略與比例，不含持股與金額｜快照 ${snap}`:`【投資帳本｜${AA_Q[q]}】${TODAY}｜現價各檔另標日期；其他指標（均線、本益比、法人、營收、財報）是 ${CK?CK.d:'—'} 的檢核資料｜快照 ${snap}`,'分工：App 管數字和規則，AI 管查資料和挑毛病，我管決定和紀錄。'];
+ if(q=='pre'){P.push(aaMarket());P.push(aaPre());P.push(aaRules(q));P.push(aaFmt(snap));return P.join('\n\n')}
  if(q=='strat'){P.push(aaStrat());P.push(aaRules(q));P.push(aaFmt(snap));return P.join('\n\n')}
  if(q=='fill'){let t=typeof ckAiText=='function'?ckAiText():'';const k=t.indexOf('最後請用');if(k>0)t=t.slice(0,k).trim();P.push(t||'目前沒有待補資料。');P.push(aaAsk());P.push(aaRules(q));P.push(aaFmt(snap));return P.join('\n\n')}
  P.push(aaMarket());if(q=='review')P.push(aaPortfolio());const C=aaCodes();
@@ -177,10 +191,10 @@ function aaRender(){const el=$('aiAsk');if(!el)return;const t=aaText(),al=aaAler
  el.innerHTML=`${AA_CTX&&AA_CTX.from=='trade'&&AT_DRAFT?`<div class=stal style="margin-bottom:6px">從交易表單來的（${esc(cU(AT_DRAFT.c))} ${esc(nameOf(AT_DRAFT.c))}）<button class=lk onclick="aaBackTrade()">↩ 不匯入，回到交易表單</button></div>`:''}<div class=h>按「📋 複製」後貼到任何 AI 對話（Claude、Gemini…）。AI 用「投資帳本 v1」回覆後，切到「📥 貼上回覆」匯入；匯入前都會先預覽。</div>
  <div class=sub>要問什麼</div><div class=aiseg>${Object.entries(AA_Q).map(([k,v])=>`<button class="${AA.q==k?'on':''}" onclick="aaSet('q','${k}')">${v}</button>`).join('')}</div>
  ${x&&AA.q=='exit'?`<div class=stal style="margin-top:6px">要討論的訊號：<b>${esc(T.id)} ${nm(cU(T.code))}｜${esc(x.lb)}</b>：${esc(x.cond)} <button class=lk onclick="AA.th='';AA.rule='';aaRender()">不限這一條</button></div>`:''}
- ${AA.q=='strat'?`<div class=h style="margin-top:6px">範圍：所有啟用中的策略、「📚 策略庫 → 📝 共同規則與依據」、比例類的風險設定；不附持股與金額。</div><label class=ck><input type=checkbox ${AA.perf?'checked':''} onchange="aaSet('perf',this.checked?1:0)">附我的執行紀錄（筆數、勝率、照規則比例，不含金額）</label>`:AA.q=='fill'?`<div class=h style="margin-top:6px">範圍：資產頁「✏️ 待補資料」裡缺的與要更新的資料。</div>`:`<div class=sub>範圍</div><select onchange="aaSet('scope',this.value)">${scs}</select>
+ ${AA.q=='pre'?`<div class=h style="margin-top:6px">範圍：資產頁「📅 明天要做的事」的清單（要動作、接近觸發、要注意、明天要下的單）。</div>`:AA.q=='strat'?`<div class=h style="margin-top:6px">範圍：所有啟用中的策略、「📚 策略庫 → 📝 共同規則與依據」、比例類的風險設定；不附持股與金額。</div><label class=ck><input type=checkbox ${AA.perf?'checked':''} onchange="aaSet('perf',this.checked?1:0)">附我的執行紀錄（筆數、勝率、照規則比例，不含金額）</label>`:AA.q=='fill'?`<div class=h style="margin-top:6px">範圍：資產頁「✏️ 待補資料」裡缺的與要更新的資料。</div>`:`<div class=sub>範圍</div><select onchange="aaSet('scope',this.value)">${scs}</select>
  ${AA.scope=='pick'?`<div class=aipk>${aaActive().map(c=>`<label class=ck><input type=checkbox ${AA.codes.includes(c)?'checked':''} onchange="aaPick('${c}',this.checked)">${nm(c)}</label>`).join('')}</div>`:''}`}
  ${AA.q=='free'?`<div class=sub>你的問題</div><textarea id=aaFree rows=3 style="width:100%" oninput="AA.free=this.value" onchange="aaRender()">${esc(AA.free)}</textarea>`:`<details ${AA.free?'open':''}><summary class=h>補充問題（可不填）</summary><textarea id=aaFree rows=2 style="width:100%" oninput="AA.free=this.value" onchange="aaRender()">${esc(AA.free)}</textarea></details>`}
- ${AA.q=='strat'?'':`<label class=ck><input type=checkbox ${AA.amt?'checked':''} onchange="aaSet('amt',this.checked?1:0)">附上股數與金額（預設只放比例；貼給其他公司的 AI 時建議不勾）</label>
+ ${AA.q=='strat'||AA.q=='pre'?'':`<label class=ck><input type=checkbox ${AA.amt?'checked':''} onchange="aaSet('amt',this.checked?1:0)">附上股數與金額（預設只放比例；貼給其他公司的 AI 時建議不勾）</label>
  <label class=ck><input type=checkbox ${AA.merge?'checked':''} onchange="aaSet('merge',this.checked?1:0)">買進條件裡已符合的合併成一行（出場條件一律逐條附數字）</label>`}
  <div class=asbtn><button class=pri onclick="aaCopy()">📋 複製</button>${navigator.share?'<button onclick="aaShare()">📤 分享到 AI App</button>':''}</div>
  <details class=aapv><summary class=h>預覽（${t.length.toLocaleString()} 字）</summary><pre>${esc(t)}</pre></details>`}
