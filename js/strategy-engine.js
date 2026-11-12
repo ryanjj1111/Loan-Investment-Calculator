@@ -17,6 +17,9 @@ const ST_TPL=[
  {name:'範例：趨勢追蹤',logic:'順著中期趨勢操作：股價站上長期均線且營收成長時進場，跌破均線或營收轉弱時出場。（範例，請依自己的方法修改）',screen:'【選什麼：全部符合】\n1. 月營收年增率連 3 個月為正',entry:'【何時買：至少 2 項】\n1. 股價位於季線與半年線之上\n2. 突破整理區間\n3. 回測季線不破\n【買多少】分 2 批、每批 1/2',exit:'1. 收盤跌破季線：全部賣出\n2. 理由失效：月營收年增率轉負，全部賣出\n3. 停損：跌破均價 −10%',holdMin:1,holdMax:6,capStock:15,capGroup:35,stopPct:10,riskPct:1}];
 
 const stStrat=(S,id)=>(S.strategies||[]).find(s=>s.id==id)||null;
+// 不歸類（2026-11-12）：撥款前持股進不了任何策略時，不硬套策略。沒有策略的出場規則，只有論點停損價和重新評估日（reviewD）；
+// 不算策略績效；每筆風險上限用 ST_U_RISK。標成不歸類的論點仍然要有停損價（提醒列會催）
+const ST_U='U',ST_U_RISK=1.5,stIsU=T=>!!T&&T.sid==ST_U,stRiskCap=T=>stIsU(T)?ST_U_RISK:num((stStrat(S,T.sid)||{}).riskPct),stSidN=T=>stIsU(T)?'不歸類':(T&&T.sid)||'未指定';
 const stThesis=(S,id)=>(S.theses||[]).find(t=>t.id==id)||null;
 const stStatusN=k=>k=='build'?'持有中':(ST_STATUS.find(x=>x[0]==k)||['',''])[1];
 function stNextId(list,pfx,w){let n=0;for(const x of list||[]){const m=new RegExp('^'+pfx+'(\\d+)$').exec(x.id||'');if(m)n=Math.max(n,+m[1])}return pfx+String(n+1).padStart(w,'0')}
@@ -159,6 +162,12 @@ function stAlerts(S){const A=[],E=stExposure(S),nm=c=>c+(typeof nameOf=='functio
   for(const st of S.strategies||[]){const cs=num(st.capStrat);if(!cs)continue;const cs2=new Set((S.theses||[]).filter(T=>T.sid==st.id&&T.status!='exit').map(T=>cU(T.code)));let v=0;for(const c of cs2)v+=E.by[c]||0;const p=v/E.tot*100;if(p>cs)A.push({k:'cap',lv:'wn',t:`${st.id} ${st.name} 合計占主動部位 ${p.toFixed(1)}%，超過策略上限 ${cs}%`})}}
  for(const g of stDups(S))A.push({k:'dup',lv:'bad',c:g.c,th:g.L[0].id,t:`${nm(g.c)} 有 ${g.L.length} 個沒出場的論點（${g.L.map(T=>`${T.id} ${T.sid||'未指定'}，停損 ${T.stop||'—'}`).join('；')}）；同一檔同時間只能有一個`});
  const rd=stRevDue(TODAY),fd=stFinDue(TODAY);
+ // 部位風險（現在的價格到停損）超過每筆上限的 1.5 倍就提醒減碼（只提醒）；起算後漲上去的部位停損沒跟著動，風險會變大
+ if(E.tot>0)for(const T of S.theses||[]){if(T.status!='hold')continue;const cap=stRiskCap(T),stp=num(T.stop),p=stPerf(S,T);if(!cap||stp==null||p.px==null||!(p.q>0)||stp>=p.px)continue;
+  const rk=p.q*(p.px-stp)/E.tot*100;if(rk>cap*1.5){const ok=Math.floor(cap/100*E.tot/(p.px-stp));A.push({k:'risk',lv:'wn',th:T.id,t:`${T.id} ${nm(cU(T.code))} 部位風險 ${rk.toFixed(1)}%（${stSidN(T)} 每筆 ${cap}%，超過 1.5 倍）：現價 ${p.px} 到停損 ${stp}；要符合約 ${ok.toLocaleString()} 股（現在 ${Math.round(p.q).toLocaleString()} 股）。只是提醒，要不要減碼你決定`})}}
+ for(const T of S.theses||[]){if(!stIsU(T)||T.status=='exit')continue;const c=cU(T.code);
+  if(num(T.stop)==null)A.push({k:'stop',lv:'wn',th:T.id,t:`${T.id} ${nm(c)} 是不歸類的論點，還沒有停損價`});
+  if(!T.reviewD)A.push({k:'due',lv:'wn',th:T.id,t:`${T.id} ${nm(c)} 是不歸類的論點，還沒有重新評估日`});else if(T.reviewD<=TODAY)A.push({k:'due',lv:'wn',th:T.id,t:`${T.id} ${nm(c)} 重新評估日 ${T.reviewD} 到了：照你寫的重新評估條件決定續抱、歸入策略或出場`})}
  for(const T of S.theses||[]){if(T.status=='exit'||T.status=='plan')continue;const p=stPerf(S,T),st=stStrat(S,T.sid),c=cU(T.code),since=p.first||T.created||TODAY;
   const mo=num(T.expectM)??(st?num(st.holdMax):null);if(p.first&&mo){const due=addMon(p.first,mo);if(TODAY>due)A.push({k:'due',lv:'wn',th:T.id,t:`${T.id} ${nm(c)} 已持有 ${(dDays(p.first,TODAY)/30.44).toFixed(1)} 個月，超過預計 ${mo} 個月`})}
   if(p.px!=null&&num(T.stop)!=null&&p.px<=num(T.stop))A.push({k:'stop',lv:'bad',th:T.id,t:`${T.id} ${nm(c)} 現價 ${p.px} 已跌破停損價 ${T.stop}`});
