@@ -49,7 +49,7 @@ function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],sg:[],rv:[],mn:[
  for(const k of['trades','theses','updates','events','outlook','themes','strategies'])if(j[k]!=null&&!Array.isArray(j[k]))P.glob.push(`${k} 要是陣列 [ … ]。`);
  const arr=k=>Array.isArray(j[k])?j[k]:[];
  // 這次回覆的來源：哪個 AI、哪一種問題、複製時的快照編號（App 用來檢查持股與資料有沒有變）
- const last=typeof aaLast=='function'?aaLast():null;P.meta={ai:String(j.ai||'').trim().slice(0,40),q:String(j.q||'').trim(),snap:String(j.snap||'').trim()};
+ const last=typeof aaLast=='function'?aaLast():null;P.meta={ai:String(j.ai||'').trim().slice(0,40),q:String(j.q||'').trim(),snap:String(j.snap||'').trim(),kind:String(j.kind||'').trim()};
  if(!P.meta.q&&last&&last.snap&&last.snap==P.meta.snap)P.meta.q=last.q;if(P.meta.q&&!(typeof AA_Q!='undefined'&&AA_Q[P.meta.q]))P.meta.q='';
  if(j.summary||j.note)P.sum=String(j.summary||j.note).slice(0,2000);
  const unk=Object.keys(j).filter(k=>!AI_KNOWN.has(k));if(unk.length)P.glob.push(`⚠️ 認不得的欄位：${unk.join('、')}，不會匯入（可能是 AI 自己加的，或格式寫錯）。`);
@@ -72,10 +72,13 @@ function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],sg:[],rv:[],mn:[
   it.plan=(Array.isArray(o.plan)?o.plan:[]).map((p,k)=>({n:aiNum(p.n)||k+1,cond:String(p.cond||''),pct:aiNum(p.pct)??'',trade:p.trade==null?null:aiNum(p.trade)}));
   // 已有同代號、同策略的進行中論點 → 更新它，不新建
   const ex=(S.theses||[]).find(T=>T.status!='exit'&&cU(T.code)==c&&T.sid==sid);
+  // 2026-11-12：同一檔同時間只能有一個論點。同代號、不同策略 → 標疑點、預設不勾；勾了就是「轉換」（持有中）或改策略（規劃中）
+  const oth=!ex&&c&&sid?(S.theses||[]).find(T=>T.status!='exit'&&cU(T.code)==c):null;
+  if(oth){it.conv=oth;it.warn.push(`這檔已有 ${oth.id}（${oth.sid||'未指定'}），同一檔同時間只能有一個論點。勾選的話：${oth.status=='hold'?`${oth.id} 以「轉換」結案（不產生交易，用現價結算），由新論點承接股數、現價當起算價`:`規劃中的 ${oth.id} 改成 ${sid}`}`)}
   if(ex){it.merge=ex;it.info.push(`已有 ${ex.id}（${c} ${sid}），會更新它而不是新建`);it.diff=aiDiff(ex,{stop:o.stop,target:o.target,why:o.why,wrongIf:o.wrongIf,expectM:o.expectM,targetNote:[o.targetNote,o.exitNote].filter(Boolean).join('\n')||undefined});
    const nm=it.met.filter(t=>!(ex.met||[]).includes(t)).length+it.pend.filter(t=>!(ex.pend||[]).includes(t)&&!(ex.met||[]).includes(t)).length;if(!it.diff.length&&!nm){it.on=0;it.warn.push(`和 ${ex.id} 的內容相同，不用再匯入`)}}});
  // 預先配發新論點編號
- {let n=0;for(const T of S.theses||[]){const m=/^T(\d+)$/.exec(T.id||'');if(m)n=Math.max(n,+m[1])}for(const it of P.th)if(!it.merge&&!it.err.length)it.id='T'+String(++n).padStart(3,'0')}
+ {let n=+S.thMax||0;for(const T of S.theses||[]){const m=/^T(\d+)$/.exec(T.id||'');if(m)n=Math.max(n,+m[1])}for(const it of P.th)if(!it.merge&&!it.err.length)it.id='T'+String(++n).padStart(3,'0')}
  // 交易
  arr('trades').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},lb=`trades 第 ${i+1} 筆`;P.tr.push(it);
   const dt=aiDate(o.date),c=cU(o.code||''),k=AI_SIDE[String(o.side||'').trim()],ac0=AI_AC[String(o.acct||'').trim()];
@@ -120,7 +123,16 @@ function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],sg:[],rv:[],mn:[
   it.diff=st?Object.keys(it.f).filter(k=>String(st[k]??'')!==String(it.f[k])):Object.keys(it.f);
   const nv=st?st.ver+1:1;it.ver=nv;if(o.ver!=null&&+o.ver!==nv){if(st&&+o.ver<=st.ver){it.on=0;it.warn.push(`策略庫的 ${id} 已經是 v${st.ver}，這筆是 v${o.ver}，預設不匯入`)}else it.warn.push(`會建立成 v${nv}（不是 v${o.ver}）`)}
   if(!it.diff.length){it.on=0;it.warn.push('內容和策略庫相同，不用更新')}
-  it.reason=String(o.reason||'').trim()||'從 AI 匯入';it.up=st&&o.upgradeTheses?(S.theses||[]).filter(T=>T.sid==id&&T.status!='exit'&&(+T.sver||1)<nv).map(T=>T.id):[]});
+  // 2026-11-12：策略檔（kind=strategies）或別人的策略：編號撞到時可以選「更新我的」或「新增成另一個編號」；別人的檔案預設新增
+  if(st&&it.diff.length)it.asNew=P.meta.kind=='strategies'&&P.meta.q!='strat'?1:0;
+  // 工具讀得懂幾條（別人的寫法可能有一半是 ❔）
+  {const mg=Object.assign({},st||{},it.f);let n=0,a=0,xn=0,xa=0;if(typeof stConds=='function')for(const g of stConds(mg))for(const t of g.items){n++;if(typeof ckAuto=='function'&&ckAuto(t))a++}
+   if(typeof exRules=='function')for(const x of exRules(mg)){xn++;try{if(ckParse(exNorm(x.cond)))xa++}catch(e){}}it.parse={n,a,xn,xa}}
+  // 放寬／收緊：數字欄位自動判斷，AI 也要標（dir、basis）
+  const DIRS={loosen:'loosen','放寬':'loosen',tighten:'tighten','收緊':'tighten'},BAS={logic:'logic','邏輯':'logic',limit:'limit','硬限制':'limit',test:'test','事前登記的測試':'test','測試':'test'};
+  it.dir=DIRS[String(o.dir||'').trim()]||'';it.basis=BAS[String(o.basis||'').trim()]||'';
+  if(st){const up=k=>num(it.f[k])!=null&&num(st[k])!=null&&num(it.f[k])>num(st[k]);it.autoL=['stopPct','riskPct','capStock','capGroup','capStrat','addHalt','holdMax'].filter(up)}
+  it.reason=String(o.reason||'').trim()||(P.meta.kind=='strategies'?'從策略檔匯入':'從 AI 匯入');it.up=st&&o.upgradeTheses?(S.theses||[]).filter(T=>T.sid==id&&T.status!='exit'&&(+T.sver||1)<nv).map(T=>T.id):[]});
  // 庫存核對（套用這次的交易後再比）
  if(j.check){const items=Array.isArray(j.check)?j.check:Array.isArray(j.check.items)?j.check.items:[];P.ck={date:aiDate(j.check.date)||TODAY,items};}
  // AI 對出場訊號的看法（只記錄，不改判斷）
@@ -136,6 +148,7 @@ function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],sg:[],rv:[],mn:[
  aiFlag(P);return P}
 // 每一項標影響等級；🎯 有疑點的預設不勾（沒有來源或日期、超過 45 天、和同年度現有預估差 > 15%、AI 替你勾要自己判斷的條件、停損往下調、出場訊號討論裡的策略修改）
 function aiFlag(P){const sus=(it,why)=>{if(!why.length)return;it.sus=why;if(it.on){it.on=0;it.warn.push('🎯 有疑點，預設不勾：'+why.join('、'))}};
+ for(const it of P.th)if(it.conv)sus(it,['同一檔已有其他策略的論點']);
  for(const it of P.tr)it.tg=1;
  for(const it of P.th){it.tg=1;const man=it.met.filter(t=>!(typeof ckAuto=='function'&&ckAuto(t)));if(man.length)sus(it,[`AI 替你勾了 ${man.length} 項要自己判斷的條件（${man.slice(0,2).map(t=>t.replace(/〔[^〕]*〕/g,'')).join('、')}${man.length>2?'…':''}）`])}
  for(const it of P.up){const D=it.diff||[];it.tg=D.some(d=>d.f=='stop')?1:D.some(d=>d.f=='tgtPx')?2:3;const s=D.find(d=>d.f=='stop');if(s&&num(s.old)!=null&&num(s.nw)!=null&&+s.nw<+s.old)sus(it,[`停損價往下調（放寬）${s.old} → ${s.nw}`])}
@@ -146,8 +159,14 @@ function aiFlag(P){const sus=(it,why)=>{if(!why.length)return;it.sus=why;if(it.o
   if(it.guide){if(!(it.o.guide&&aiDate(it.o.guide.date)))w.push('法說指引沒有日期');if(aiNoSrc(it.guide.src))w.push('法說指引沒有來源')}
   sus(it,w)}
  for(const it of P.tm){it.tg=1;if(!it.err.length&&aiNoSrc(it.t.src))sus(it,['主題狀態沒有來源'])}
- for(const it of P.sg){it.tg=1;if(P.meta.q=='exit')sus(it,['這是出場訊號的討論；策略修改只在每季檢討時做'])}
- for(const it of P.rv)it.tg=3;for(const it of P.mn)it.tg=3}
+ for(const it of P.sg){it.tg=1;if(P.meta.q=='exit')sus(it,['這是出場訊號的討論；策略修改只在每季檢討時做']);
+  if(P.meta.q=='strat'&&it.st){const w=[],LBF={stopPct:'預設停損',riskPct:'每筆風險',capStock:'個股上限',capGroup:'族群上限',capStrat:'策略合計上限',addHalt:'暫停加碼',holdMax:'持有上限'},dd=typeof aaDD=='function'?aaDD():null;
+   if(!it.dir||!it.basis)w.push('沒有標放寬／收緊或依據');if(it.dir=='tighten'&&(it.autoL||[]).length)w.push(`標成收緊，但 ${(it.autoL||[]).map(k=>LBF[k]).join('、')} 變大（放寬）`);
+   if((it.dir=='loosen'||(it.autoL||[]).length)&&dd!=null&&dd<=-10)w.push(`大盤離高點 ${dd.toFixed(1)}%（回檔 10% 以上），這段期間不放寬`);sus(it,w)}}
+ for(const it of P.rv)it.tg=3;for(const it of P.mn){it.tg=3;if(!(it.h&&it.h.src&&it.h.src.length))sus(it,['沒有附來源'])}
+ // 2026-11-12：依問題類型限制可以匯入的欄位（AI 不一定照提示做）；沒有 q 的匯入（每天記交易）不受限制
+ const QK=typeof AA_QK!='undefined'?AA_QK[P.meta.q]:null;if(QK){const G={trades:P.tr,theses:P.th,updates:P.up,events:P.ev,outlook:P.ol,themes:P.tm,strategies:P.sg,review:P.rv,manual:P.mn},nm=(typeof AA_Q!='undefined'&&AA_Q[P.meta.q])||P.meta.q;
+  P.qBad=[];for(const k in G){if(QK.includes(k)||!(G[k]||[]).length)continue;P.qBad.push(k);for(const it of G[k])sus(it,[`「${nm}」的回覆不該有 ${k}`])}}}
 const aiTg=it=>it.tg?` <span class="aitg t${it.tg}">${AI_TG[it.tg]}</span>`:'';
 function aiDiff(T,o){const D=[];for(const k in AI_UPD){if(o[k]===undefined||o[k]===null||o[k]==='')continue;const[f,lb]=AI_UPD[k],nv=['stop','tgtPx','expectM'].includes(f)?aiNum(o[k]):String(o[k]);if(nv==null)continue;if(String(T[f]??'')!==String(nv))D.push({f,lb,old:T[f]??'',nw:nv})}return D}
 
@@ -171,6 +190,7 @@ window.aiFile=el=>{const f=el.files&&el.files[0];if(!f)return;const rd=new FileR
 window.aiRun=()=>{AIX=$('aiTx').value;const r=aiExtract(AIX);if(r.err){AIP=null;$('aiPv').innerHTML=`<div class=stal style="border-color:#fca5a5;background:#fef2f2"><b>❌ 解析失敗</b><div>${esc(r.err)}</div>${r.txt!=null&&r.line?`<div class=h>第 ${r.line} 行：<code>${esc(r.txt)}</code></div>`:''}</div>`;return}AIP=aiPlan(r.j);if(r.fixed=='nl')AIP.glob.push('已自動接回文字中間被拆開的換行（手機複製時常發生）。');else if(r.fixed)AIP.glob.push('已自動修正換行、全形引號或多餘的逗號。');aiPrevRender()};
 const aiMsgs=it=>it.err.map(s=>`<div class=bad>❌ ${esc(s)}</div>`).join('')+it.warn.map(s=>`<div class=wn>⚠️ ${esc(s.replace(/^⚠️ /,''))}</div>`).join('')+it.info.map(s=>`<div class=h>ℹ️ ${esc(s)}</div>`).join('');
 const aiCk=(k,it)=>`<input type=checkbox data-ai="${k}" ${it.on&&!it.err.length?'checked':''} ${it.err.length?'disabled':''} onchange="aiTog('${k}',this.checked)">`;
+window.aiSgAs=(i,v)=>{const it=AIP&&AIP.sg[i];if(it)it.asNew=+v?1:0;aiSum()};
 window.aiTog=(k,v)=>{const t={t:'tr',h:'th',u:'up',e:'ev',o:'ol',m:'tm',g:'sg',r:'rv',n:'mn'}[k[0]],it=AIP[t][+k.slice(1)];if(it)it.on=v?1:0;aiSum();if(typeof aiDiffRun=='function')aiDiffRun()};
 function aiTh(it){if(it.ref&&AIP){const h=AIP.th.find(z=>z.ref==it.ref);if(h)return h.merge?h.merge.id:h.id?h.id+'（新）':'（新論點有錯）'}return it.tid||''}
 function aiPrevRender(){const P=AIP,el=$('aiPv');let h='';
@@ -190,9 +210,10 @@ function aiPrevRender(){const P=AIP,el=$('aiPv');let h='';
  if(P.ol.length)h+=`<div class=sub>前瞻資料（${P.ol.length}）</div>`+P.ol.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('o'+i,it)}<div><b>${esc(it.c)} ${esc(nameOf(it.c))}</b>${aiTg(it)}${(it.eps||[]).length?`<div class=h>EPS 預估：${it.eps.map(e=>`${e.y} 年 ${e.v}（${esc(e.src||'未註明')}，${e.d}）`).join('；')}</div>`:''}${it.guide?`<div class=h>法說指引（${it.guide.d}）：營收${olDirN(it.guide.rev)}、毛利率${olDirN(it.guide.gm)}${it.guide.note?'｜'+esc(it.guide.note):''}</div>`:''}${it.attr&&aA(it.attr)?`<div class=h>股票屬性：${esc(aA(it.attr))}</div>`:''}${aiMsgs(it)}</div></label>`).join('');
  if(P.tm.length)h+=`<div class=sub>主題指標（${P.tm.length}）</div>`+P.tm.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('m'+i,it)}<div><b>${esc(it.n||'?')}</b>${aiTg(it)}：${it.t?olDirN(it.t.st):'?'}${it.t?` <span class=h>${it.t.d}${it.t.note?'｜'+esc(it.t.note):''}</span>`:''}${aiMsgs(it)}</div></label>`).join('');
  if(P.sg.length){const LB={name:'名稱',logic:'邏輯說明',term:'期別',screen:'選什麼',entry:'何時買／買多少',exit:'何時賣',holdMin:'持有下限',holdMax:'持有上限',capStock:'個股上限',capGroup:'族群上限',capStrat:'策略合計上限',stopPct:'預設停損',stopTech:'技術停損',riskPct:'每筆風險',rr:'檢查賺賠比',addDays:'加碼間隔',addPx:'加碼價差方向',addPxPct:'加碼價差',addHalt:'暫停加碼'};
-  h+=`<div class=sub>策略新版本（${P.sg.length}）</div>`+P.sg.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('g'+i,it)}<div><b>${esc(it.id||'?')} ${esc(it.st?it.st.name:(it.f&&it.f.name)||'')}</b>${aiTg(it)}${it.st?`：v${it.st.ver} → <b>v${it.ver}</b>`:'：新策略 v1'}${it.diff&&it.diff.length?`<div class=h>改了：${it.diff.map(k=>LB[k]||k).join('、')}</div>`:''}<div class=h>原因：${esc(it.reason||'')}</div>${it.up&&it.up.length?`<div class=h>論點 ${it.up.join('、')} 改跟隨 v${it.ver}</div>`:''}${it.f&&it.diff&&it.diff.includes('entry')?`<details><summary class=h>新的何時買／買多少</summary><div class=h style="white-space:pre-wrap">${esc(it.f.entry)}</div></details>`:''}${aiMsgs(it)}</div></label>`).join('')}
+  h+=`<div class=sub>策略新版本（${P.sg.length}）</div>`+P.sg.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('g'+i,it)}<div><b>${esc(it.id||'?')} ${esc(it.st?it.st.name:(it.f&&it.f.name)||'')}</b>${aiTg(it)}${it.st?`：v${it.st.ver} → <b>v${it.ver}</b>`:'：新策略 v1'}${it.diff&&it.diff.length?`<div class=h>改了：${it.diff.map(k=>LB[k]||k).join('、')}</div>`:''}<div class=h>原因：${esc(it.reason||'')}${it.dir||it.basis?`｜${it.dir=='loosen'?'放寬':it.dir=='tighten'?'收緊':'—'}｜依據：${{logic:'邏輯',limit:'硬限制',test:'事前登記的測試'}[it.basis]||'—'}`:''}</div>${it.parse?`<div class=h>工具讀得懂：條件 ${it.parse.a}／${it.parse.n} 條、出場規則 ${it.parse.xa}／${it.parse.xn} 條${it.parse.n&&it.parse.a<it.parse.n/2?'（一半以上要自己判斷）':''}</div>`:''}${it.st&&it.diff&&it.diff.length?`<div class=h>編號 ${esc(it.id)} 已經有了：<select onchange="aiSgAs(${i},this.value)"><option value=0 ${!it.asNew?'selected':''}>更新我的 ${esc(it.id)}（v${it.st.ver} → v${it.ver}）</option><option value=1 ${it.asNew?'selected':''}>新增成另一個編號</option></select></div>`:''}${it.up&&it.up.length?`<div class=h>論點 ${it.up.join('、')} 改跟隨 v${it.ver}</div>`:''}${it.f&&it.diff&&it.diff.includes('entry')?`<details><summary class=h>新的何時買／買多少</summary><div class=h style="white-space:pre-wrap">${esc(it.f.entry)}</div></details>`:''}${aiMsgs(it)}</div></label>`).join('')}
  if(P.ck)h+=aiCheckHtml(P);
  if(P.mn.length)h+=`<div class=sub>AI 對要自己判斷的條件的看法（${P.mn.length}）</div>`+P.mn.map((it,i)=>`<label class="aii ${it.err.length?'aie':''}">${aiCk('n'+i,it)}<div><b>${esc(it.c||'?')} ${esc(nameOf(it.c||''))}</b>${aiTg(it)}<div>${it.h?(it.h.ok===true?'✅ 認為符合':it.h.ok===false?'❌ 認為不符合':'❔ 判斷不了')+'：'+esc(it.h.t):''}</div>${it.h&&it.h.why?`<div class=h>${esc(it.h.why)}${it.h.src.length?'（'+it.h.src.map(esc).join('；')+'）':''}</div>`:''}${aiMsgs(it)}</div></label>`).join('');
+ if(P.qBad&&P.qBad.length)h+=`<div class=wn>這是「${esc((typeof AA_Q!='undefined'&&AA_Q[P.meta.q])||P.meta.q)}」的回覆，裡面有不該出現的 ${esc(P.qBad.join('、'))}，預設不勾；真的要匯入請自己勾。</div>`;
  if(!P.th.length&&!P.tr.length&&!P.up.length&&!P.ev.length&&!P.ol.length&&!P.tm.length&&!P.sg.length&&!P.rv.length&&!P.mn.length&&!P.ck)h+='<div class=wn>沒有找到 trades、theses、updates、events、outlook、themes、strategies、review 或 check。</div>';
  h+=`<div id=aiDiff class=aidf><div class=h>⏳ 試算這次匯入會改變哪些判斷…</div></div><div class=asbtn><button class=pri id=aiGo onclick="aiCommit()"></button><button onclick="asClose()">取消</button></div><div class=h>匯入前會自動存還原點；匯入後可以在下方「匯入紀錄」整批復原。</div>`;
  el.innerHTML=h;aiSum()}
@@ -218,11 +239,14 @@ function aiApplyTo(P){
  const setF=(T,f,v)=>{B.upd.push({id:T.id,f,old:T[f]});T[f]=v};
  // 策略新版本（記下原本的整個策略，整批復原時換回來）
  for(const it of P.sg||[]){if(!it.on||it.err.length)continue;let st=stStrat(S,it.id);B.sg.push({id:it.id,o:JSON.stringify(st??null)});
-  if(!st){st=stNewStrategy(S,it.f,TODAY);st.id=it.id;S.strategies.push(st);continue}
+  if(!st||it.asNew){const nid=st?stNextId(S.strategies,'S',2):it.id,base=st&&it.asNew?Object.assign({},stSnapOf(st),it.f):it.f;if(st)B.sg[B.sg.length-1]={id:nid,o:'null'};st=stNewStrategy(S,base,TODAY);st.id=nid;S.strategies.push(st);continue}
   Object.assign(st,it.f);st.ver=it.ver;st.hist=st.hist||[];st.hist.push({ver:st.ver,date:TODAY,reason:it.reason,snap:stSnapOf(st)});for(const id of it.up){const T=stThesis(S,id);if(T)setF(T,'sver',st.ver)}}
  for(const it of P.th){if(!it.on||it.err.length)continue;const o=it.o;let T;
   if(it.merge){T=stThesis(S,it.merge.id);for(const d of it.diff||[])setF(T,d.f,d.nw);if(it.met.length||it.pend.length){setF(T,'met',[...new Set((T.met||[]).concat(it.met))]);setF(T,'pend',[...new Set((T.pend||[]).concat(it.pend))]);setF(T,'metNote',Object.assign({},T.metNote||{},it.note))}}
-  else{T=stNewThesis(S,{code:it.c,sid:it.sid,sver:it.ver,status:'plan',created:it.created||(P.tr.find(z=>z.ref==it.ref&&z.x)||{x:{}}).x.dt||TODAY,why:String(o.why||''),wrongIf:String(o.wrongIf||''),expectM:aiNum(o.expectM)??'',stop:it.stop??'',tgtPx:it.tgt??'',target:[o.targetNote,o.exitNote].filter(Boolean).join('\n'),met:it.met,pend:it.pend,metNote:it.note,metAt:it.created||TODAY,src:'ai',batch:B.id});
+  else if(it.conv&&it.conv.status=='plan'&&stThesis(S,it.conv.id)){T=stThesis(S,it.conv.id);setF(T,'sid',it.sid);setF(T,'sver',it.ver);for(const[f,v]of[['why',o.why],['wrongIf',o.wrongIf],['stop',it.stop],['tgtPx',it.tgt]])if(v!=null&&v!=='')setF(T,f,f=='why'||f=='wrongIf'?String(v):v);if(it.met.length)setF(T,'met',it.met);if(it.pend.length)setF(T,'pend',it.pend)}
+  else if(it.conv&&it.conv.status=='hold'&&stThesis(S,it.conv.id)&&num((S.px||{})[it.c])!=null){const O=stThesis(S,it.conv.id),ox=JSON.stringify(O.exit||{});T=stConvert(S,O.id,it.sid,num(S.px[it.c]),TODAY);
+   if(T){B.cv=B.cv||[];B.cv.push({id:O.id,exit:ox});B.th.push(T.id);T.src='ai';T.batch=B.id;if(o.why)T.why=String(o.why);if(o.wrongIf)T.wrongIf=String(o.wrongIf);if(it.stop!=null)T.stop=it.stop;if(it.tgt!=null)T.tgtPx=it.tgt;if(it.met.length){T.met=it.met;T.metNote=it.note;T.metAt=TODAY}if(it.pend.length)T.pend=it.pend}}
+  if(!T){T=stNewThesis(S,{code:it.c,sid:it.sid,sver:it.ver,status:'plan',created:it.created||(P.tr.find(z=>z.ref==it.ref&&z.x)||{x:{}}).x.dt||TODAY,why:String(o.why||''),wrongIf:String(o.wrongIf||''),expectM:aiNum(o.expectM)??'',stop:it.stop??'',tgtPx:it.tgt??'',target:[o.targetNote,o.exitNote].filter(Boolean).join('\n'),met:it.met,pend:it.pend,metNote:it.note,metAt:it.created||TODAY,src:'ai',batch:B.id});
    if(it.plan.length)T.plan=it.plan.map(p=>({n:p.n,cond:p.cond,pct:p.pct,tid:''}));stThDefaults(S,T,null);S.theses.push(T);B.th.push(T.id)}
   idOf[it.ref]=T.id;
   if(it.tags.length){B.tags.push({c:it.c,old:(S.tags||{})[it.c]});S.tags=S.tags||{};S.tags[it.c]=it.tags}else if(typeof asTagDef=='function'&&!(S.tags||{})[it.c]){B.tags.push({c:it.c,old:undefined});asTagDef(it.c)}}
@@ -244,6 +268,7 @@ window.aiCommit=async()=>{const P=AIP;if(!P)return;await rpSave('AI 匯入前');
   ${S.bkAsk===0?'':`<div class=stal style="margin-top:8px"><b>要匯出備份嗎？</b><div class=asbtn><button class=pri onclick="exp();asClose()">⬇️ 匯出設定檔</button><button onclick="asClose()">這次不用</button></div><label class=ck style="margin-top:4px"><input type=checkbox onchange="S.bkAsk=this.checked?0:1;save()">以後匯入後不要再問（仍會在超過 7 天沒備份時提醒）</label></div>`}
   <div class=asbtn><button onclick="aiOpen({tab:'paste'})">再貼一次</button><button onclick="asClose()">回資產頁</button></div>`;if(typeof aaAfterImport=='function')aaAfterImport(B)};
 window.aiUndo=async id=>{const B=(S.imports||[]).find(b=>b.id==id);if(!B||B.undone)return;if(!confirm(`整批復原 ${aiT(B.at)} 的匯入（${B.sum}）？目前的資料會先存成還原點。`))return;await rpSave('整批復原前');
+ for(const v of B.cv||[]){const T=stThesis(S,v.id);if(T){T.exit=JSON.parse(v.exit||'{}');T.status='hold'}}
  const tr=new Set(B.tr),th=new Set(B.th),ev=new Set(B.ev);S.trades=S.trades.filter(x=>!tr.has(x.id));S.theses=S.theses.filter(T=>!th.has(T.id));S.trades.forEach(x=>{if(th.has(x.thesisId))x.thesisId=''});S.events=(S.events||[]).filter(e=>!ev.has(e.id));
  for(const u of B.upd.slice().reverse()){const T=stThesis(S,u.id);if(T)T[u.f]=u.old}for(const p of B.plan||[]){const T=stThesis(S,p.id);if(T)(T.plan||[]).forEach(r=>{if(r.tid==p.tid)r.tid=''})}
  for(const t of B.tags.slice().reverse()){if(t.old===undefined)delete S.tags[t.c];else S.tags[t.c]=t.old}

@@ -6,7 +6,10 @@ const AS_RS={buy:[['new','新建倉'],['plan','照計畫加碼'],['dip','逢低�
 const AS_RS2EXIT={tp:'target',sl:'stop',inv:'invalid',to:'timeout',adj:'other',oth:'other'};
 const asRsN=k=>{if(!k)return'';for(const t in AS_RS){const f=AS_RS[t].find(x=>x[0]==k);if(f)return f[1]}return''};
 // 這檔股票目前進行中的論點（沒有就 null）
-const asThesisOf=(S,c)=>(S.theses||[]).filter(T=>T.status!='exit'&&cU(T.code)==cU(c)).sort((a,b)=>(b.created||'')>(a.created||'')?1:-1)[0]||null;
+// 2026-11-12：同一檔同時間只屬於一個論點。萬一有兩個（舊資料或匯入），先取持有中、再取規劃中；同狀態取最早建立的
+// （之前取「最新建立」，規劃中的新論點會把持有中的蓋掉：智易 T009／T010）
+const AS_THO={hold:0,plan:1};
+const asThesisOf=(S,c)=>(S.theses||[]).filter(T=>T.status!='exit'&&cU(T.code)==cU(c)).sort((a,b)=>((AS_THO[a.status]??1)-(AS_THO[b.status]??1))||((a.created||'')<(b.created||'')?-1:(a.created||'')>(b.created||'')?1:String(a.id)<String(b.id)?-1:1))[0]||null;
 
 // 券商成本（跟券商 App 一樣）：撥款前持股用「原始成本」，手續費「每月退回」時用交易當下收的全額手續費
 function asHoldB(S){const H={},k=(ac,c)=>(ac=='a'?'a':'p')+'|'+c;
@@ -24,6 +27,19 @@ function asRows(S){const HB=asHoldB(S);const pxm=S.px||{},fee={};
  return holdings(S).map(o=>{const c=cU(o.n),px=num(pxm[c]),open=o.q>0,mv=open&&px!=null?o.q*px:null,un=mv!=null?mv-o.cost:null,f=fee[o.ac+'|'+c]||0;
   const b=HB[o.ac+'|'+c]||{q:o.q,cost:o.cost,real:o.real,noC0:1},est=mv!=null?asEstSell(S,c,mv):0,ub=mv!=null?mv-b.cost-est:null;
   return{cb:b.cost,avgB:open&&b.q>0?b.cost/b.q:null,ub,ubp:ub!=null&&b.cost>0?ub/b.cost*100:null,realB:b.real,est,noC0:!!b.noC0&&(o.iq||0)>0,ac:o.ac,c,q:o.q,iq:o.iq||0,cost:o.cost,avg:open?o.cost/o.q:null,px,pxd:(S.pxd||{})[c]||'',auto:!!(S.pxa||{})[c],mv,un,unp:un!=null&&o.cost>0?un/o.cost*100:null,real:o.real,div:o.div,fee:f,open,last:o.last,divs:o.divs||[]}})}
+
+// 撥款後損益拆成：撥款前持股（從撥款日收盤起算）、撥款後買進（從成交價起算）。
+// 賣出、配股、配息依當時兩部分的股數比例分攤（和整檔的移動平均成本一致，所以兩部分加總＝整檔）
+function asPostSplit2(S,c,ac){c=cU(c);ac=ac=='a'?'a':'p';const I={q:0,c:0,r:0,d:0},P={q:0,c:0,r:0,d:0};
+ if(hasInit(S))for(const z of S.init){if((z.ac=='a'?'a':'p')!=ac||cU(z.n)!=c)continue;const q=+z.q||0;I.q+=q;I.c+=q*(+z.px||0)}
+ const L=(S.trades||[]).map((x,i)=>({x,i})).filter(o=>o.x.dt&&cU(o.x.n)==c&&(o.x.ac=='a'?'a':'p')==ac).sort((a,b)=>a.x.dt==b.x.dt?a.i-b.i:(a.x.dt>b.x.dt?1:-1));
+ for(const{x}of L){const m=tradeAmt(S,x),sh=num(x.q)||0,tot=I.q+P.q;
+  if(x.k=='buy'){P.q+=sh;P.c+=m.g+m.fee}
+  else if(x.k=='sell'&&tot>0){const u=Math.min(sh,tot),f=u/tot;for(const B of[I,P]){const w=B.q/tot;B.r+=m.cash*w-f*B.c;B.c-=f*B.c;B.q-=f*B.q}}
+  else if(x.k=='sdiv'&&tot>0){const a=I.q/tot;I.q+=sh*a;P.q+=sh*(1-a)}
+  else if(x.k=='div'&&tot>0){const a=I.q/tot;I.d+=m.cash*a;P.d+=m.cash*(1-a)}}
+ const px=num((S.px||{})[c]),pl=B=>px==null?null:B.q*px-B.c+B.r+B.d,iq=I.q,ipx=hasInit(S)?(()=>{let q=0,v=0;for(const z of S.init)if((z.ac=='a'?'a':'p')==ac&&cU(z.n)==c){q+=+z.q||0;v+=(+z.q||0)*(+z.px||0)}return q>0?v/q:null})():null;
+ return{i:{q:iq,pl:pl(I),px:ipx},p:{q:P.q,pl:pl(P)},tot:pl(I)!=null&&pl(P)!=null?pl(I)+pl(P):null}}
 
 // 合計（ac 不填＝全部）
 function asSum(S,ac){const z={mv:0,cost:0,un:0,real:0,div:0,fee:0,n:0,miss:[],cb:0,ub:0,realB:0,noC0:0,p:{mv:0,cost:0},a:{mv:0,cost:0}};
