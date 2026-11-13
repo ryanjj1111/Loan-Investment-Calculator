@@ -24,8 +24,10 @@ function evCheck(c,st){c=cU(c);const G=ckGroups(st,c),out={c,st,G,sel:null,lack:
  // 再用論點卡的同一套判斷核對一次（暫時的規劃中論點，不存檔）
  if(out.v=='ok'&&typeof ckVerdict=='function')try{const v=ckVerdict({id:'__ev',code:c,sid:st.id,sver:st.ver,status:'plan',met:[],plan:[]});if(v&&v.cls!='ok'){out.v=v.cls=='bad'?'bad':'wait';out.why=String(v.t||'').replace(/^\S+\s*/,'')}}catch(e){}
  return out}
+// 現價：自己的現價（持股）→ 檢核資料的收盤
+const evPx=c=>{c=cU(c);const p=num((S.px||{})[c]);if(p!=null)return p;try{const m=CK&&CK.s&&CK.s[c]?ckM(c):null;return m&&m.c!=null?m.c:null}catch(e){return null}};
 // 第 1 批買進試算
-function evBuy(c,st){const px=num((S.px||{})[c])??(CK&&CK.s&&CK.s[c]?ckM(c).c:null);if(px==null)return null;const sc=typeof stStopCalc=='function'?stStopCalc(st,c,px):null,stop=sc&&sc.v!=null?sc.v:null;
+function evBuy(c,st){const px=evPx(c);if(px==null)return null;const sc=typeof stStopCalc=='function'?stStopCalc(st,c,px):null,stop=sc&&sc.v!=null?sc.v:null;
  const E=stExposure(S),pl=stPlanDef(st),f1=pl&&pl.length?(+pl[0].pct||100)/100:1,hint=stop!=null&&stop<px?asSizeHint(S,px,(1-stop/px)*100,st.riskPct):null;
  const g=stGrpOf(S,c)[0],H=typeof asHeatCap=='function'?asHeatCap(S):null,room=H&&H.cap!=null&&H.tot!=null?H.cap-H.tot:null;
  // 第 1 批 = 每筆風險算出的股數 × 第 1 批比例，再受個股上限、主題上限、壓力虧損剩餘額度限制（和「明天要做的事」同一套）
@@ -47,7 +49,7 @@ window.evSug=v=>{const el=$('evSug');if(!el)return;v=String(v||'').trim();const 
 window.evAdd=c=>{c=cU(c);if(!EV.codes.includes(c)&&EV.codes.length<3)EV.codes.push(c);evRender()};
 window.evDel=c=>{EV.codes=EV.codes.filter(x=>x!=c);evRender()};
 window.evSet=(k,v)=>{EV[k]=v;if(k=='mode'||k=='tech')EV.scan=null;evRender()};
-window.evOpen=o=>{o=o||{};EV=Object.assign({},EV,{codes:(o.codes||[]).map(cU).slice(0,3),sid:o.sid||EV.sid||'',mode:o.mode||(o.codes&&o.codes.length?'stock':EV.mode),scan:null});evRender()};
+window.evOpen=o=>{o=o||{};EV=Object.assign({},EV,{src0:o.src0||'stock',codes:(o.codes||[]).map(cU).slice(0,3),sid:o.sid||EV.sid||'',mode:o.mode||(o.codes&&o.codes.length?'stock':EV.mode),scan:null});evRender()};
 window.evRunScan=()=>{const st=stStrat(S,EV.sid);if(!st)return;$('evScan').innerHTML='<div class=h>計算中…</div>';setTimeout(()=>{EV.scan=evScan(st);EV.scanSid=st.id;evRender()},30)};
 // 一檔的完整檢核卡
 function evCard(c,st){const r=evCheck(c,st),b=evBuy(c,st),ic={ok:'✅',wait:'⏳',bad:'⛔'}[r.v],T0=asThesisOf(S,c);
@@ -56,7 +58,7 @@ function evCard(c,st){const r=evCheck(c,st),b=evBuy(c,st),ic={ok:'✅',wait:'⏳
  const go=r.v=='ok'&&b&&b.q>0&&!T0?`<button class=pri onclick="asClose();asTradeOpen({k:'buy',c:'${c}',ac:'a',sid:'${st.id}',q:${b.q}})">＋記交易（第 1 批 ${b.q.toLocaleString()} 股）</button>`:'';
  return`<div class=asth><b>${esc(c)} ${esc(nameOf(c))}</b> ${T0?`<span class="thc on">已有 ${esc(T0.id)}（${esc(T0.sid||'')}）</span>`:''}${(CK&&CK.s&&CK.s[c])?'':' <span class=wn>不在檢核資料裡：條件都是「資料不足」，不能當成通過</span>'}
   <div class="${r.v=='ok'?'ok':r.v=='bad'?'wn':'h'}" style="margin:4px 0"><b>${ic} ${r.v=='ok'?'可以買':r.v=='bad'?'現在不買':'只差資料'}</b>：${esc(r.why)}</div>
-  ${by}<details><summary>完整條件（${esc(st.id)}）</summary>${grp}</details>${go?`<div class=asbtn>${go}</div>`:''}<div id="evAi_${c}"></div></div>`}
+  ${by}<details><summary>完整條件（${esc(st.id)}）</summary>${grp}</details><div class=asbtn>${go}<button onclick="evAsk('${c}')">🤖 ${EV_ASK[r.v]}</button></div>${r.v!='ok'?`<div class=h>策略還在測試；判斷不是 ✅ 也可以問 AI。AI 回覆後建立的論點會標「規則外觀察」，績效另外算。</div>`:''}<div id="evAi_${c}"></div></div>`}
 function evRender(){const L=evOn(),c0=EV.codes[0];let h=`<div class=ovh><button onclick="asClose()">✕</button><div><b>🔍 評估</b></div></div>
  <div class=h>App 先用策略規則判斷；判斷不了的再問 AI。不建論點、不記交易。</div>
  <div class=chips><button class="${EV.mode=='stock'?'pri':''}" onclick="evSet('mode','stock')">從股票</button><button class="${EV.mode=='strat'?'pri':''}" onclick="evSet('mode','strat')">從策略找股票</button></div>`;
@@ -65,10 +67,70 @@ function evRender(){const L=evOn(),c0=EV.codes[0];let h=`<div class=ovh><button 
    h+=`<div class=sub>${esc(c0)} ${esc(nameOf(c0))} 適合哪個策略（【選什麼】沒有 ❌；依證據等級排序）</div>${fit.length?fit.map(x=>`<div class=tmr><button class="${EV.sid==x.st.id?'pri':''}" onclick="evSet('sid','${x.st.id}')">${esc(x.st.id+' '+x.st.name)}</button> <span class=h>${esc(evGrN(x.st.id))}｜選什麼 ✅ ${x.r.sel.ok}／${x.r.sel.n}${x.r.sel.pend?`，${x.r.sel.pend} 項要補`:''}</span></div>`).join(''):'<div class=wn>目前沒有策略的【選什麼】適合這檔。</div>'}
    ${no.length?`<details ${EV.all?'open':''} ontoggle="EV.all=this.open?1:0"><summary class=h>不適合：${no.map(x=>esc(x.st.id)).join('、')}</summary>${no.map(x=>`<div class=tmr><button class="${EV.sid==x.st.id?'pri':''}" onclick="evSet('sid','${x.st.id}')">${esc(x.st.id+' '+x.st.name)}</button> <span class=h>${esc(evGrN(x.st.id))}｜❌ ${esc(x.r.sel?x.r.sel.badT.map(t=>t.replace(/〔.〕/g,'')).join('、'):'沒有【選什麼】')}</span></div>`).join('')}</details>`:''}`;
    const st=stStrat(S,EV.sid);if(st){if(evGr(st.id)&&evRank(st.id)>=2)h+=`<div class=wn>${esc(st.id)} 的證據等級是「${esc(evGrN(st.id))}」；新資金建議優先給證據等級較高的策略。</div>`;h+=EV.codes.map(c=>evCard(c,st)).join('')}}
-  else h+='<div class=h>輸入代號或名字。最多 3 檔，用同一個策略比較。</div>'}
+  else h+='<div class=h>輸入代號或名字。最多 3 檔，用同一個策略比較。</div>';h+=evPlanHtml()}
  else{const st=stStrat(S,EV.sid)||L[0];if(st)EV.sid=st.id;
   h+=`<div class=chips>${L.map(s=>`<button class="${EV.sid==s.id?'pri':''}" onclick="evSet('sid','${s.id}');EV.scan=null;evRender()">${esc(s.id)} <small>${esc(evGrN(s.id))}</small></button>`).join('')}</div>
   <label class=ck><input type=checkbox ${EV.tech?'checked':''} onchange="evSet('tech',this.checked?1:0)">只看科技類（電子、半導體、光電、電腦、通信、資訊服務、數位雲端）</label>
   <div class=h>列出全市場今天【選什麼】沒有 ❌、【何時買】成立、【不買】沒有成立的股票（缺資料或要自己判斷的也列，標出差幾項）。檢核資料是 ${CK?esc(asD(CK.d)):'—'} 收盤；跳動保險標記的股票不列。</div>
-  <div class=asbtn><button class=pri onclick="evRunScan()">🔎 找 ${esc(st?st.id:'')} 今天符合的股票</button></div><div id=evScan>${EV.scan&&EV.scanSid==EV.sid?(EV.scan.length?`<div class=sub>${EV.scan.length} 檔（全部符合 ${EV.scan.filter(x=>!x.n).length} 檔）</div>`+EV.scan.slice(0,40).map(x=>`<div class=tmr><a href="#" onclick="evOpen({codes:['${x.c}'],sid:'${EV.sid}',mode:'stock'});return false"><b>${esc(x.c)} ${esc(nameOf(x.c))}</b></a> ${x.n?`<span class=h>差 ${x.n} 項：${esc(x.r.lack.map(z=>z.t.replace(/〔.〕/g,'')).join('、').slice(0,60))}</span>`:'<span class=ok>✅ 條件都符合</span>'}</div>`).join('')+(EV.scan.length>40?`<div class=h>只列前 40 檔</div>`:''):'<div class=h>今天沒有符合的股票。</div>'):''}</div>`}
+  <div class=asbtn><button class=pri onclick="evRunScan()">🔎 找 ${esc(st?st.id:'')} 今天符合的股票</button></div><div id=evScan>${EV.scan&&EV.scanSid==EV.sid?(EV.scan.length?`<div class=sub>${EV.scan.length} 檔（全部符合 ${EV.scan.filter(x=>!x.n).length} 檔）</div>`+EV.scan.slice(0,40).map(x=>`<div class=tmr><a href="#" onclick="evOpen({codes:['${x.c}'],sid:'${EV.sid}',mode:'stock',src0:'screen'});return false"><b>${esc(x.c)} ${esc(nameOf(x.c))}</b></a> ${x.n?`<span class=h>差 ${x.n} 項：${esc(x.r.lack.map(z=>z.t.replace(/〔.〕/g,'')).join('、').slice(0,60))}</span>`:'<span class=ok>✅ 條件都符合</span>'}</div>`).join('')+(EV.scan.length>40?`<div class=h>只列前 40 檔</div>`:''):'<div class=h>今天沒有符合的股票。</div>'):''}</div>`}
  asOvOpen(h)}
+
+// ================= 問 AI（q:'eval'，2026-11-13 乙）=================
+// 三種結論都可以問，問的事不同：⏳ 只補缺的資料；⛔ 討論不買的原因與進場時機；✅ 只做反方檢查
+const EV_ASK={wait:'問 AI：只補缺的資料',bad:'問 AI：討論不買的原因與進場時機',ok:'問 AI：反方檢查'};
+window.evAsk=c=>{const cs=c?[cU(c)]:EV.codes.slice();if(!cs.length||!EV.sid)return;AA_CTX={from:'eval',src0:EV.src0||'stock'};asClose();aiOpen({q:'eval',codes:cs,sid:EV.sid,from:'eval'})};
+// 問 AI 畫面裡的股票與策略
+function aaEvPick(){const L=evOn();return`<div class=sub>股票與策略</div>${AA.codes.length?`<div>${AA.codes.map(c=>esc(c+' '+nameOf(c))).join('、')}</div>`:'<div class=wn>先到資產頁底下「🔍 評估」選股票，再按「問 AI」。</div>'}
+ <select onchange="aaSet('sid',this.value)">${L.map(s=>`<option value="${s.id}" ${AA.sid==s.id?'selected':''}>${esc(s.id+' '+s.name)}（${esc(evGrN(s.id))}）</option>`).join('')}</select>`}
+// 第 1 批買進試算（文字版）
+function aaEvLine(c,st){const b=evBuy(c,st);if(!b||!b.q)return'';return`第 1 批買進試算（App 算的）：參考價 ${f2(b.px)}、停損 ${b.stop!=null?f2(b.stop)+'（'+b.stopT+'）':'—'}、第 1 批 ${AA.amt?b.q.toLocaleString()+' 股（受限於'+b.by+'）':'（股數不附）'}；買進後這檔占主動 ${b.pct0.toFixed(1)}% → ${b.pct1.toFixed(1)}%（上限 ${b.cap}%）${b.g?`；主題「${b.g}」${b.g0.toFixed(1)}% → ${b.g1.toFixed(1)}%（上限 ${b.gc}%）`:''}`}
+function aaEvAsk(ex){const st=stStrat(S,AA.sid),C=aaCodes();if(!st)return'【要你做的事】（先選策略）';if(!C.length)return'【要你做的事】（先到「🔍 評估」選股票）';
+ const R=C.map(c=>({c,r:evCheck(c,st)})),by=k=>R.filter(x=>x.r.v==k),cl=t=>String(t).replace(/〔.〕/g,''),nm=x=>`${x.c} ${nameOf(x.c)}`;
+ const L=[`【App 的判斷】（${st.id} ${st.name} v${st.ver}；證據等級：${evGrN(st.id)}。策略還在測試，判斷不是 100%）`];
+ for(const x of R)L.push(`- ${nm(x)}：${{ok:'✅ 可以買',wait:'⏳ 只差資料',bad:'⛔ 現在不買'}[x.r.v]}｜${x.r.why}`);
+ L.push('','【要你做的事】評估新股票');let n=0;const N=()=>++n;
+ const W=by('wait'),B=by('bad'),O=by('ok');
+ if(W.length)L.push(`${W.length<R.length?`〔${W.map(nm).join('、')}：⏳〕\n`:''}${N()}. 只查還缺的項目，每一項附來源和日期：${[...new Set(W.flatMap(x=>x.r.lack.map(z=>cl(z.t))))].join('、')}。
+${N()}. 這檔最可能錯在哪（一個最大的風險）。`);
+ if(B.length)L.push(`${B.length<R.length?`〔${B.map(nm).join('、')}：⛔〕\n`:''}討論不買的原因與進場時機：
+${N()}. App 用的資料對不對（附來源和日期），特別是造成「不買」的那幾條：${[...new Set(B.map(x=>x.r.why))].join('；')}。
+${N()}. 要什麼改變、大概什麼時候，這檔才會符合（引用上面的條件原文；例如哪個月的營收、價格要回到哪裡、哪一天的法說）。
+${N()}. 兩邊各自最可能錯在哪：照規則不買可能錯過什麼；不照規則買可能錯在哪。`);
+ if(O.length)L.push(`${O.length<R.length?`〔${O.map(nm).join('、')}：✅〕\n`:''}只做反方檢查：
+${N()}. App 用的資料對不對（附來源和日期）。
+${N()}. 最不利於買進的解讀，以及最可能錯在哪。
+${N()}. 有沒有一次性因素讓數字失真（例如存貨跌價、匯兌、業外、專案認列時點）。`);
+ L.push(`要我建立「規劃中」論點才放 theses（每檔一筆：code、strategy、why、wrongIf、risk）；停損、分批 App 會算。App 判斷不是 ✅ 的，我勾了會標「規則外觀察」。
+回答開頭請先用三行：① 資料有沒有錯 ② 你對 App 判斷的看法（同意／資料有誤／前提不成立）③ 最可能錯在哪。之後才寫細節。${ex?'\n補充：'+ex:''}`);
+ return L.join('\n')}
+
+// ---------- 匯入檢查（ai-import.js 呼叫）
+const EV_PLAN_MAX=5;
+// EPS 沒有寫明機構和日期的剔除（評估新股票時是錯誤，不只是疑點）
+function evImpPre(P){for(const it of P.ol||[]){if(it.err.length||!it.eps)continue;const bad=it.eps.filter(e=>aiNoSrc(e.src)||e.noD);if(!bad.length)continue;
+ it.eps=it.eps.filter(e=>!bad.includes(e));it.warn.push(`❌ 剔除 ${bad.map(e=>`${e.y} 年 EPS ${e.v}`).join('、')}：沒有寫明機構和日期`);if(!it.eps.length&&!it.guide&&!(it.attr&&Object.keys(it.attr).length))it.err.push('剔除沒有來源的 EPS 後，沒有可以匯入的內容')}}
+// 條件狀態：好＝一般條件符合、【不買】沒有成立
+const evGood=(g,i)=>g.need=='none'?i.s==0:i.s==1;
+function evStat(c,st){const m={};for(const g of evCheck(c,st).G)for(const i of g.L)m[g.sec+'｜'+i.t]=evGood(g,i);return m}
+function evImpFlag(P,sus){const sidOf=c=>{const t=(P.th||[]).find(z=>z.c==c&&z.sid);return t?t.sid:(AA&&AA.q=='eval'&&AA.sid?AA.sid:(asThesisOf(S,c)||{}).sid)};
+ const pairs=c=>{const sid=sidOf(c),st=sid&&stStrat(S,sid);return st?[[c,st]]:[]};
+ // 只因為這一筆 AI 資料才變成符合的條件 → 這一筆預設不勾，逐條列出
+ const items=[...(P.ol||[]).map(it=>[it,pairs(it.c)]),...(P.tm||[]).map(it=>[it,[...new Set((P.th||[]).map(z=>z.c).concat(AA&&AA.q=='eval'?AA.codes:[]))].filter(c=>((S.attr||{})[c]||{}).theme==it.n).flatMap(pairs)])];
+ for(const[it,PR]of items){if(it.err.length||!PR.length)continue;const fl=[];
+  for(const[c,st]of PR){const a=evStat(c,st),S0=S,on=new Map();for(const t of['tr','th','up','ev','ol','tm','sg','rv','mn'])for(const z of P[t]||[]){on.set(z,z.on);z.on=z===it?1:0}
+   let b=null;try{S=clone(S0);if(typeof CKM!='undefined')for(const k in CKM)delete CKM[k];aiApplyTo(P);b=evStat(c,st)}catch(e){console.warn('evImpFlag',e)}finally{S=S0;for(const[z,v]of on)z.on=v;if(typeof CKM!='undefined')for(const k in CKM)delete CKM[k]}
+   if(b)for(const k in b)if(b[k]&&!a[k])fl.push(`${c} ${k.split('｜')[1].replace(/〔.〕/g,'')}`)}
+  if(fl.length){it.evFlip=fl;sus(it,[`只因為這筆 AI 資料才變成符合：${fl.join('；')}`])}}
+ // 論點：App 判斷是 ✅ 才預設勾；規劃中論點上限 5 個
+ let n=(S.theses||[]).filter(T=>T.status=='plan').length;
+ for(const it of P.th||[]){if(it.err.length||!it.st)continue;if(!it.merge&&!(it.conv&&it.conv.status=='plan')){if(++n>EV_PLAN_MAX){it.err.push(`規劃中論點已有 ${n-1} 個（上限 ${EV_PLAN_MAX}）：先在「🔍 評估 → 規劃中」放棄不要的，再匯入`);continue}}
+  const r=evCheck(it.c,it.st);it.evV=r.v;if(r.v!='ok')sus(it,[`App 判斷${r.v=='bad'?'⛔ 現在不買':'⏳ 還差資料'}（${r.why}）；勾了會標「規則外觀察」，績效另外算`])}}
+
+// ---------- 規劃中論點：放棄（不刪除，留紀錄看之後的變化）
+window.evDrop=id=>{const T=stThesis(S,id);if(!T||T.status!='plan')return;const why=prompt(`放棄 ${T.id} ${cU(T.code)} ${nameOf(T.code)}？寫一句原因（可不填）`,'');if(why===null)return;
+ const px=evPx(T.code);T.status='exit';T.exit=Object.assign({},T.exit||{},{date:TODAY,reason:'drop',px:px??'',note:String(why||'').trim()});save();toast(`已放棄 ${T.id}；在「🔍 評估」的放棄紀錄看之後的變化`,0);if(typeof stBuild=='function')try{stBuild()}catch(e){}if(typeof asCalc=='function')try{asCalc()}catch(e){}if($('asOvB')&&EV&&document.querySelector('#asOvB .evdrop'))evRender()};
+const evDropped=()=>(S.theses||[]).filter(T=>T.status=='exit'&&T.exit&&T.exit.reason=='drop').sort((a,b)=>(b.exit.date||'')<(a.exit.date||'')?-1:1);
+function evPlanHtml(){const P=(S.theses||[]).filter(T=>T.status=='plan'),D=evDropped();if(!P.length&&!D.length)return'';
+ const pxN=evPx;
+ return`<div class=evdrop><div class=sub>規劃中（${P.length}／${EV_PLAN_MAX}）</div>${P.length?P.map(T=>{const age=dDays(T.created||TODAY,TODAY);return`<div class=tmr><b>${esc(T.id)} ${esc(cU(T.code))} ${esc(nameOf(T.code))}</b>（${esc(T.sid||'')}${T.ovr?'，<span class=wn>規則外觀察</span>':''}）建立 ${age} 天${age>=60?' <span class=wn>超過 60 天沒有動作</span>':''} <button onclick="evOpen({codes:['${cU(T.code)}'],sid:'${T.sid}'})">🔍</button><button onclick="evDrop('${T.id}')">放棄</button></div>`}).join(''):'<div class=h>沒有</div>'}
+ ${D.length?`<details><summary class=sub>放棄紀錄（${D.length}）</summary>${D.slice(0,20).map(T=>{const p0=num(T.exit.px),p1=pxN(T.code);return`<div class=tmr>${esc(T.exit.date||'')} ${esc(T.id)} ${esc(cU(T.code))} ${esc(nameOf(T.code))}（${esc(T.sid||'')}）：放棄時 ${p0!=null?f2(p0):'—'} → 現在 ${p1!=null?f2(p1):'—'}${p0&&p1?` <b class="${stCls(p1-p0)}">${aaPct?aaPct((p1/p0-1)*100):''}</b>`:''}${T.exit.note?`<div class=h>${esc(T.exit.note)}</div>`:''}</div>`}).join('')}<div class=h>放棄的論點不算策略績效；用來回頭看「不買」的決定對不對。</div></details>`:''}</div>`}

@@ -5,7 +5,7 @@
 
 const ST_CAP={stock:20,group:40};
 const ST_STATUS=[['plan','規劃中'],['hold','持有中'],['exit','已出場']];
-const ST_EXIT=[['invalid','理由失效'],['target','達到估值目標'],['stop','停損'],['timeout','超過持有期限'],['conv','轉換到其他策略'],['other','其他']];
+const ST_EXIT=[['invalid','理由失效'],['target','達到估值目標'],['stop','停損'],['timeout','超過持有期限'],['conv','轉換到其他策略'],['drop','放棄（沒買）'],['other','其他']];
 const ST_FIELDS=['name','logic','term','screen','entry','exit','holdMin','holdMax','capStock','capGroup','capStrat','stopPct','stopTech','riskPct','rr','addDays','addPx','addPxPct','addHalt'];
 // 期別：買之前先決定打算持有多久，再選對應的策略
 const ST_TERM=[['短','短期（1～8 週）'],['中','中期（2～12 個月）'],['長','長期（1 年以上）']];
@@ -165,6 +165,8 @@ function stAlerts(S){const A=[],E=stExposure(S),nm=c=>c+(typeof nameOf=='functio
  // 部位風險（現在的價格到停損）超過每筆上限的 1.5 倍就提醒減碼（只提醒）；起算後漲上去的部位停損沒跟著動，風險會變大
  if(E.tot>0)for(const T of S.theses||[]){if(T.status!='hold')continue;const cap=stRiskCap(T),stp=num(T.stop),p=stPerf(S,T);if(!cap||stp==null||p.px==null||!(p.q>0)||stp>=p.px)continue;
   const rk=p.q*(p.px-stp)/E.tot*100;if(rk>cap*1.5){const ok=Math.floor(cap/100*E.tot/(p.px-stp));A.push({k:'risk',lv:'wn',th:T.id,t:`${T.id} ${nm(cU(T.code))} 部位風險 ${rk.toFixed(1)}%（${stSidN(T)} 每筆 ${cap}%，超過 1.5 倍）：現價 ${p.px} 到停損 ${stp}；要符合約 ${ok.toLocaleString()} 股（現在 ${Math.round(p.q).toLocaleString()} 股）。只是提醒，要不要減碼你決定`})}}
+ // 規劃中 60 天沒有動作（2026-11-13）：繼續等，或到 🔍 評估 放棄
+ for(const T of S.theses||[]){if(T.status!='plan'||!T.created)continue;const n=dDays(T.created,TODAY);if(n>=60)A.push({k:'due',lv:'wn',th:T.id,t:`${T.id} ${nm(cU(T.code))} 規劃中 ${Math.round(n)} 天沒有動作：繼續等，或到「🔍 評估」放棄`})}
  for(const T of S.theses||[]){if(!stIsU(T)||T.status=='exit')continue;const c=cU(T.code);
   if(num(T.stop)==null)A.push({k:'stop',lv:'wn',th:T.id,t:`${T.id} ${nm(c)} 是不歸類的論點，還沒有停損價`});
   if(!T.reviewD)A.push({k:'due',lv:'wn',th:T.id,t:`${T.id} ${nm(c)} 是不歸類的論點，還沒有重新評估日`});else if(T.reviewD<=TODAY)A.push({k:'due',lv:'wn',th:T.id,t:`${T.id} ${nm(c)} 重新評估日 ${T.reviewD} 到了：照你寫的重新評估條件決定續抱、歸入策略或出場`})}

@@ -16,7 +16,7 @@ ctx.window=ctx;ctx.globalThis=ctx;ctx.AS_HOUR=20;   // 固定「晚上 8 點」�
 vm.runInContext(src,ctx,{filename:'app.js'});const run=c=>vm.runInContext(c,ctx);
 ctx.__S=JSON.parse(fs.readFileSync(path.join(D,'settings.json'),'utf8'));ctx.__CK=JSON.parse(fs.readFileSync(path.join(D,'chk.json'),'utf8'));
 run(`S=migrate(__S).o;CK=__CK;for(const k in CKM)delete CKM[k];stSync(S);`);
-const cases={exit:`aaInit({q:'exit',codes:['2330']})`,exitNoRed:`aaInit({q:'exit',codes:['2454']})`,buy:`aaInit({q:'buy',codes:['2454']})`,review:`aaInit({q:'review'})`,fill:`aaInit({q:'fill'})`,free:`aaInit({q:'free'});AA.free='這兩檔接下來的法說會重點？'`,strat:`aaInit({q:'strat'});AA.perf=1;S.stratDoc='測試：共同規則。'`,pre:`aaInit({q:'pre'})`};
+const cases={eval:`aaInit({q:'eval',codes:['2454','2330'],sid:'S01',from:'eval'})`,exit:`aaInit({q:'exit',codes:['2330']})`,exitNoRed:`aaInit({q:'exit',codes:['2454']})`,buy:`aaInit({q:'buy',codes:['2454']})`,review:`aaInit({q:'review'})`,fill:`aaInit({q:'fill'})`,free:`aaInit({q:'free'});AA.free='這兩檔接下來的法說會重點？'`,strat:`aaInit({q:'strat'});AA.perf=1;S.stratDoc='測試：共同規則。'`,pre:`aaInit({q:'pre'})`};
 const up=process.argv.includes('--update');let bad=0;
 for(const [k,init] of Object.entries(cases)){run(`for(const k in CKM)delete CKM[k];AA_CTX=null;AT_DRAFT=null;${init};`);const got=run('aaText()').replace(/快照 K[0-9a-z]+/g,'快照 K—').replace(/"snap":"K[0-9a-z]+"/g,'"snap":"K—"');const f=path.join(D,k+'.txt');
  if(up||!fs.existsSync(f)){fs.writeFileSync(f,got);console.log('已寫入',k);continue}
@@ -34,4 +34,12 @@ run(`__P=aiPlan({format:'投資帳本 v1',ai:'T',q:'strat',strategies:[{id:'S01'
 // 別人的策略檔：編號撞到預設「新增成另一個編號」
 run(`__P=aiPlan({format:'投資帳本 v1',kind:'strategies',strategies:[{id:'S01',ver:3,name:'朋友的策略',stopPct:'12',exit:'1. 停損：跌破均價 −12%，全部賣出'}]})`);
 {const it=ctx.__P.sg[0],ok=it.asNew===1&&it.parse&&it.parse.xn===1;console.log(`${ok?'✓':'✗'} 匯入策略檔：編號撞到預設新增；顯示讀得懂幾條（出場 ${it.parse&&it.parse.xa}／${it.parse&&it.parse.xn}）`);if(!ok)bad++}
+// 評估新股票（2026-11-13）：EPS 沒寫機構和日期 → 剔除；App 判斷不是 ✅ 的論點預設不勾，勾了標「規則外觀察」；停損、分批由 App 算
+run(`__S0=clone(S);AA_CTX={from:'eval',src0:'screen'};__P=aiPlan({format:'投資帳本 v1',ai:'T',q:'eval',theses:[{code:'0050',strategy:'S01',why:'測試',wrongIf:'測試',risk:'測試風險',stop:1,plan:[{n:1,pct:50}]}],outlook:[{code:'0050',eps:[{year:2027,eps:10,src:'法人',date:'${TODAY}'},{year:2027,eps:11,src:'測試投顧',date:'${TODAY}'}]}]})`);
+{const P=ctx.__P,t=P.th[0],o=P.ol[0],ok1=t&&!t.on&&t.stop==null&&!t.plan.length&&t.warn.some(w=>/規則外觀察/.test(w)),ok2=o&&o.eps.length==1&&o.warn.some(w=>/剔除/.test(w));
+ console.log(`${ok1?'✓':'✗'} 評估：App 判斷不是 ✅ 的論點預設不勾，AI 給的停損和分批略過`);if(!ok1)bad++;console.log(`${ok2?'✓':'✗'} 評估：EPS 沒寫明機構的剔除`);if(!ok2)bad++;
+ t.on=1;run('aiApplyTo(__P)');const T=run(`S.theses.find(T=>cU(T.code)=='0050'&&T.sid=='S01')`),ok3=T&&T.status=='plan'&&T.ovr&&T.src0=='screen'&&T.riskNote=='測試風險';console.log(`${ok3?'✓':'✗'} 評估：勾了建立規劃中論點，標規則外觀察、來源、最大風險`);if(!ok3)bad++}
+run(`S=clone(__S0);for(let k=0;k<5;k++)S.theses.push(stNewThesis(S,{code:'990'+k,sid:'S01',sver:1,status:'plan',created:'${TODAY}'}));__P=aiPlan({format:'投資帳本 v1',ai:'T',q:'eval',theses:[{code:'0050',strategy:'S01',why:'x'}]})`);
+{const ok=ctx.__P.th[0].err.some(e=>/上限/.test(e));console.log(`${ok?'✓':'✗'} 評估：規劃中論點已有 5 個 → 不能再建立`);if(!ok)bad++}
+run(`S=__S0;AA_CTX=null;for(const k in CKM)delete CKM[k]`);
 if(bad){console.log(`\n${bad} 項不一致。刻意改了文字並確認正確後：node tools/test/ai-text-test.mjs --update`);process.exit(1)}
