@@ -5,7 +5,7 @@
 import fs from 'fs';import vm from 'vm';import path from 'path';import {fileURLToPath} from 'url';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..'),D=path.join(ROOT,'tools/test/ai');
 const TODAY='2026-11-12';
-const files=['data/stocks.js','js/engine.js','js/ui.js','js/strategy-engine.js','js/asset-engine.js','js/prices.js','js/check.js','js/outlook.js','js/strategy-ui.js','js/asset-ui.js','js/ai-import.js','js/ai-ask.js'];
+const files=['data/stocks.js','js/engine.js','js/ui.js','js/strategy-engine.js','js/asset-engine.js','js/prices.js','js/check.js','js/outlook.js','js/strategy-ui.js','js/asset-ui.js','js/eval.js','js/ai-import.js','js/ai-ask.js'];
 let src=files.map(f=>fs.readFileSync(path.join(ROOT,f),'utf8')).join('\n;\n').replace(/const TODAY=\(\(\)=>\{[^\n]*?\}\)\(\);/,`const TODAY='${TODAY}';`);
 if(!src.includes(`const TODAY='${TODAY}'`))throw new Error('engine.js 的 TODAY 寫法改了，請更新測試');
 // 沒有瀏覽器：document、localStorage 用假的（只要不丟錯）

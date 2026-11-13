@@ -164,7 +164,7 @@ function asStockHtml(c,ac){const r=asRows(S).find(o=>o.c==c&&o.ac==ac)||{c,ac,q:
 
 // ---------- 快速記交易（買進點策略自動建論點；賣出顯示當初理由；股數歸零自動出場）
 window.asTradeOpen=o=>{o=o||{};if(o.i!=null){const x=S.trades[o.i];AT={i:o.i,k:x.k,dt:x.dt||TODAY,c:cU(x.n),ac:x.ac=='a'?'a':'p',q:x.q??'',px:x.px??'',dps:x.dps??'',pdt:x.pdt??'',rs:x.rs||'',note:x.note||'',sid:'',why:'',stop:'',stopEd:0,fol:'1',met:[],from:asCur}}
- else{const c=cU(o.c||''),h=c?holdings(S).find(z=>cU(z.n)==c&&(!o.ac||z.ac==o.ac)):null;AT={i:null,k:o.k||'buy',dt:o.dt||TODAY,c,ac:o.ac||(h?h.ac:(c?(/^00/.test(c)?'p':'a'):'a')),q:'',px:c?String(num((S.px||{})[c])??(typeof PXL!='undefined'&&PXL[c]?PXL[c].v:'')):'',dps:'',pdt:'',rs:'',note:'',sid:'',why:'',stop:'',stopEd:0,fol:'1',met:[],from:asCur}}
+ else{const c=cU(o.c||''),h=c?holdings(S).find(z=>cU(z.n)==c&&(!o.ac||z.ac==o.ac)):null;AT={i:null,k:o.k||'buy',dt:o.dt||TODAY,c,ac:o.ac||(h?h.ac:(c?(/^00/.test(c)?'p':'a'):'a')),q:o.q!=null?String(o.q):'',px:c?String(num((S.px||{})[c])??(typeof PXL!='undefined'&&PXL[c]?PXL[c].v:'')):'',dps:'',pdt:'',rs:'',note:'',sid:o.sid||'',why:'',stop:'',stopEd:0,fol:'1',met:[],from:asCur}}
  asOvOpen(asTradeHtml());asTh();asPrev()};
 const asAtIn=(f,t,ph,x)=>`<input ${t?'type='+t:''} ${t=='number'?'step=any':''} data-at="${f}" value="${esc(AT[f]??'')}" placeholder="${esc(ph||'')}" ${x||''}>`;
 const asSeg=(f,opts)=>`<div class="seg sm">${opts.map(([k,l])=>`<button class="${AT[f]==k?'on':''}" onclick="asAtSet('${f}','${k}',1)">${l}</button>`).join('')}</div>`;
@@ -369,7 +369,7 @@ function asTmr(){const D=asDataStat(),A=stAlerts(S),E=stExposure(S),act=[],near=
   const cs=Math.floor(Math.max(0,stCapStock(S,c)/100*E.tot-(E.by[c]||0))/px);L.push(['個股上限',cs]);
   const g=stGrpOf(S,c)[0];if(g){const gc=stCapGroup(S,g);L.push([`主題「${g}」上限`,Math.floor(Math.max(0,gc/100*E.tot-(E.grp[g]||0))/px)])}
   if(room!=null&&H.q)L.push(['壓力虧損剩餘',Math.floor(Math.max(0,room)/((px-stop)*H.q))]);
-  const mn=L.reduce((a,b)=>b[1]<a[1]?b:a);cand.push({T,c,px,stop,q:mn[1],by:mn[0],v});if(mn[1]>0)orders.push({side:'買',c,q:mn[1],px,why:`${T.id} ${v.t.replace(/^✅\s*/,'')}（最多 ${mn[1]} 股，受限於${mn[0]}）`,th:T.id,buy:1})}
+  const mn=L.reduce((a,b)=>b[1]<a[1]?b:a),pr=(T.plan||[]).find(r=>!r.tid),bq=pr&&num(pr.pct)?Math.min(mn[1],Math.floor(rq*num(pr.pct)/100)):mn[1];cand.push({T,c,px,stop,q:mn[1],by:mn[0],v,bq,bn:pr?pr.n:null});if(mn[1]>0)orders.push({side:'買',c,q:mn[1],px,why:`${T.id} ${v.t.replace(/^✅\s*/,'')}（最多 ${mn[1]} 股，受限於${mn[0]}）`,th:T.id,buy:1})}
  return{D,act,near,watch,orders,room,cand,H}}
 // 計畫和實際對帳：資料定案時存當天的清單（只存代號、買賣、股數），隔天比對實際交易
 function asTmrLog(R){if(!R.D.final)return;const d=R.D.d;S.tmrLog=S.tmrLog||[];if(S.tmrLog.some(x=>x.d==d))return;
@@ -386,7 +386,7 @@ function asTmrHtml(){const R=asTmr();asTmrLog(R);const D=R.D,cm=asTmrCheck(),mon
  const sec=(n,t,L,f,max)=>L.length?`<div class=sub>${n} ${t}（${L.length}）</div>${L.slice(0,max||99).map(f).join('')}${L.length>(max||99)?`<div class=h>還有 ${L.length-max} 則：<button class=lk onclick="setWs('st')">看全部 ›</button></div>`:''}`:'';
  const none=!R.act.length&&!R.near.length&&!R.watch.length;
  const ord=R.orders.length?`<div class=sub>🧾 明天開盤要下的單（收盤確認、隔天開盤執行）</div>${R.orders.map(o=>`<div class=tmr>${o.side=='賣'?'🔻':'🔺'} <b>${o.side} ${esc(o.c)} ${esc(nameOf(o.c))} ${o.q.toLocaleString()} 股</b>${o.px!=null?`｜參考價 ${f2(o.px)}`:''}<div class=h>${esc(o.why)}</div></div>`).join('')}`:'';
- const cap=`<div class=sub>💰 還能買多少</div><div class=tmr>壓力虧損剩餘額度 ${R.room!=null?`<b>${W2(R.room)} 萬</b>`:'—（先在結算填現金）'}${R.cand.length?'':'｜目前沒有「✅ 可以買／加碼」的論點'}</div>${R.cand.map(x=>`<div class=tmr>${esc(x.c)} ${esc(nameOf(x.c))}（${esc(x.T.id)}）：最多 <b>${x.q.toLocaleString()} 股</b>（受限於${esc(x.by)}；停損 ${f2(x.stop)}）</div>`).join('')}`;
+ const cap=`<div class=sub>💰 還能買多少</div><div class=tmr>壓力虧損剩餘額度 ${R.room!=null?`<b>${W2(R.room)} 萬</b>`:'—（先在結算填現金）'}${R.cand.length?'':'｜目前沒有「✅ 可以買／加碼」的論點'}</div>${R.cand.map(x=>`<div class=tmr>${esc(x.c)} ${esc(nameOf(x.c))}（${esc(x.T.id)}）：最多 <b>${x.q.toLocaleString()} 股</b>（受限於${esc(x.by)}；停損 ${f2(x.stop)}）${x.bq>0?` <button onclick="asTradeOpen({k:'buy',c:'${x.c}',ac:'a',q:${x.bq}})">＋記交易${x.bn?`（第 ${x.bn} 批 ${x.bq.toLocaleString()} 股）`:`（${x.bq.toLocaleString()} 股）`}</button>`:''}</div>`).join('')}`;
  const ck=cm?`<div class=h style="margin-top:6px">📋 ${asD(cm.d)} 的計畫（${asD(cm.nx)} 執行）：${cm.n} 項，照做 ${cm.done}${cm.dec?`、寫了不照做／不適用 ${cm.dec}`:''}${cm.miss.length?`、<span class=wn>沒做也沒寫原因 ${cm.miss.length}（${cm.miss.map(o=>o.c).join('、')}）</span>`:''}</div>`:'';
  const body=`${st}${none?'<div class=ok style="margin:6px 0">✅ 明天沒有要做的事。</div>':''}${sec('🔴','要動作',R.act,row1)}${sec('🟠','接近觸發（明天收盤碰到就成立）',R.near,row2,6)}${sec('🟡','要注意',R.watch,x=>`<div class=tmr>${x.d?asD(x.d)+' ':''}${esc(x.t)}${x.a?asAlBtns(x.a):''}</div>`,6)}${ord}${cap}${ck}
  <div class=asbtn style="margin-top:6px"><button class=aiq onclick="aiOpen({q:'pre'})">🤖 盤前問 AI</button><span class=h>附上這張清單，只請 AI 查隔夜消息有沒有改變任何一項</span></div>`;
