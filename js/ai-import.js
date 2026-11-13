@@ -69,7 +69,9 @@ function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],sg:[],rv:[],mn:[
   if(st){const E=stCondEval(Object.assign({},st,((st.hist||[]).find(h=>h.ver==ver)||{}).snap||{}),it.met).filter(g=>!g.ok);if(E.length)it.warn.push(`${E.map(g=>g.sec+' '+g.n+'／'+g.tot).join('、')}，還沒達到策略門檻`);if(it.pend.length)it.info.push(`${it.pend.length} 項條件待確認，會出現在提醒裡`)}
   it.stop=aiNum(o.stop);it.tgt=aiNum(o.target);if(o.stop!=null&&it.stop==null)it.err.push(`${lb}：stop 要是數字`);
   it.tags=Array.isArray(o.tags)?o.tags.map(String):o.tags?String(o.tags).split(/[、,，]/).map(s=>s.trim()).filter(Boolean):[];
-  it.plan=(Array.isArray(o.plan)?o.plan:[]).map((p,k)=>({n:aiNum(p.n)||k+1,cond:String(p.cond||''),pct:aiNum(p.pct)??'',trade:p.trade==null?null:aiNum(p.trade)}));
+  it.plan=(Array.isArray(o.plan)?o.plan:[]).map((p,k)=>({n:aiNum(p.n)||k+1,cond:String(p.cond||''),pct:aiNum(p.pct)??'',trade:p.trade==null?null:aiNum(p.trade)}));it.risk=String(o.risk||'').trim().slice(0,300);
+  // 2026-11-13 評估新股票：論點只建「規劃中」；停損、分批、條件由 App 算，AI 給的略過
+  if(P.meta.q=='eval'){if(o.stop!=null||it.plan.length||(Array.isArray(o.met)&&o.met.length))it.info.push('停損、分批、條件由 App 算，AI 給的已略過');it.stop=null;it.tgt=null;it.plan=[];it.met=[];it.pend=[];it.no=[];it.note={};it.created='';it.warn=it.warn.filter(w=>!/還沒達到策略門檻/.test(w))}
   // 已有同代號、同策略的進行中論點 → 更新它，不新建
   const ex=(S.theses||[]).find(T=>T.status!='exit'&&cU(T.code)==c&&T.sid==sid);
   // 2026-11-12：同一檔同時間只能有一個論點。同代號、不同策略 → 標疑點、預設不勾；勾了就是「轉換」（持有中）或改策略（規劃中）
@@ -145,7 +147,7 @@ function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],sg:[],rv:[],mn:[
  arr('manual').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},c=cU(o.code||o.symbol||'');P.mn.push(it);it.c=c;const cond=String(o.cond||o.condition||'').trim();
   if(!c)it.err.push(`manual 第 ${i+1} 筆缺代號`);if(!cond)it.err.push(`manual 第 ${i+1} 筆缺 cond（條件原文）`);const src=(Array.isArray(o.src)?o.src:o.src?[o.src]:[]).map(z=>typeof z=='string'?z:[z.name,z.date,z.url].filter(Boolean).join('，')).filter(Boolean);if(!src.length)it.warn.push('沒有附來源');
   it.h={t:cond,ok:o.ok===true||o.ok==='true'?true:o.ok===false||o.ok==='false'?false:null,why:String(o.why||'').trim(),src,d:TODAY,ai:P.meta.ai||''}});
- aiFlag(P);return P}
+ if(P.meta.q=='eval'&&typeof evImpPre=='function')evImpPre(P);aiFlag(P);return P}
 // 每一項標影響等級；🎯 有疑點的預設不勾（沒有來源或日期、超過 45 天、和同年度現有預估差 > 15%、AI 替你勾要自己判斷的條件、停損往下調、出場訊號討論裡的策略修改）
 function aiFlag(P){const sus=(it,why)=>{if(!why.length)return;it.sus=why;if(it.on){it.on=0;it.warn.push('🎯 有疑點，預設不勾：'+why.join('、'))}};
  for(const it of P.th)if(it.conv)sus(it,['同一檔已有其他策略的論點']);
@@ -166,7 +168,8 @@ function aiFlag(P){const sus=(it,why)=>{if(!why.length)return;it.sus=why;if(it.o
  for(const it of P.rv)it.tg=3;for(const it of P.mn){it.tg=3;if(!(it.h&&it.h.src&&it.h.src.length))sus(it,['沒有附來源'])}
  // 2026-11-12：依問題類型限制可以匯入的欄位（AI 不一定照提示做）；沒有 q 的匯入（每天記交易）不受限制
  const QK=typeof AA_QK!='undefined'?AA_QK[P.meta.q]:null;if(QK){const G={trades:P.tr,theses:P.th,updates:P.up,events:P.ev,outlook:P.ol,themes:P.tm,strategies:P.sg,review:P.rv,manual:P.mn},nm=(typeof AA_Q!='undefined'&&AA_Q[P.meta.q])||P.meta.q;
-  P.qBad=[];for(const k in G){if(QK.includes(k)||!(G[k]||[]).length)continue;P.qBad.push(k);for(const it of G[k])sus(it,[`「${nm}」的回覆不該有 ${k}`])}}}
+  P.qBad=[];for(const k in G){if(QK.includes(k)||!(G[k]||[]).length)continue;P.qBad.push(k);for(const it of G[k])sus(it,[`「${nm}」的回覆不該有 ${k}`])}}
+ if(P.meta.q=='eval'&&typeof evImpFlag=='function')evImpFlag(P,sus)}
 const aiTg=it=>it.tg?` <span class="aitg t${it.tg}">${AI_TG[it.tg]}</span>`:'';
 function aiDiff(T,o){const D=[];for(const k in AI_UPD){if(o[k]===undefined||o[k]===null||o[k]==='')continue;const[f,lb]=AI_UPD[k],nv=['stop','tgtPx','expectM'].includes(f)?aiNum(o[k]):String(o[k]);if(nv==null)continue;if(String(T[f]??'')!==String(nv))D.push({f,lb,old:T[f]??'',nw:nv})}return D}
 
@@ -247,7 +250,8 @@ function aiApplyTo(P){
   else if(it.conv&&it.conv.status=='hold'&&stThesis(S,it.conv.id)&&num((S.px||{})[it.c])!=null){const O=stThesis(S,it.conv.id),ox=JSON.stringify(O.exit||{});T=stConvert(S,O.id,it.sid,num(S.px[it.c]),TODAY);
    if(T){B.cv=B.cv||[];B.cv.push({id:O.id,exit:ox});B.th.push(T.id);T.src='ai';T.batch=B.id;if(o.why)T.why=String(o.why);if(o.wrongIf)T.wrongIf=String(o.wrongIf);if(it.stop!=null)T.stop=it.stop;if(it.tgt!=null)T.tgtPx=it.tgt;if(it.met.length){T.met=it.met;T.metNote=it.note;T.metAt=TODAY}if(it.pend.length)T.pend=it.pend}}
   if(!T){T=stNewThesis(S,{code:it.c,sid:it.sid,sver:it.ver,status:'plan',created:it.created||(P.tr.find(z=>z.ref==it.ref&&z.x)||{x:{}}).x.dt||TODAY,why:String(o.why||''),wrongIf:String(o.wrongIf||''),expectM:aiNum(o.expectM)??'',stop:it.stop??'',tgtPx:it.tgt??'',target:[o.targetNote,o.exitNote].filter(Boolean).join('\n'),met:it.met,pend:it.pend,metNote:it.note,metAt:it.created||TODAY,src:'ai',batch:B.id});
-   if(it.plan.length)T.plan=it.plan.map(p=>({n:p.n,cond:p.cond,pct:p.pct,tid:''}));stThDefaults(S,T,null);S.theses.push(T);B.th.push(T.id)}
+   if(it.plan.length)T.plan=it.plan.map(p=>({n:p.n,cond:p.cond,pct:p.pct,tid:''}));stThDefaults(S,T,(P.meta||{}).q=='eval'?(typeof evPx=='function'?evPx(it.c):num((S.px||{})[it.c])):null);S.theses.push(T);B.th.push(T.id);
+   if((P.meta||{}).q=='eval'){T.src0=(typeof AA_CTX!='undefined'&&AA_CTX&&AA_CTX.src0)||'stock';if(it.risk)T.riskNote=it.risk;B.evTh=(B.evTh||[]).concat([T.id])}}
   idOf[it.ref]=T.id;
   if(it.tags.length){B.tags.push({c:it.c,old:(S.tags||{})[it.c]});S.tags=S.tags||{};S.tags[it.c]=it.tags}else if(typeof asTagDef=='function'&&!(S.tags||{})[it.c]){B.tags.push({c:it.c,old:undefined});asTagDef(it.c)}}
  const made=[];
@@ -257,6 +261,8 @@ function aiApplyTo(P){
  S.events=S.events||[];for(const it of P.ev){if(!it.on||it.err.length)continue;const e=Object.assign({id:'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),done:0,src:'ai',batch:B.id},it.e);S.events.push(e);B.ev.push(e.id)}
  for(const it of P.rv||[]){if(!it.on||it.err.length)continue;const T=stThesis(S,it.T.id);if(!T)continue;T.aiRev=(T.aiRev||[]).concat([Object.assign({},it.r,{ai:B.ai,q:B.q,batch:B.id})]).slice(-20);B.rv.push(T.id)}
  S.aiHint=S.aiHint||{};for(const it of P.mn||[]){if(!it.on||it.err.length)continue;const c=it.c,L=S.aiHint[c]||[];B.mn.push({c,o:JSON.stringify(S.aiHint[c]??null)});S.aiHint[c]=L.filter(h=>h.t!=it.h.t).concat([Object.assign({},it.h,{batch:B.id})]).slice(-30)}
+ // 評估新股票建立的論點：App 判斷不是 ✅（用匯入後的資料）就標「規則外觀察」，績效另外算
+ if(B.evTh&&typeof evCheck=='function'){if(typeof CKM!='undefined')for(const k in CKM)delete CKM[k];for(const id of B.evTh){const T=stThesis(S,id),st=T&&stStrat(S,T.sid);if(!st)continue;const r=evCheck(T.code,st);if(r.v!='ok')T.ovr={d:TODAY,v:r.v,why:r.why}}}
  // 賣到股數歸零的論點：出場原因依賣出依據
  stSync(S);for(const x of made.filter(Boolean)){if(x.k!='sell'||!x.thesisId)continue;const T=stThesis(S,x.thesisId);if(T&&T.status=='exit'&&!T.exit.reason){T.exit.reason=AS_RS2EXIT[x.rs]||'';T.exit.date=T.exit.date||x.dt}}
  return B}

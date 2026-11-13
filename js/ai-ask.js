@@ -3,7 +3,7 @@
 // 分工：App 管數字和規則，AI 管查資料和挑毛病，你管決定和紀錄。
 // 依賴 check.js（exEval、exTrig、ckGroups、ckAiText）、strategy-engine.js、asset-engine.js、asset-ui.js、ai-import.js
 
-const AA_Q={exit:'出場訊號',buy:'買或加碼',review:'月底復盤',fill:'補資料',free:'自由提問',strat:'策略檢討',pre:'盤前檢查'};
+const AA_Q={exit:'出場訊號',buy:'買或加碼',review:'月底復盤',fill:'補資料',free:'自由提問',strat:'策略檢討',pre:'盤前檢查',eval:'評估新股票'};
 const AA_SC={alert:'有提醒的持股',one:'這一檔',pick:'自己勾',all:'整個投資組合'};
 const AA_VIEW=['資料無誤且適用','前提不成立','資料有誤','有一次性因素','查不到'];
 let AA={q:'exit',scope:'alert',codes:[],th:'',rule:'',amt:0,merge:1,free:''};
@@ -18,7 +18,7 @@ const aaLast=()=>{try{return JSON.parse(ls('lcaiask')||'null')}catch(e){return n
 const aaThOf=c=>(S.theses||[]).find(T=>cU(T.code)==c&&T.status=='hold')||(S.theses||[]).find(T=>cU(T.code)==c&&T.status=='plan')||null;
 function aaAlertCodes(){const A=typeof stAlerts=='function'?stAlerts(S):[],out=[];for(const a of A){if(!a.th||!/^(exit|stop|tgt|cap)$/.test(a.k))continue;const T=stThesis(S,a.th);if(T&&!out.includes(cU(T.code)))out.push(cU(T.code))}return out}
 function aaActive(){const o=[];for(const h of holdings(S))if(h.ac=='a'&&h.q>0&&!o.includes(cU(h.n)))o.push(cU(h.n));for(const T of S.theses||[])if(T.status=='plan'&&!o.includes(cU(T.code)))o.push(cU(T.code));return o}
-function aaCodes(){if(AA.q=='fill')return[];if(AA.scope=='alert')return aaAlertCodes();if(AA.scope=='all')return aaActive();return AA.codes.filter(Boolean)}
+function aaCodes(){if(AA.q=='fill')return[];if(AA.q=='eval')return AA.codes.filter(Boolean);if(AA.scope=='alert')return aaAlertCodes();if(AA.scope=='all')return aaActive();return AA.codes.filter(Boolean)}
 
 // ---------- 文字
 // 論點跟隨的策略版本的【何時賣】原文
@@ -46,7 +46,7 @@ function aaStock(c){const T=aaThOf(c),st=T?stStrat(S,T.sid):(AA.sid?stStrat(S,AA
  const rm=T&&p&&typeof stRmul=='function'?stRmul(T,p.ret):null;if(rm!=null)pos.push(`${rm>=0?'+':''}${rm.toFixed(2)}R`);
  if(AA.amt&&qty)pos.push(`股數 ${qty.toLocaleString()}｜市值 ${W2(mv)} 萬`);
  if(pos.length)L.push(pos.join('｜'));
- if(T){if(T.metLate)L.push(`註記：${T.metLate}`);const wd=T.created||T.baseD||'';if(T.why)L.push(`買進理由（${wd} 建立論點時寫的，裡面的數字不是現況）：${T.why}`);if(T.wrongIf)L.push(`什麼情況代表我錯了：${T.wrongIf}`)}
+ if(T){if(T.ovr)L.push(`註記：規則外觀察（${T.ovr.d} App 判斷${T.ovr.v=='bad'?'不買':'還差資料'}：${T.ovr.why||''}），績效另外算`);if(T.riskNote)L.push(`建立時寫的最大風險：${T.riskNote}`);if(T.metLate)L.push(`註記：${T.metLate}`);const wd=T.created||T.baseD||'';if(T.why)L.push(`買進理由（${wd} 建立論點時寫的，裡面的數字不是現況）：${T.why}`);if(T.wrongIf)L.push(`什麼情況代表我錯了：${T.wrongIf}`)}
  if(T&&st&&T.status=='hold'&&(q=='exit'||q=='review'||q=='free'||q=='buy')){const X=exEval(T);if(X.length){L.push('出場條件（'+st.id+' 何時賣，逐條附判斷用的數字）：');
   for(const x of X){const a=exAckOf(T,x.key),r0=x.r,ic=a&&a.k=='na'?'🚫':!r0?'❔':r0.v===true?'🔴':r0.pre?'⏸':r0.v===false?'✓':'⏳';
    let ms=r0&&r0.miss||'';if(ms&&+T.useInit===1&&/進場前/.test(ms))ms+='（補記的論點沒有買進日，這一部分不判斷）';
@@ -54,11 +54,12 @@ function aaStock(c){const T=aaThOf(c),st=T?stStrat(S,T.sid):(AA.sid?stStrat(S,AA
    L.push(`  ${ic} ${x.lb}：${x.cond}${x.act?' → '+x.act:''}${nt?'｜'+nt:''}${r0&&(r0.why||ms)?`\n     （${[r0.why,ms].filter(Boolean).join('；')}）`:''}${a?`\n     ［我已決定：${EX_KN[a.k]||'已處理'}${a.n?'：'+a.n:''}${a.aiV?'；當時 AI：'+a.aiV:''}，${a.d}］`:''}${AA.th==T.id&&AA.rule==x.key?'\n     ← 這次要討論的訊號':''}`)}}
   if(q=='exit'){const tx=aaExitText(T,st);if(tx)L.push(`策略原文（${st.id} v${T.sver||st.ver}【何時賣】，規則適用與否只能引用這段）：\n${tx.split('\n').map(l=>'  '+l).join('\n')}`)}
   const G=typeof exTrig=='function'?exTrig(T).slice(0,4):[];if(G.length)L.push('收盤觸發價（均線、本益比用 '+ckMD(CK.d)+' 的檢核資料換算）：'+G.map(o=>`收盤 ${o.dir} ${o.ap?'約 ':''}${f2(o.px)}${o.gap!=null?'（距現價 '+aaPct(o.gap)+'）':''} ${o.what}`).join('；'))}
- if(st&&(q=='buy'||q=='review'||q=='free')&&CK){const G=ckGroups(st,c),M=new Set((T&&T.met)||(AT_DRAFT&&AT_DRAFT.met)||[]),done=T&&T.status=='hold'&&typeof ckDone=='function'?ckDone(T).n:0;L.push(`今日條件檢核（${st.id}${done?`，已買 ${done} 批，加碼只看下一批`:''}）：`);
+ if(st&&(q=='buy'||q=='review'||q=='free'||q=='eval')&&CK){const G=ckGroups(st,c),M=new Set((T&&T.met)||(AT_DRAFT&&AT_DRAFT.met)||[]),done=T&&T.status=='hold'&&typeof ckDone=='function'?ckDone(T).n:0;L.push(`今日條件檢核（${st.id}${done?`，已買 ${done} 批，加碼只看下一批`:''}）：`);
   for(const g of G){const ok=[],rows=[],its=/依序/.test(g.rule||'')?g.items.slice(done,done+1):g.items;if(!its.length){L.push(`  【${g.sec}】已經全部買完`);continue}for(const i of its){const r0=i.r;let ic;if(r0)ic=g.need=='none'?(r0.v===true?'⛔':r0.v===false?'✓':'⏳'):(r0.v===true?'✅':r0.v===false?'❌':'⏳');else ic=M.has(i.t)?'☑️':'❔';
     if((ic=='✅'||ic=='✓')&&AA.merge){ok.push(i.t.replace(/〔[^〕]*〕/g,''));continue}rows.push(`    ${ic} ${i.t}${r0&&(r0.why||r0.miss)?'（'+[r0.why,r0.miss].filter(Boolean).join('；')+'）':!r0?(M.has(i.t)?'（我確認過符合）':'（要自己判斷）'):''}`)}
    L.push(`  【${g.sec}】${g.need=='none'?'任何一項成立就不買':g.need=='all'?'需要全部':g.need?'至少 '+g.need+' 項':''}`);if(ok.length)L.push(`    ${g.need=='none'?'✓ 沒有':'✅ 符合'}：${ok.join('、')}`);L.push(...rows)}}
  if(q=='buy'&&st){const bl=aaBuyLine(c,T,st);if(bl)L.push(bl)}
+ if(q=='eval'&&st&&typeof aaEvLine=='function'){const bl=aaEvLine(c,st);if(bl)L.push(bl)}
  // 前瞻資料
  const o=(S.outlook||{})[c]||{},ep=(o.eps||[]).filter(e=>e.d&&dDays(e.d,TODAY)<=200).sort((a,b)=>a.d<b.d?1:-1);
  if(ep.length)L.push('法人 EPS 預估：'+ep.map(e=>`${e.y} 年 ${e.v}（${e.src||'未註明'}，${e.d}）`).join('；'));
@@ -115,6 +116,7 @@ ${sk.length?sk.join('\n'):'（這個月沒有）'}
 - 查不到的寫「查不到」，並寫查過哪裡；不要推算。
 - 找資料時看到的法說、財報、除息日期，放進 events。
 回答開頭請先用兩行：① 找到幾項、查不到幾項 ② 哪些和 App 現有資料差很多。之後才寫細節。${ex?'\n補充：'+ex:''}`;
+ if(q=='eval')return aaEvAsk(ex);
  if(q=='free')return`【我的問題】\n${ex||'（請在 App 裡填寫問題）'}\n\n要匯回 App 的內容只能有 outlook（前瞻資料）和 events（之後的日期）。`;return''}
 // 回答規則依問題類型（2026-11-12）：原本 5 條都是為出場寫的，買進、復盤也套同一套
 const AA_R0='三種來源分開標：【App】上面 App 給的數字、【查到】你查到的（附來源和日期）、【推論】你自己的推論。',AA_REPS='EPS 預估只輸出寫明機構、日期、數字的；未具名來源不要輸出。查不到就寫查不到，不要推算。';
@@ -124,10 +126,11 @@ const AA_RQ={exit:['先寫最不利於續抱的解讀，再寫另一面。','不
  fill:[AA_REPS,'每一項寫年度、共識值或單一機構；和 App 現有資料差 15% 以上的另外列出；查不到的寫查過哪裡。'],
  free:[AA_REPS,'決定由我做。'],
  pre:['只查隔夜消息有沒有改變清單上任何一項；不重算 App 的數字，不建議新的買賣。','不建議放寬停損、延後出場或取消照規則的單；規則是收盤確認、隔天開盤執行。','消息要附來源和時間（台灣時間）；查不到就寫查不到。','決定由我做。'],
+ eval:['App 的判斷是照策略規則算的；策略還在測試，可以質疑資料和規則的適用前提，但不要用「快符合了」代替符合；【不買】成立就是不買，除非指出資料錯誤。','先寫最不利於買進的解讀，再寫另一面。',AA_REPS,'theses 只能是規劃中論點，只放 code、strategy、why、wrongIf、risk；停損、分批、條件由 App 算，不要輸出 stop、plan、met。','manual 的 ok 只能是 true（符合）、false（不符合）、null（查不到），每一筆都要附 src；App 只顯示，不會替我勾。','決定由我做。'],
  strat:['每一項修改都要標 dir（loosen 放寬／tighten 收緊）和 basis（logic 邏輯／limit 硬限制／test 事前登記的測試），沒有依據的不要提。','放寬的修改（停損變寬、條件變鬆、上限變大）只適用之後新建的部位；大盤從高點回檔 10% 以上的期間不放寬。','不接受「用同一段歷史資料再調一次參數」當依據；要測的寫成「待回測」，不要直接改。','已平倉的論點不到 20 筆時，不用勝率判斷策略好壞。','決定由我做。']};
 const aaRules=q=>'【回答規則】\n'+[AA_R0].concat(AA_RQ[q]||AA_RQ.free).map((t,i)=>`${i+1}. ${t}`).join('\n');
 // 每種問題可以匯回 App 的欄位；匯入端也用同一張表檢查（ai-import.js）
-const AA_QK={exit:['review','outlook','events'],buy:['manual','outlook','events'],review:['outlook','themes','events'],fill:['outlook','themes','events'],free:['outlook','events'],strat:['strategies'],pre:['events']};
+const AA_QK={exit:['review','outlook','events'],buy:['manual','outlook','events'],review:['outlook','themes','events'],fill:['outlook','themes','events'],free:['outlook','events'],strat:['strategies'],pre:['events'],eval:['theses','manual','outlook','events']};
 function aaFmt(snap){const q=AA.q,y=+TODAY.slice(0,4),CS=new Set(q=='strat'||q=='pre'?[]:aaCodes()),Ts=(S.theses||[]).filter(T=>q!='strat'&&q!='pre'&&T.status!='exit'&&(CS.has(cU(T.code))||T.id==AA.th)).map(T=>{const st=stStrat(S,T.sid);return`${T.id} ${cU(T.code)} ${T.sid} v${T.sver||(st&&st.ver)||''}`});
  const ex={format:'投資帳本 v1',ai:'你的名稱（例如 Claude、Gemini）',q,snap};
  const T0=(AA.th&&stThesis(S,AA.th))||aaThOf(aaCodes()[0]||'')||(S.theses||[])[0]||{id:'T001',code:'2301'},x0=AA.th&&AA.rule&&T0?(exRules(stStrat(S,T0.sid))||[]).find(z=>z.key==AA.rule):null,c0=cU(T0.code||'2301');
@@ -135,14 +138,15 @@ function aaFmt(snap){const q=AA.q,y=+TODAY.slice(0,4),CS=new Set(q=='strat'||q==
   tm={name:'<主題名稱>',status:'<up/flat/down>',date:D0,src:'<來源>',note:'<一句重點>'},ev={date:D0,code:c0,type:'<法說／財報／除息／營收>',note:'<一句重點>'},up={thesis:T0.id,stop:'<新的停損價>'};
  const K=AA_QK[q]||AA_QK.free;
  const sg={id:'S01',reason:'<一句話：為什麼改>',dir:'<loosen/tighten>',basis:'<logic/limit/test>',stopPct:'<只放要改的欄位>'};
+ const thx={code:c0,strategy:AA.sid||'S01',why:'<一句話：為什麼值得等>',wrongIf:'<什麼情況代表我錯了>',risk:'<最大的風險>'};
  const mn={code:c0,cond:'<條件原文（照上面的寫法）>',ok:'<true/false/null>',why:'<一句話>',src:[{name:'<來源>',date:D0}]};
- const D={manual:'manual：要自己判斷的條件（❔）你的看法，一條一筆，cond 照抄條件原文；App 只顯示你的看法，不會替我勾',review:`review：每一條討論的訊號一筆。view 只能是「${AA_VIEW.join('／')}」其中一個，每一筆都要附 src（來源、日期）`,outlook:'outlook：有查到才放；eps 要寫明機構與日期，guide 的 rev、gm 用 up／flat／down',themes:'themes：主題狀態 status 用 up／flat／down，附來源與日期',events:'events：之後要注意的日期（法說、財報、除息）',updates:'updates：只能把停損價往上調（收緊），不要往下調',strategies:'strategies：每個要改的策略一筆，只放要改的欄位（name、logic、term、screen、entry、exit、holdMin、holdMax、capStock、capGroup、capStrat、stopPct、stopTech、riskPct、rr、addDays、addPx、addPxPct、addHalt），加 reason、dir、basis；版本號 App 自己加'};
- const eg=Object.assign({},ex);for(const k of K)eg[k]=[{manual:mn,review:rv,outlook:ol,themes:tm,events:ev,updates:up,strategies:sg}[k]];
+ const D={manual:'manual：要自己判斷的條件（❔）你的看法，一條一筆，cond 照抄條件原文；App 只顯示你的看法，不會替我勾',review:`review：每一條討論的訊號一筆。view 只能是「${AA_VIEW.join('／')}」其中一個，每一筆都要附 src（來源、日期）`,outlook:'outlook：有查到才放；eps 要寫明機構與日期，guide 的 rev、gm 用 up／flat／down',themes:'themes：主題狀態 status 用 up／flat／down，附來源與日期',events:'events：之後要注意的日期（法說、財報、除息）',updates:'updates：只能把停損價往上調（收緊），不要往下調',theses:'theses：要建立規劃中論點才放（還沒買）；每檔一筆，只放 code、strategy、why、wrongIf、risk；停損、分批、條件由 App 算',strategies:'strategies：每個要改的策略一筆，只放要改的欄位（name、logic、term、screen、entry、exit、holdMin、holdMax、capStock、capGroup、capStrat、stopPct、stopTech、riskPct、rr、addDays、addPx、addPxPct、addHalt），加 reason、dir、basis；版本號 App 自己加'};
+ const eg=Object.assign({},ex);for(const k of K)eg[k]=[{theses:thx,manual:mn,review:rv,outlook:ol,themes:tm,events:ev,updates:up,strategies:sg}[k]];
  return`【輸出格式】
 最後請把要匯回 App 的內容放在一個 \`\`\`json 區塊，格式是「投資帳本 v1」，只放有根據的內容：
 - 一定要有 "format"、"ai"（你的名稱）、"q":"${q}"、"snap":"${snap}"（照抄，App 用來檢查資料有沒有變）
 ${K.map(k=>'- '+D[k]).join('\n')}
-${q=='strat'?'- 只能有 strategies；不要輸出 trades、theses、updates、outlook。':'- 只能有上面列的欄位；不要輸出 strategies、trades、theses、updates：策略修改只在每季檢討時做，交易和停損我自己記。'}
+${q=='strat'?'- 只能有 strategies；不要輸出 trades、theses、updates、outlook。':q=='eval'?'- 只能有上面列的欄位；不要輸出 strategies、trades、updates：交易我自己記，停損 App 算。':'- 只能有上面列的欄位；不要輸出 strategies、trades、theses、updates：策略修改只在每季檢討時做，交易和停損我自己記。'}
 範例（只示範格式；< > 裡要換成真實內容，數字和 true/false 不加引號，查不到的欄位整個拿掉，不要照抄）：
 ${JSON.stringify(eg)}${Ts.length?'\n這次範圍內的論點與策略版本：'+Ts.join('｜'):''}`}
 // 策略檢討（2026-11-12）：只放策略、共同規則、比例類的風險設定與（選擇附上的）不含金額的績效；不放持股、金額
@@ -181,8 +185,8 @@ function aaText(){const snap=aaSnap(),q=AA.q,P=[q=='strat'?`【投資帳本｜${
  P.push(aaAsk());P.push(aaRules(q));P.push(aaFmt(snap));return P.filter(Boolean).join('\n\n')}
 
 // ---------- 畫面（在 ai-import.js 的 🤖 AI 討論面板「📋 問 AI」分頁）
-function aaInit(o){o=o||{};if(o.th&&o.rule)AA_CTX={from:'exit',th:o.th,rule:o.rule};else if(o.from=='trade'){}else if(o.q)AA_CTX=null;const al=aaAlertCodes();let codes=o.codes?o.codes.map(cU):[];if(o.th&&!codes.length){const T=stThesis(S,o.th);if(T)codes=[cU(T.code)]}
- const q=o.q||(al.length?'exit':'review');AA=Object.assign({},AA,{q,th:o.th||'',rule:o.rule||'',sid:o.sid||'',free:'',codes,scope:codes.length?(codes.length==1?'one':'pick'):q=='review'?'all':q=='exit'&&al.length?'alert':'all'})}
+function aaInit(o){o=o||{};if(o.th&&o.rule)AA_CTX={from:'exit',th:o.th,rule:o.rule};else if(o.from=='trade'||o.from=='eval'){}else if(o.q)AA_CTX=null;const al=aaAlertCodes();let codes=o.codes?o.codes.map(cU):[];if(o.th&&!codes.length){const T=stThesis(S,o.th);if(T)codes=[cU(T.code)]}
+ const q=o.q||(al.length?'exit':'review');AA=Object.assign({},AA,{q,th:o.th||'',rule:o.rule||'',sid:o.sid||'',free:'',codes,scope:q=='eval'?'pick':codes.length?(codes.length==1?'one':'pick'):q=='review'?'all':q=='exit'&&al.length?'alert':'all'})}
 window.aaSet=(k,v)=>{AA[k]=v;if(k=='q'){if(v=='review'&&AA.scope!='pick')AA.scope='all';if(v!='exit')AA.rule=''}if(k=='scope'&&v=='pick'&&!AA.codes.length)AA.codes=aaAlertCodes();aaRender()};
 window.aaPick=(c,on)=>{AA.codes=AA.codes.filter(x=>x!=c);if(on)AA.codes.push(c);aaRender()};
 function aaRender(){const el=$('aiAsk');if(!el)return;const t=aaText(),al=aaAlertCodes(),nm=c=>esc(c+' '+nameOf(c));
@@ -191,7 +195,7 @@ function aaRender(){const el=$('aiAsk');if(!el)return;const t=aaText(),al=aaAler
  el.innerHTML=`${AA_CTX&&AA_CTX.from=='trade'&&AT_DRAFT?`<div class=stal style="margin-bottom:6px">從交易表單來的（${esc(cU(AT_DRAFT.c))} ${esc(nameOf(AT_DRAFT.c))}）<button class=lk onclick="aaBackTrade()">↩ 不匯入，回到交易表單</button></div>`:''}<div class=h>按「📋 複製」後貼到任何 AI 對話（Claude、Gemini…）。AI 用「投資帳本 v1」回覆後，切到「📥 貼上回覆」匯入；匯入前都會先預覽。</div>
  <div class=sub>要問什麼</div><div class=aiseg>${Object.entries(AA_Q).map(([k,v])=>`<button class="${AA.q==k?'on':''}" onclick="aaSet('q','${k}')">${v}</button>`).join('')}</div>
  ${x&&AA.q=='exit'?`<div class=stal style="margin-top:6px">要討論的訊號：<b>${esc(T.id)} ${nm(cU(T.code))}｜${esc(x.lb)}</b>：${esc(x.cond)} <button class=lk onclick="AA.th='';AA.rule='';aaRender()">不限這一條</button></div>`:''}
- ${AA.q=='pre'?`<div class=h style="margin-top:6px">範圍：資產頁「📅 明天要做的事」的清單（要動作、接近觸發、要注意、明天要下的單）。</div>`:AA.q=='strat'?`<div class=h style="margin-top:6px">範圍：所有啟用中的策略、「📚 策略庫 → 📝 共同規則與依據」、比例類的風險設定；不附持股與金額。</div><label class=ck><input type=checkbox ${AA.perf?'checked':''} onchange="aaSet('perf',this.checked?1:0)">附我的執行紀錄（筆數、勝率、照規則比例，不含金額）</label>`:AA.q=='fill'?`<div class=h style="margin-top:6px">範圍：資產頁「✏️ 待補資料」裡缺的與要更新的資料。</div>`:`<div class=sub>範圍</div><select onchange="aaSet('scope',this.value)">${scs}</select>
+ ${AA.q=='pre'?`<div class=h style="margin-top:6px">範圍：資產頁「📅 明天要做的事」的清單（要動作、接近觸發、要注意、明天要下的單）。</div>`:AA.q=='strat'?`<div class=h style="margin-top:6px">範圍：所有啟用中的策略、「📚 策略庫 → 📝 共同規則與依據」、比例類的風險設定；不附持股與金額。</div><label class=ck><input type=checkbox ${AA.perf?'checked':''} onchange="aaSet('perf',this.checked?1:0)">附我的執行紀錄（筆數、勝率、照規則比例，不含金額）</label>`:AA.q=='fill'?`<div class=h style="margin-top:6px">範圍：資產頁「✏️ 待補資料」裡缺的與要更新的資料。</div>`:AA.q=='eval'?aaEvPick():`<div class=sub>範圍</div><select onchange="aaSet('scope',this.value)">${scs}</select>
  ${AA.scope=='pick'?`<div class=aipk>${aaActive().map(c=>`<label class=ck><input type=checkbox ${AA.codes.includes(c)?'checked':''} onchange="aaPick('${c}',this.checked)">${nm(c)}</label>`).join('')}</div>`:''}`}
  ${AA.q=='free'?`<div class=sub>你的問題</div><textarea id=aaFree rows=3 style="width:100%" oninput="AA.free=this.value" onchange="aaRender()">${esc(AA.free)}</textarea>`:`<details ${AA.free?'open':''}><summary class=h>補充問題（可不填）</summary><textarea id=aaFree rows=2 style="width:100%" oninput="AA.free=this.value" onchange="aaRender()">${esc(AA.free)}</textarea></details>`}
  ${AA.q=='strat'||AA.q=='pre'?'':`<label class=ck><input type=checkbox ${AA.amt?'checked':''} onchange="aaSet('amt',this.checked?1:0)">附上股數與金額（預設只放比例；貼給其他公司的 AI 時建議不勾）</label>
@@ -235,6 +239,7 @@ function aaAfterImport(B){const el=$('asOvB');if(!el||!AA_CTX)return;const box=d
   AA_CTX.view=rv?rv.view:'';AA_CTX.ai=B.ai||'';
   box.innerHTML=`<b>接著決定：${esc(T.id)} ${esc(cU(T.code))} ${esc(nameOf(T.code))}「${esc(x.lb)}」</b><div class=h>${esc(x.cond)} → ${esc(x.act||'')}｜現在：${x.r&&x.r.v===true?'🔴 成立':x.r&&x.r.pre?'⏸ 起算前已知':x.r&&x.r.v===false?'✓ 沒有成立':'⏳／❔'}</div>${rv?`<div>AI 的看法：<b>${esc(rv.view)}</b>${rv.why?'｜'+esc(rv.why):''}</div>`:'<div class=h>這次回覆沒有對這條訊號的看法（review）。</div>'}<div class=asbtn>${exBtns(T.id,x.key)}</div>`}
  else if(AA_CTX.from=='trade'&&AT_DRAFT){box.innerHTML=`<b>回到交易表單</b><div class=h>剛匯入的資料會重新判斷條件；要自己判斷的條件會顯示 AI 的看法，點一下才勾。</div><div class=asbtn><button class=pri onclick="aaBackTrade()">↩ 回到交易表單</button></div>`}
+ else if(AA_CTX.from=='eval'){const n=(B.evTh||[]).length;box.innerHTML=`<b>回到 🔍 評估</b><div class=h>${n?`建立了 ${n} 個規劃中論點${(B.evTh||[]).some(id=>(stThesis(S,id)||{}).ovr)?'（有標「規則外觀察」的，績效另外算）':''}。`:''}剛匯入的資料會重新判斷。</div><div class=asbtn><button class=pri onclick="evOpen({codes:AA.codes,sid:AA.sid})">↩ 回到 🔍 評估</button></div>`}
  el.insertBefore(box,el.children[2]||null)}
 window.aaBackTrade=()=>{if(!AT_DRAFT)return;AT=AT_DRAFT;AT_DRAFT=null;AT._ck='';AA_CTX=null;asOvOpen(asTradeHtml());asTh();asPrev()};
 // 交易表單的「🤖 問 AI」：先把填到一半的交易存起來
