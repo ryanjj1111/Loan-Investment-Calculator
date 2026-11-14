@@ -1,0 +1,17 @@
+# 美股計算測試：改到 js/ 或測試檔時，確認含 us 的設定檔不影響信貸與台股數字、快照計算和手算答案一致（代號與數字都是虛構的）
+name: 美股計算測試
+on:
+  pull_request:
+    paths: ['js/**', 'tools/test/**', '.github/workflows/us-test.yml']
+  push:
+    branches: [main]
+    paths: ['js/**', 'tools/test/**', '.github/workflows/us-test.yml']
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node tools/test/us-test.mjs
