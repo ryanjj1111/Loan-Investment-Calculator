@@ -9,7 +9,7 @@ const tw=()=>new Date(Date.now()+8*36e5).toISOString();
 export function parseBot(csv){for(const line of String(csv).replace(/^﻿/,'').split(/\r?\n/)){const c=line.split(',').map(x=>x.trim());if(c[0]!='USD')continue;
   const b=c.findIndex(x=>x.includes('買入')),s=c.findIndex(x=>x.includes('賣出'));if(b<0||s<0)return null;const buy=+c[b+2],sell=+c[s+2];
   if(!(buy>10&&buy<100&&sell>10&&sell<100&&sell>=buy&&sell-buy<1))return null;return{buy,sell}}return null}
-async function main(){let res,txt;try{res=await fetch(URL_,{headers:{'User-Agent':'Mozilla/5.0 (投資帳本 匯率更新)','Accept':'text/csv,*/*'}});txt=await res.text()}catch(e){console.log('抓不到臺銀牌告：'+e.message);return}
+async function main(){let res,txt;try{res=await fetch(URL_,{headers:{'User-Agent':'Mozilla/5.0 (compatible; fx-fetch)','Accept':'text/csv,*/*'}});txt=await res.text()}catch(e){console.log('抓不到臺銀牌告：'+e.message);return}
  if(!res.ok){console.log('臺銀牌告回應 '+res.status);return}
  const r=parseBot(txt);if(!r){console.log('臺銀牌告格式和預期不同，前 200 字：'+txt.slice(0,200).replace(/\s+/g,' '));return}
  // 牌告時間在檔名裡（ExchangeRate@YYYYMMDDHHmm.csv）；沒有就用台灣現在的日期

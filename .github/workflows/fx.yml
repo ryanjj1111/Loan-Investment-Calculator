@@ -28,6 +28,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          if [ ! -d data/fx ]; then echo "沒有抓到匯率"; exit 0; fi
           git add -A data/fx
           if git diff --cached --quiet; then echo "沒有新匯率"; exit 0; fi
           git commit -m "匯率 $(TZ=Asia/Taipei date +%F' '%H:%M) [skip ci]"
