@@ -1,0 +1,19 @@
+{
+ "v": 3, "on": true,
+ "accts": [
+  {"id": "a1", "name": "測試海外券商", "mode": "snap", "upd": "2026-11-10", "cash": 1234.56, "note": "",
+   "items": [{"n": "AAA", "q": 10, "c0": 1000}, {"n": "BBB", "q": 2.5, "c0": 500.25}, {"n": "CCC", "q": 3, "c0": null}],
+   "start": null, "cash0": 0, "init": [], "trades": [], "flows": []},
+  {"id": "a2", "name": "測試員工認股", "mode": "snap", "upd": "2026-08-01", "cash": null, "note": "",
+   "items": [{"n": "AAA", "q": 5.123456, "c0": null}, {"n": "DDD", "q": 7, "c0": 700}],
+   "start": null, "cash0": 0, "init": [], "trades": [], "flows": []},
+  {"id": "a3", "name": "測試複委託", "mode": "snap", "upd": "2026-11-01", "cash": 0, "note": "",
+   "items": [{"n": "BBB", "q": 1.5, "c0": 330}, {"n": "EEE", "q": 4, "c0": 400}],
+   "start": null, "cash0": 0, "init": [], "trades": [], "flows": []}
+ ],
+ "px": {"AAA": 120.5, "BBB": 210.1, "CCC": 50, "DDD": 90}, "pxd": {"AAA": "2026-11-10", "BBB": "2026-11-10", "CCC": "2026-09-30", "DDD": "2026-11-10"}, "pxa": {},
+ "attr": {"AAA": {"name": "測試公司 A", "tag": "測試主題一"}, "BBB": {"name": "", "tag": "測試主題二"}},
+ "opt": {"div": 0, "fx": 0, "tax": 0},
+ "bench": "VOO", "cashLike": [], "wht": {"def": 0.3, "by": {}}, "lot": "fifo", "fxMode": "mid",
+ "fxManual": null, "hist": [], "log": []
+}

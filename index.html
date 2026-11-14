@@ -111,6 +111,11 @@ button.lk{border:0;background:none;color:var(--pri);padding:0 2px;font-size:12px
 .tmst{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;margin:2px 0 4px}.tmr{border-top:1px dashed var(--line);padding:5px 0;font-size:12.5px;line-height:1.55}.tmr button{font-size:12px;padding:2px 8px;margin:2px 4px 0 0}
 .asal{border:1px solid #fca5a5;background:#fef2f2;color:#991b1b;border-radius:8px;padding:7px 9px;margin:8px 0;font-size:12.5px;line-height:1.6}.aspc{cursor:pointer}.aspa{display:inline-block;transition:transform .15s}.aspc.on .aspa{transform:rotate(90deg)}.aspd{display:none;text-align:left;font-size:11.5px;margin-top:4px;border-top:1px dashed var(--line);padding-top:3px}.aspc.on .aspd{display:block}.aspd b{font-size:12px!important}
 .aidf{border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:8px 0;font-size:12.5px}.aidf:empty{display:none}.aidl{margin-top:3px}.aidok{color:var(--ok)}.aih{margin:0 0 4px 22px}.asck .aiq{font-size:12.5px;padding:3px 8px}
+.avn{margin:0 0 10px}.avn button{padding:8px 4px;font-size:14px;font-weight:700}
+body[data-av=today] #pgA>:not(#avNav):not(#asAl):not(#asFix):not(#usToday),body[data-av=tw] #pgA>#asAl,body[data-av=tw] #pgA>#asFix,body[data-av=tw] #pgA>#usToday,body[data-av=tw] #pgA>#usView,body[data-av=tw] #pgA>#allView,body[data-av=us] #pgA>:not(#avNav):not(#usView),body[data-av=all] #pgA>:not(#avNav):not(#allView){display:none}
+body[data-av=us] #twFab,body[data-av=all] #twFab,body:not([data-av=us]) #usFab{display:none}
+.usr{display:grid;grid-template-columns:1.1fr 1fr 1.2fr 1fr 34px;gap:4px;margin:3px 0;align-items:center}.usr input{padding:6px 4px;min-width:0;width:100%}.usr button{padding:5px 0}.usr.h span{padding-left:4px}
+.allb{font-size:26px;font-weight:800;margin:4px 0}.alll{display:flex;justify-content:space-between;gap:8px;cursor:pointer}
 .asfab{position:fixed;left:0;right:0;bottom:0;z-index:7;display:flex;gap:8px;justify-content:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);box-shadow:0 -2px 8px #0001}.asfab button{flex:1;max-width:220px;padding:10px 8px;font-size:14px}
 body.ws-as{padding-bottom:64px}body.ws-as #toast{bottom:76px}button.pri{background:var(--pri);color:#fff;border-color:var(--pri);font-weight:700}
 .ov{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:60;display:none;align-items:flex-start;justify-content:center;padding:16px 8px;overflow:auto}
@@ -213,10 +218,12 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 </div>
 
 <div id="pgA" class="asw">
+ <div class="seg avn" id="avNav"></div>
  <div class="p" id="asTrend"></div>
  <div class="p" id="asTop"></div>
  <div id="asAl"></div>
  <div id="asFix"></div>
+ <div id="usToday"></div>
  <div class="p" id="asAlloc"></div>
  <div class="p" id="asRisk"></div>
  <div class="p" id="asInv"><div class="ash"><b class="fhx" id="asInvT" onclick="foldT('inv')">▾ 📦 庫存</b><div class="asgs" id="asGrp"></div><label class="ck"><input type="checkbox" id="asClosed" onchange="asShowClosed(this.checked)">顯示已出清</label></div><div class="chips asflt" id="asFlt"></div>
@@ -232,6 +239,8 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
  <div class="p"><details id="asHoldD"><summary>📋 持股明細表（逐檔修改現價、看成本與配置目標）</summary>
   <div class="h" style="margin:4px 0">股數＝期初持股＋交易紀錄。現價會自動帶入每個交易日的收盤價，也可以在這裡手動修改；手動修改的會標示「手填」。</div><div class="w"><table class="trh" id="trh"></table></div><div id="trMoreB" style="margin-top:4px"></div><div class="h" id="mvLine"></div><div class="h" id="trSum"></div>
   <div class="h">股票名稱：證交所、櫃買中心開放資料（2026-11-03，上市＋上櫃股票與 ETF 共 2,375 檔）；找不到的可在「✎」自訂名稱。</div></details></div>
+ <div id="usView"></div>
+ <div id="allView"></div>
 </div>
 
 <div id="pgST" class="stw">
@@ -247,7 +256,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
   <div class="p"><b>依論點</b><div class="w"><table id="stThT" class="stt"></table></div><div class="h" style="margin-top:4px">持有未滿 6 個月顯示期間報酬（未年化）。點一列可打開該論點。</div></div></div>
 </div>
 
-<div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button><button onclick="location.href='v20261114/index.html'" title="美股整合前的版本，資料和這裡是同一份">🕘 開啟 11/14 的舊版</button></div>
+<div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button><button class="pro" id="usAddB" onclick="usStart()">🇺🇸 ＋新增美股帳戶</button><button onclick="location.href='v20261114/index.html'" title="美股整合前的版本，資料和這裡是同一份">🕘 開啟 11/14 的舊版</button></div>
 <div class="h" style="margin-top:6px">資料只存在這個瀏覽器。每次修改或結算後，請按「⬇️ 匯出設定檔」存到雲端硬碟或電腦；換手機、換電腦時用「⬆️ 匯入」還原。「🕘 開啟 11/14 的舊版」是美股整合前的版本，和這裡共用同一份資料，可以隨時打開對照；按手機的上一頁回到新版。<span id="bkS"></span><br>本工具僅供試算，非投資或稅務建議。</div><div id="iosHint" class="stal" style="display:none"></div></div>
 
 <div id="toast"><span id="toastT"></span><button onclick="undo()">復原</button></div>
@@ -312,6 +321,10 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li><b>同一檔只能有一個論點</b>（2026-11-12）：有兩個以上沒出場的論點時，提醒列和個股頁會標出，按「合併…」選要留哪一個，畫面列出會留下、會搬過去、會丟掉的內容；合併前自動存還原點。要換策略（例如 S04 事件結束轉 S01）用個股頁的「🔁 換策略」：舊論點以「轉換」結案、不產生交易，新論點用當天收盤當起算價、承接股數。AI 匯入同一檔不同策略的論點時，預設不勾，勾了就是轉換。</li>
 <li><b>撥款後損益</b>（個股頁）：撥款前持股和撥款後買進都有時，點那一格（▸）展開兩行：撥款前持股（從撥款日收盤）、撥款後買進（從成交價），加總就是那一格的數字。</li>
 <li><b>⬇️ 匯出</b>：選「全部（備份）」或「只有策略」（.json 或〈策略範本〉.md）。只有策略不含論點、交易、持股、金額，<b>不是備份</b>；匯入請用「📥 從 AI 貼上」，編號撞到時可以選更新自己的或新增成另一個編號，預覽會顯示工具讀得懂幾條。</li>
+<li><b>資產頁分成四格</b>（2026-11-14）：<b>今日</b>（明天要做的事、待補資料）｜<b>總覽</b>（台股＋美股的新台幣全資產、配置、幣別曝險）｜<b>台股</b>（趨勢、我的庫存、配置、風險、庫存、交易紀錄、持股明細，內容和以前相同）｜<b>美股</b>。沒有美股資料時只有「今日｜台股」。上次停在哪一格會記在這台裝置。</li>
+<li><b>🇺🇸 美股</b>（2026-11-14）：到頁面最下方按「＋新增美股帳戶」，每個帳戶（例如海外券商、員工認股、複委託）各建一個，照券商 App 顯示的數字填代號、股數、成本（總額或均價擇一，沒有就留空）和美元現金。之後有買賣就按「＋更新部位」改那一檔；每次儲存會自動記下變動。同一檔在不同帳戶會自動合併。現價目前要手填（點那一檔或在更新部位時填）。帳面損益＝市值 − 券商成本，不含已賣出的部分和現金股利。<b>美股的任何數字都不進信貸計算</b>。</li>
+<li><b>💱 匯率</b>：「總覽」用臺灣銀行美金即期買入與賣出的中價換算新台幣，每個營業日傍晚自動更新；抓不到時改用備援來源並標示，也可以手填。</li>
+<li><b>手機的上一頁</b>：個股頁、記交易、AI 討論等視窗打開時，按上一頁是關閉視窗，不會離開 App。</li>
 <li><b>📅 明天要做的事</b>（資產頁最上面，2026-11-12 取代「⚠️ 提醒」）：上方是資料狀態（收盤價、指標、法人、融資的日期；收盤價和指標到齊才算定案，法人、融資還沒到的條件標「暫定」；平日 15:00 後還沒有今天的收盤價，會寫「今天資料還沒到，或今天休市」）。下面分三層：🔴 要動作（收盤已觸發的出場規則、跌破停損，附股數和約多少錢，旁邊就是三選一）、🟠 接近觸發（明天收盤碰到就成立的價位，距現價 5% 內）、🟡 要注意（法說、財報、除息、月營收、重新評估日、大盤回檔、虧損上限，以及其他提醒）。三層都沒有時寫「明天沒有要做的事」。另外列出<b>明天開盤要下的單</b>（規則一律收盤確認、隔天開盤執行，和回測一致）、<b>還能買多少</b>（壓力虧損剩餘額度；可以買的論點最多幾股，受限於每筆風險、個股上限、主題上限或壓力虧損）、<b>前一天計畫的執行情形</b>（資料定案時自動存當天的單，只存代號、買賣、股數），以及「🤖 盤前問 AI」（附這張清單，只請 AI 查隔夜消息有沒有改變任何一項）。</li>
 <li><b>不歸類</b>（2026-11-12）：撥款前持股進不了任何策略時，在論點的「所屬策略」選「不歸類」（或個股頁沒有論點時按「不歸類」）。沒有策略的出場規則，只有論點停損價和重新評估日（到期提醒），不算策略績效，每筆風險上限 1.5%。</li>
 <li><b>部位風險提醒</b>：持有中的論點，（現價 − 停損價）× 股數超過主動資本 × 策略每筆風險的 1.5 倍時，提醒列寫出要符合大約是幾股。停損釘在起算價、股價漲上去以後風險會變大；只是提醒，要不要減碼你決定。加碼補記或不歸類的論點時，記交易表單也會提醒這筆不算策略績效。</li>
@@ -401,22 +414,25 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <label class="tg" style="margin-top:8px;flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="gdn" style="width:auto">下次開啟不再自動顯示</label>
 <button style="margin-top:8px" onclick="closeGd()">我知道了</button></div></div>
 
-<div class="asfab asw"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
+<div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button></div>
+<div class="asfab asw" id="twFab"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261114a"></script>
-<script src="data/stocks.js?v=20261114a"></script>
-<script src="js/engine.js?v=20261114a"></script>
-<script src="js/ui.js?v=20261114a"></script>
-<script src="js/strategy-engine.js?v=20261114a"></script>
-<script src="js/asset-engine.js?v=20261114a"></script>
-<script src="js/prices.js?v=20261114a"></script>
-<script src="js/check.js?v=20261114a"></script>
-<script src="js/outlook.js?v=20261114a"></script>
-<script src="js/strategy-ui.js?v=20261114a"></script>
-<script src="js/asset-ui.js?v=20261114a"></script>
-<script src="js/eval.js?v=20261114a"></script>
-<script src="js/ai-import.js?v=20261114a"></script>
-<script src="js/ai-ask.js?v=20261114a"></script>
-<script src="js/back.js?v=20261114a"></script>
-<script src="js/main.js?v=20261114a"></script>
+<script src="data/etf-ref.js?v=20261114b"></script>
+<script src="data/stocks.js?v=20261114b"></script>
+<script src="js/engine.js?v=20261114b"></script>
+<script src="js/ui.js?v=20261114b"></script>
+<script src="js/strategy-engine.js?v=20261114b"></script>
+<script src="js/asset-engine.js?v=20261114b"></script>
+<script src="js/us-engine.js?v=20261114b"></script>
+<script src="js/prices.js?v=20261114b"></script>
+<script src="js/check.js?v=20261114b"></script>
+<script src="js/outlook.js?v=20261114b"></script>
+<script src="js/strategy-ui.js?v=20261114b"></script>
+<script src="js/asset-ui.js?v=20261114b"></script>
+<script src="js/us-ui.js?v=20261114b"></script>
+<script src="js/eval.js?v=20261114b"></script>
+<script src="js/ai-import.js?v=20261114b"></script>
+<script src="js/ai-ask.js?v=20261114b"></script>
+<script src="js/back.js?v=20261114b"></script>
+<script src="js/main.js?v=20261114b"></script>
 </body></html>
