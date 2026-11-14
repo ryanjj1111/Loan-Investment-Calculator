@@ -13,7 +13,9 @@ async function main(){let res,txt;try{res=await fetch(URL_,{headers:{'User-Agent
  if(!res.ok){console.log('臺銀牌告回應 '+res.status);return}
  const r=parseBot(txt);if(!r){console.log('臺銀牌告格式和預期不同，前 200 字：'+txt.slice(0,200).replace(/\s+/g,' '));return}
  // 牌告時間在檔名裡（ExchangeRate@YYYYMMDDHHmm.csv）；沒有就用台灣現在的日期
- const m=/(\d{4})(\d{2})(\d{2})\d{4}\.csv/.exec(res.headers.get('content-disposition')||''),now=tw(),d=m?`${m[1]}-${m[2]}-${m[3]}`:now.slice(0,10);
+ const cd=res.headers.get('content-disposition')||'',m=/(\d{4})(\d{2})(\d{2})\d{4}\.csv/.exec(cd),now=tw();console.log('檔名標頭：'+(cd||'（沒有）'));
+ // 沒有檔名時用台灣今天；週六、週日退回週五（牌告只在營業日更新）
+ let d=m?`${m[1]}-${m[2]}-${m[3]}`:now.slice(0,10);if(!m){const t=new Date(d+'T00:00:00Z'),w=t.getUTCDay();if(w==6||w==0){t.setUTCDate(t.getUTCDate()-(w==6?1:2));d=t.toISOString().slice(0,10)}}
  const o={upd:now.slice(0,16).replace('T',' '),src:'臺灣銀行牌告（美金即期）',d,buy:r.buy,sell:r.sell};
  let old=null;try{old=JSON.parse(fs.readFileSync(OUT,'utf8'))}catch(e){}
  if(old&&old.d==o.d&&old.buy==o.buy&&old.sell==o.sell){console.log('沒有變動',JSON.stringify(old));return}
