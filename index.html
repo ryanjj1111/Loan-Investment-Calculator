@@ -324,6 +324,12 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li><b>資產頁分成四格</b>（2026-11-14）：<b>今日</b>（明天要做的事、待補資料）｜<b>總覽</b>（台股＋美股的新台幣全資產、配置、幣別曝險）｜<b>台股</b>（趨勢、我的庫存、配置、風險、庫存、交易紀錄、持股明細，內容和以前相同）｜<b>美股</b>。沒有美股資料時只有「今日｜台股」。上次停在哪一格會記在這台裝置。</li>
 <li><b>🇺🇸 美股</b>（2026-11-14）：到頁面最下方按「＋新增美股帳戶」，每個帳戶（例如海外券商、員工認股、複委託）各建一個，照券商 App 顯示的數字填代號、股數、成本（總額或均價擇一，沒有就留空）和美元現金。之後有買賣就按「＋更新部位」改那一檔；每次儲存會自動記下變動。同一檔在不同帳戶會自動合併。現價目前要手填（點那一檔或在更新部位時填）。帳面損益＝市值 − 券商成本，不含已賣出的部分和現金股利。<b>美股的任何數字都不進信貸計算</b>。</li>
 <li><b>💱 匯率</b>：「總覽」用臺灣銀行美金即期買入與賣出的中價換算新台幣，每個營業日傍晚自動更新；抓不到時改用備援來源並標示，也可以手填。</li>
+<li><b>美股自動現價</b>（2026-11-15）：S&P 500、Nasdaq-100 成分股與常見 ETF 每個美股交易日收盤後自動更新（台灣早上）；不在範圍內的仍要手填。自動價和手填價取日期比較新的。</li>
+<li><b>📥 貼上 AI 整理的截圖</b>（美股 → 帳戶）：把券商庫存截圖和「📋 複製給 AI 的說明」交給 AI，回來的 JSON 貼上，先看差異再套用；預設整個帳戶覆寫，截圖只截到一部分時勾「只更新出現的代號」。套用後可以「↩ 復原這次貼上」。</li>
+<li><b>🇺🇸 美股要注意</b>（今日）：持股 14 天內的財報、財報公布後 5 天內提醒做檢查、7 天內的聯準會決議／CPI／就業報告（換成台灣時間）、單日漲跌超過門檻、單一持股占比超過上限。門檻在「美股 → 配置」改。</li>
+<li><b>🤖 問 AI（美股）</b>：「每週美股與總經」和「財報後檢查」。App 整理你的部位（預設只附占比）、日曆與集中度，複製後貼給<b>能上網搜尋</b>的 AI；回覆只是給你看，不用貼回來。</li>
+<li><b>🧭 跨市場主題集中度</b>（總覽）：台股主動持股的主題和美股各檔的主題，名稱相同的加在一起，看占全資產多少。美股的主題在「美股」點那一檔填。</li>
+<li><b>📈 美股金額走勢</b>：有價格更新的日子記一點；含新投入的金額，不是報酬率。</li>
 <li><b>手機的上一頁</b>：個股頁、記交易、AI 討論等視窗打開時，按上一頁是關閉視窗，不會離開 App。</li>
 <li><b>📅 明天要做的事</b>（資產頁最上面，2026-11-12 取代「⚠️ 提醒」）：上方是資料狀態（收盤價、指標、法人、融資的日期；收盤價和指標到齊才算定案，法人、融資還沒到的條件標「暫定」；平日 15:00 後還沒有今天的收盤價，會寫「今天資料還沒到，或今天休市」）。下面分三層：🔴 要動作（收盤已觸發的出場規則、跌破停損，附股數和約多少錢，旁邊就是三選一）、🟠 接近觸發（明天收盤碰到就成立的價位，距現價 5% 內）、🟡 要注意（法說、財報、除息、月營收、重新評估日、大盤回檔、虧損上限，以及其他提醒）。三層都沒有時寫「明天沒有要做的事」。另外列出<b>明天開盤要下的單</b>（規則一律收盤確認、隔天開盤執行，和回測一致）、<b>還能買多少</b>（壓力虧損剩餘額度；可以買的論點最多幾股，受限於每筆風險、個股上限、主題上限或壓力虧損）、<b>前一天計畫的執行情形</b>（資料定案時自動存當天的單，只存代號、買賣、股數），以及「🤖 盤前問 AI」（附這張清單，只請 AI 查隔夜消息有沒有改變任何一項）。</li>
 <li><b>不歸類</b>（2026-11-12）：撥款前持股進不了任何策略時，在論點的「所屬策略」選「不歸類」（或個股頁沒有論點時按「不歸類」）。沒有策略的出場規則，只有論點停損價和重新評估日（到期提醒），不算策略績效，每筆風險上限 1.5%。</li>
@@ -414,25 +420,25 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <label class="tg" style="margin-top:8px;flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="gdn" style="width:auto">下次開啟不再自動顯示</label>
 <button style="margin-top:8px" onclick="closeGd()">我知道了</button></div></div>
 
-<div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button></div>
+<div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button><button onclick="usAsk()">🤖 問 AI</button></div>
 <div class="asfab asw" id="twFab"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261114b"></script>
-<script src="data/stocks.js?v=20261114b"></script>
-<script src="js/engine.js?v=20261114b"></script>
-<script src="js/ui.js?v=20261114b"></script>
-<script src="js/strategy-engine.js?v=20261114b"></script>
-<script src="js/asset-engine.js?v=20261114b"></script>
-<script src="js/us-engine.js?v=20261114b"></script>
-<script src="js/prices.js?v=20261114b"></script>
-<script src="js/check.js?v=20261114b"></script>
-<script src="js/outlook.js?v=20261114b"></script>
-<script src="js/strategy-ui.js?v=20261114b"></script>
-<script src="js/asset-ui.js?v=20261114b"></script>
-<script src="js/us-ui.js?v=20261114b"></script>
-<script src="js/eval.js?v=20261114b"></script>
-<script src="js/ai-import.js?v=20261114b"></script>
-<script src="js/ai-ask.js?v=20261114b"></script>
-<script src="js/back.js?v=20261114b"></script>
-<script src="js/main.js?v=20261114b"></script>
+<script src="data/etf-ref.js?v=20261115a"></script>
+<script src="data/stocks.js?v=20261115a"></script>
+<script src="js/engine.js?v=20261115a"></script>
+<script src="js/ui.js?v=20261115a"></script>
+<script src="js/strategy-engine.js?v=20261115a"></script>
+<script src="js/asset-engine.js?v=20261115a"></script>
+<script src="js/us-engine.js?v=20261115a"></script>
+<script src="js/prices.js?v=20261115a"></script>
+<script src="js/check.js?v=20261115a"></script>
+<script src="js/outlook.js?v=20261115a"></script>
+<script src="js/strategy-ui.js?v=20261115a"></script>
+<script src="js/asset-ui.js?v=20261115a"></script>
+<script src="js/us-ui.js?v=20261115a"></script>
+<script src="js/eval.js?v=20261115a"></script>
+<script src="js/ai-import.js?v=20261115a"></script>
+<script src="js/ai-ask.js?v=20261115a"></script>
+<script src="js/back.js?v=20261115a"></script>
+<script src="js/main.js?v=20261115a"></script>
 </body></html>

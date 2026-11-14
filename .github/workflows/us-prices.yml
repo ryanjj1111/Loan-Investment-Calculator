@@ -1,0 +1,35 @@
+# 美股收盤後抓固定範圍（S&P 500＋Nasdaq-100＋固定 ETF 清單）的收盤價與財報日。公開資料，不含任何個人持股。
+name: 美股收盤價
+on:
+  schedule:
+    - cron: '37 22 * * 1-5'   # 台灣週二～週六 06:37
+    - cron: '37 1 * * 2-6'    # 台灣週二～週六 09:37（重試）
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths: ['tools/fetch-us.py', '.github/workflows/us-prices.yml']
+permissions:
+  contents: write
+concurrency:
+  group: us-prices-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q yfinance pandas lxml requests
+      - name: 抓價格與財報日
+        run: python tools/fetch-us.py
+      - name: 存檔
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          git add -A data/us
+          if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
+          git commit -m "美股收盤價 $(TZ=Asia/Taipei date +%F' '%H:%M) [skip ci]"
+          for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done; exit 1
