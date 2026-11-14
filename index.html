@@ -247,8 +247,8 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
   <div class="p"><b>依論點</b><div class="w"><table id="stThT" class="stt"></table></div><div class="h" style="margin-top:4px">持有未滿 6 個月顯示期間報酬（未年化）。點一列可打開該論點。</div></div></div>
 </div>
 
-<div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button></div>
-<div class="h" style="margin-top:6px">資料只存在這個瀏覽器。每次修改或結算後，請按「⬇️ 匯出設定檔」存到雲端硬碟或電腦；換手機、換電腦時用「⬆️ 匯入」還原。<span id="bkS"></span><br>本工具僅供試算，非投資或稅務建議。</div><div id="iosHint" class="stal" style="display:none"></div></div>
+<div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button><button onclick="location.href='v20261114/index.html'" title="美股整合前的版本，資料和這裡是同一份">🕘 開啟 11/14 的舊版</button></div>
+<div class="h" style="margin-top:6px">資料只存在這個瀏覽器。每次修改或結算後，請按「⬇️ 匯出設定檔」存到雲端硬碟或電腦；換手機、換電腦時用「⬆️ 匯入」還原。「🕘 開啟 11/14 的舊版」是美股整合前的版本，和這裡共用同一份資料，可以隨時打開對照；按手機的上一頁回到新版。<span id="bkS"></span><br>本工具僅供試算，非投資或稅務建議。</div><div id="iosHint" class="stal" style="display:none"></div></div>
 
 <div id="toast"><span id="toastT"></span><button onclick="undo()">復原</button></div>
 
@@ -403,19 +403,20 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 
 <div class="asfab asw"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261113a"></script>
-<script src="data/stocks.js?v=20261113a"></script>
-<script src="js/engine.js?v=20261113a"></script>
-<script src="js/ui.js?v=20261113a"></script>
-<script src="js/strategy-engine.js?v=20261113a"></script>
-<script src="js/asset-engine.js?v=20261113a"></script>
-<script src="js/prices.js?v=20261113a"></script>
-<script src="js/check.js?v=20261113a"></script>
-<script src="js/outlook.js?v=20261113a"></script>
-<script src="js/strategy-ui.js?v=20261113a"></script>
-<script src="js/asset-ui.js?v=20261113a"></script>
-<script src="js/eval.js?v=20261113a"></script>
-<script src="js/ai-import.js?v=20261113a"></script>
-<script src="js/ai-ask.js?v=20261113a"></script>
-<script src="js/main.js?v=20261113a"></script>
+<script src="data/etf-ref.js?v=20261114a"></script>
+<script src="data/stocks.js?v=20261114a"></script>
+<script src="js/engine.js?v=20261114a"></script>
+<script src="js/ui.js?v=20261114a"></script>
+<script src="js/strategy-engine.js?v=20261114a"></script>
+<script src="js/asset-engine.js?v=20261114a"></script>
+<script src="js/prices.js?v=20261114a"></script>
+<script src="js/check.js?v=20261114a"></script>
+<script src="js/outlook.js?v=20261114a"></script>
+<script src="js/strategy-ui.js?v=20261114a"></script>
+<script src="js/asset-ui.js?v=20261114a"></script>
+<script src="js/eval.js?v=20261114a"></script>
+<script src="js/ai-import.js?v=20261114a"></script>
+<script src="js/ai-ask.js?v=20261114a"></script>
+<script src="js/back.js?v=20261114a"></script>
+<script src="js/main.js?v=20261114a"></script>
 </body></html>
