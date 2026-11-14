@@ -81,4 +81,44 @@ function usDiff(b,a){const L=[],B={},Af={};for(const x of usClean(b.items))B[x.n
  const c0=usNum(b.cash),c1=usNum(a.cash);if(f(c0)!=f(c1))L.push(`現金 ${f(c0)} → ${f(c1)}`);
  if((b.name||'')!=(a.name||'')&&b.name)L.push(`改名 ${b.name} → ${a.name}`);return L}
 
-if(typeof module!='undefined'&&module.exports)module.exports={US_V,usNum,usCode,usC,usQ,usDays,usDef,usAcctDef,usOn,usNewId,usPx,usClean,usAcctCalc,usCalc,usAlloc,usFx,usAlerts,usAllView,usDiff};
+// ---------- B 批：自動現價、要注意的事、跨市場主題、金額走勢、貼上更新
+// 自動價格檔 {d, px:{代號:收盤}, pv:{代號:前一日收盤}}；類股代號（BRK.B／BRK-B）兩種寫法都查得到
+function usAuto(file){if(!file||!file.px||!file.d)return null;const px={},pv={};for(const k in file.px){px[k]=file.px[k];if(k.includes('.'))px[k.replace(/\./g,'-')]=file.px[k]}
+ for(const k in file.pv||{}){pv[k]=file.pv[k];if(k.includes('.'))pv[k.replace(/\./g,'-')]=file.pv[k]}return{d:file.d,px,pv,upd:file.upd||'',src:file.src||''}}
+// a 到 b 之間有幾個平日（不含 a、含 b）
+function usWeekdays(a,b){const n=usDays(a,b);if(n==null||n<=0)return 0;let c=0;const t=new Date(a+'T00:00:00Z');for(let i=0;i<n;i++){t.setUTCDate(t.getUTCDate()+1);const w=t.getUTCDay();if(w>=1&&w<=5)c++}return c}
+const US_MAC={fomc:'聯準會利率決議',cpi:'美國 CPI（通膨）',jobs:'美國就業報告'};
+// 總經事件換成台灣日期：聯準會是美東下午 2 點＝台灣隔天凌晨；CPI、就業是美東早上 8:30＝台灣當天晚上
+function usMacTw(e){if(e.k!='fomc')return{d:e.d,when:'晚上'};const t=new Date(e.d+'T00:00:00Z');t.setUTCDate(t.getUTCDate()+1);return{d:t.toISOString().slice(0,10),when:'凌晨'}}
+const usWOpt=us=>{const w=(us&&us.watch)||{},mv=usNum(w.mv),cap=usNum(w.cap);return{mv:mv>0?mv:5,cap:cap>0?cap:30}};
+// 要注意的事：持股財報（前後）、總經、單日大漲跌、單一持股占比、價格沒更新。ev＝{earn:{代號:{d,t}}}，mac＝{ev:[{d,k}]}
+function usWatch(us,T,auto,ev,mac,today){const W=[],o=usWOpt(us),E=(ev&&ev.earn)||{};
+ if(auto&&auto.d&&T.rows.some(r=>r.src=='a')&&usWeekdays(auto.d,today)>3)W.push({k:'stale',pr:1,t:`美股價格停在 ${auto.d}，超過 3 個平日沒更新`});
+ for(const r of T.rows){const e=E[r.n]||E[r.n.replace(/-/g,'.')];if(e&&e.d){const n=usDays(today,e.d),tm=e.t=='pre'?'盤前':e.t=='post'?'盤後':'';
+   if(n>=0&&n<=14)W.push({k:'earn',pr:n<=1?1:2,n:r.n,d:e.d,days:n,t:`${r.n} 財報 ${e.d}${tm?'（美東'+tm+'）':''}${n==0?'，今天':n==1?'，明天':`，${n} 天後`}`});
+   else if(n<0&&n>=-5)W.push({k:'earnDone',pr:1,n:r.n,d:e.d,days:n,t:`${r.n} 財報已在 ${e.d} 公布：做一次「財報後檢查」`})}
+  if(auto&&r.src=='a'){const pv=usNum(auto.pv[r.n]);if(pv>0){const c=(r.px-pv)/pv*100;if(Math.abs(c)>=o.mv)W.push({k:'move',pr:1,n:r.n,chg:c,t:`${r.n} 單日 ${c>=0?'+':''}${c.toFixed(1)}%（${auto.d}）`})}}
+  if(r.w!=null&&r.w>=o.cap)W.push({k:'cap',pr:2,n:r.n,w:r.w,t:`${r.n} 占美股持股 ${r.w.toFixed(0)}%，超過你設的 ${o.cap}%`})}
+ for(const e of (mac&&mac.ev)||[]){if(!US_MAC[e.k])continue;const tw=usMacTw(e),n=usDays(today,tw.d);if(n>=0&&n<=7)W.push({k:'macro',pr:n<=1?1:2,d:tw.d,mk:e.k,days:n,t:`${US_MAC[e.k]}：台灣 ${tw.d} ${tw.when}${n==0?'（今天）':n==1?'（明天）':''}${e.tent?'（暫定）':''}`})}
+ return W.sort((a,b)=>a.pr-b.pr||(a.days??0)-(b.days??0))}
+// 跨市場主題集中度：twGrp＝{主題:新台幣}（台股主動持股，現有函式算的），美股用 attr.tag；分母 tot＝新台幣全資產
+function usThemes(twGrp,T,fx,tot){const M={},f=fx?fx.v:null,get=g=>M[g]||(M[g]={g,tw:0,us:0});
+ for(const g in twGrp||{})get(g).tw+=+twGrp[g]||0;
+ if(f)for(const r of T.rows)if(r.mvC>0)get(r.tag||'美股未標籤').us+=r.mvC/100*f;
+ return Object.values(M).map(x=>Object.assign(x,{v:x.tw+x.us,p:tot>0?(x.tw+x.us)/tot*100:0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v)}
+// 金額走勢：同一天只留一筆；超過一年的每個月只留最後一筆
+function usHistAdd(hist,pt,today){const M={};for(const h of hist||[])if(h&&h.d)M[h.d]=h;if(pt&&pt.d)M[pt.d]=pt;let L=Object.values(M).sort((a,b)=>a.d<b.d?-1:1);
+ const cut=new Date((today||pt.d)+'T00:00:00Z');cut.setUTCFullYear(cut.getUTCFullYear()-1);const c=cut.toISOString().slice(0,10),last={};
+ for(const h of L)if(h.d<c)last[h.d.slice(0,7)]=h.d;return L.filter(h=>h.d>=c||last[h.d.slice(0,7)]==h.d)}
+// 貼上更新（投資帳本 v1 的 positions 其中一筆）：整個帳戶覆寫；partial＝只更新出現的代號，其他不動
+// 沒帶 cost、avg 的保留原本的成本；回傳更新後的 items、cash、變動清單、要寫入的手填現價
+function usPasteApply(A,pos,partial){const old=usClean(A?A.items:[]),O={};for(const x of old)O[x.n]=x;const seen={},items=[],px={},bad=[];
+ for(const it of (pos&&pos.items)||[]){const n=usCode(it&&(it.code||it.n)),q=usNum(it&&(it.qty??it.q));if(!n){bad.push('有一筆沒有代號');continue}if(q==null||q<0){bad.push(n+' 沒有股數');continue}
+  const cost=usNum(it.cost),avg=usNum(it.avg),p=usNum(it.price);let c0=cost!=null&&cost>0?cost:avg!=null&&avg>0?avg*q:(O[n]?O[n].c0:null);
+  if(seen[n]){bad.push(n+' 重複出現，已合併');const k=items.find(x=>x.n==n);if(k){k.q+=q;k.c0=k.c0!=null&&c0!=null?k.c0+c0:null}}else if(q>0){seen[n]=1;items.push({n,q,c0})}else seen[n]=1;
+  if(p>0)px[n]=p}
+ if(partial)for(const x of old)if(!seen[x.n])items.push(x);
+ const cash=pos&&usNum(pos.cash)!=null?usNum(pos.cash):(A?usNum(A.cash):null),after={name:A?A.name:(pos&&pos.account)||'',cash,items:usClean(items)};
+ return{after,diff:A?usDiff(A,after):after.items.map(x=>`${x.n} 新增 ${x.q} 股`).concat(cash!=null?[`現金 ${cash}`]:[]),px,bad}}
+
+if(typeof module!='undefined'&&module.exports)module.exports={US_V,usNum,usCode,usC,usQ,usDays,usDef,usAcctDef,usOn,usNewId,usPx,usClean,usAcctCalc,usCalc,usAlloc,usFx,usAlerts,usAllView,usDiff,usAuto,usWeekdays,US_MAC,usMacTw,usWOpt,usWatch,usThemes,usHistAdd,usPasteApply};
