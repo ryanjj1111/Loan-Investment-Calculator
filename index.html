@@ -111,6 +111,11 @@ button.lk{border:0;background:none;color:var(--pri);padding:0 2px;font-size:12px
 .tmst{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;margin:2px 0 4px}.tmr{border-top:1px dashed var(--line);padding:5px 0;font-size:12.5px;line-height:1.55}.tmr button{font-size:12px;padding:2px 8px;margin:2px 4px 0 0}
 .asal{border:1px solid #fca5a5;background:#fef2f2;color:#991b1b;border-radius:8px;padding:7px 9px;margin:8px 0;font-size:12.5px;line-height:1.6}.aspc{cursor:pointer}.aspa{display:inline-block;transition:transform .15s}.aspc.on .aspa{transform:rotate(90deg)}.aspd{display:none;text-align:left;font-size:11.5px;margin-top:4px;border-top:1px dashed var(--line);padding-top:3px}.aspc.on .aspd{display:block}.aspd b{font-size:12px!important}
 .aidf{border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:8px 0;font-size:12.5px}.aidf:empty{display:none}.aidl{margin-top:3px}.aidok{color:var(--ok)}.aih{margin:0 0 4px 22px}.asck .aiq{font-size:12.5px;padding:3px 8px}
+.avn{margin:0 0 10px}.avn button{padding:8px 4px;font-size:14px;font-weight:700}
+body[data-av=today] #pgA>:not(#avNav):not(#asAl):not(#asFix):not(#usToday),body[data-av=tw] #pgA>#asAl,body[data-av=tw] #pgA>#asFix,body[data-av=tw] #pgA>#usToday,body[data-av=tw] #pgA>#usView,body[data-av=tw] #pgA>#allView,body[data-av=us] #pgA>:not(#avNav):not(#usView),body[data-av=all] #pgA>:not(#avNav):not(#allView){display:none}
+body[data-av=us] #twFab,body[data-av=all] #twFab,body:not([data-av=us]) #usFab{display:none}
+.usr{display:grid;grid-template-columns:1.1fr 1fr 1.2fr 1fr 34px;gap:4px;margin:3px 0;align-items:center}.usr input{padding:6px 4px;min-width:0;width:100%}.usr button{padding:5px 0}.usr.h span{padding-left:4px}
+.allb{font-size:26px;font-weight:800;margin:4px 0}.alll{display:flex;justify-content:space-between;gap:8px;cursor:pointer}
 .asfab{position:fixed;left:0;right:0;bottom:0;z-index:7;display:flex;gap:8px;justify-content:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);box-shadow:0 -2px 8px #0001}.asfab button{flex:1;max-width:220px;padding:10px 8px;font-size:14px}
 body.ws-as{padding-bottom:64px}body.ws-as #toast{bottom:76px}button.pri{background:var(--pri);color:#fff;border-color:var(--pri);font-weight:700}
 .ov{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:60;display:none;align-items:flex-start;justify-content:center;padding:16px 8px;overflow:auto}
@@ -213,10 +218,12 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 </div>
 
 <div id="pgA" class="asw">
+ <div class="seg avn" id="avNav"></div>
  <div class="p" id="asTrend"></div>
  <div class="p" id="asTop"></div>
  <div id="asAl"></div>
  <div id="asFix"></div>
+ <div id="usToday"></div>
  <div class="p" id="asAlloc"></div>
  <div class="p" id="asRisk"></div>
  <div class="p" id="asInv"><div class="ash"><b class="fhx" id="asInvT" onclick="foldT('inv')">▾ 📦 庫存</b><div class="asgs" id="asGrp"></div><label class="ck"><input type="checkbox" id="asClosed" onchange="asShowClosed(this.checked)">顯示已出清</label></div><div class="chips asflt" id="asFlt"></div>
@@ -232,6 +239,8 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
  <div class="p"><details id="asHoldD"><summary>📋 持股明細表（逐檔修改現價、看成本與配置目標）</summary>
   <div class="h" style="margin:4px 0">股數＝期初持股＋交易紀錄。現價會自動帶入每個交易日的收盤價，也可以在這裡手動修改；手動修改的會標示「手填」。</div><div class="w"><table class="trh" id="trh"></table></div><div id="trMoreB" style="margin-top:4px"></div><div class="h" id="mvLine"></div><div class="h" id="trSum"></div>
   <div class="h">股票名稱：證交所、櫃買中心開放資料（2026-11-03，上市＋上櫃股票與 ETF 共 2,375 檔）；找不到的可在「✎」自訂名稱。</div></details></div>
+ <div id="usView"></div>
+ <div id="allView"></div>
 </div>
 
 <div id="pgST" class="stw">
@@ -247,7 +256,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
   <div class="p"><b>依論點</b><div class="w"><table id="stThT" class="stt"></table></div><div class="h" style="margin-top:4px">持有未滿 6 個月顯示期間報酬（未年化）。點一列可打開該論點。</div></div></div>
 </div>
 
-<div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button><button onclick="location.href='v20261114/index.html'" title="美股整合前的版本，資料和這裡是同一份">🕘 開啟 11/14 的舊版</button></div>
+<div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button><button class="pro" id="usAddB" onclick="usStart()">🇺🇸 ＋新增美股帳戶</button><button onclick="location.href='v20261114/index.html'" title="美股整合前的版本，資料和這裡是同一份">🕘 開啟 11/14 的舊版</button></div>
 <div class="h" style="margin-top:6px">資料只存在這個瀏覽器。每次修改或結算後，請按「⬇️ 匯出設定檔」存到雲端硬碟或電腦；換手機、換電腦時用「⬆️ 匯入」還原。「🕘 開啟 11/14 的舊版」是美股整合前的版本，和這裡共用同一份資料，可以隨時打開對照；按手機的上一頁回到新版。<span id="bkS"></span><br>本工具僅供試算，非投資或稅務建議。</div><div id="iosHint" class="stal" style="display:none"></div></div>
 
 <div id="toast"><span id="toastT"></span><button onclick="undo()">復原</button></div>
@@ -401,22 +410,25 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <label class="tg" style="margin-top:8px;flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="gdn" style="width:auto">下次開啟不再自動顯示</label>
 <button style="margin-top:8px" onclick="closeGd()">我知道了</button></div></div>
 
-<div class="asfab asw"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
+<div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button></div>
+<div class="asfab asw" id="twFab"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261114a"></script>
-<script src="data/stocks.js?v=20261114a"></script>
-<script src="js/engine.js?v=20261114a"></script>
-<script src="js/ui.js?v=20261114a"></script>
-<script src="js/strategy-engine.js?v=20261114a"></script>
-<script src="js/asset-engine.js?v=20261114a"></script>
-<script src="js/prices.js?v=20261114a"></script>
-<script src="js/check.js?v=20261114a"></script>
-<script src="js/outlook.js?v=20261114a"></script>
-<script src="js/strategy-ui.js?v=20261114a"></script>
-<script src="js/asset-ui.js?v=20261114a"></script>
-<script src="js/eval.js?v=20261114a"></script>
-<script src="js/ai-import.js?v=20261114a"></script>
-<script src="js/ai-ask.js?v=20261114a"></script>
-<script src="js/back.js?v=20261114a"></script>
-<script src="js/main.js?v=20261114a"></script>
+<script src="data/etf-ref.js?v=20261114b"></script>
+<script src="data/stocks.js?v=20261114b"></script>
+<script src="js/engine.js?v=20261114b"></script>
+<script src="js/ui.js?v=20261114b"></script>
+<script src="js/strategy-engine.js?v=20261114b"></script>
+<script src="js/asset-engine.js?v=20261114b"></script>
+<script src="js/us-engine.js?v=20261114b"></script>
+<script src="js/prices.js?v=20261114b"></script>
+<script src="js/check.js?v=20261114b"></script>
+<script src="js/outlook.js?v=20261114b"></script>
+<script src="js/strategy-ui.js?v=20261114b"></script>
+<script src="js/asset-ui.js?v=20261114b"></script>
+<script src="js/us-ui.js?v=20261114b"></script>
+<script src="js/eval.js?v=20261114b"></script>
+<script src="js/ai-import.js?v=20261114b"></script>
+<script src="js/ai-ask.js?v=20261114b"></script>
+<script src="js/back.js?v=20261114b"></script>
+<script src="js/main.js?v=20261114b"></script>
 </body></html>

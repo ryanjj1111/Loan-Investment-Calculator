@@ -72,7 +72,9 @@ function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)s
  $('asList').innerHTML=Object.keys(grp).sort().map(k=>{const g=grp[k],mv=g.L.reduce((a,r)=>a+(r.mv||0),0),un=g.L.reduce((a,r)=>a+(r.ub||0),0);g.L.sort(so);
   const act=g.L.every(r=>r.ac=='a'),gp=act&&k!='2'&&k!='0'&&E.tot>0?mv/E.tot*100:null;
   return`<div class=asgh><span>${esc(g.l)}${gp!=null?' <small class=h>占主動 '+gp.toFixed(0)+'%</small>':''}</span><span>${W2(mv)} 萬　<span class="${asC(un)}">${asY(un)}</span></span></div>${g.L.map(r=>asRow(r,z.p.mv,E)).join('')}`}).join('')||(asF!='all'?'<div class=h style="margin:8px 0">沒有符合這個篩選的持股。</div>':'')||'<div class=h style="margin:8px 0">還沒有持股。按「＋記交易」記下第一筆，或在信貸頁的「撥款前狀態」填期初持股。</div>';
- if(asCur&&$('asStopD')){const T=asThesisOf(S,asCur.c),px=num((S.px||{})[asCur.c]),st=T?num(T.stop):null;$('asStopD').innerText=px&&st?`現價距離停損 ${((st/px-1)*100).toFixed(1)}%`:''}}
+ if(asCur&&$('asStopD')){const T=asThesisOf(S,asCur.c),px=num((S.px||{})[asCur.c]),st=T?num(T.stop):null;$('asStopD').innerText=px&&st?`現價距離停損 ${((st/px-1)*100).toFixed(1)}%`:''}
+ // 導覽（今日｜總覽｜台股｜美股）與美股、總覽兩格：us-ui.js
+ if(typeof avAfter=='function')avAfter()}
 // 帳戶現金（萬）：這一期結算填的；還沒填就沿用最近一次儲存的結算
 function asCash(){const L=typeof cashLast=='function'?cashLast(S):null,N=cashAt(S);if(!L)return{v:null,cur:null,d:'',old:false};
  return{v:N.t/1e4,a:N.a/1e4,p:N.p/1e4,est:N.est,legacy:L.old,cur:L.src=='cur'?L.t:null,d:L.d,old:dDays(L.d,TODAY)>30,L}}
