@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#7c3aed"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="投資帳本">
+<title>投資帳本｜資產・策略・信貸</title>
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--soft:#f8fafc;--line:#e2e8f0;--tx:#1e293b;--mut:#64748b;--pri:#7c3aed;--ok:#16a34a;--bad:#dc2626;--warn:#d97706;--acc:#2563eb}
+*{box-sizing:border-box;font-family:-apple-system,"Segoe UI","Noto Sans TC",sans-serif}
+body{margin:0 auto;padding:10px;background:var(--bg);color:var(--tx);font-size:13px;max-width:780px}
+h2{text-align:center;font-size:17px;margin:6px 0}
+.p{background:var(--card);border-radius:10px;padding:10px;margin-bottom:10px;box-shadow:0 1px 4px #0001}
+.cd{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.c{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center;position:relative}
+.c b{display:block;font-size:14px;margin-top:3px}.c small{color:var(--mut);font-size:11px}
+.ib{cursor:pointer;color:var(--acc);font-size:11px;margin-left:3px;user-select:none}
+.ix{font-size:10.5px;color:#334155;background:#eef2ff;border-radius:6px;padding:4px 6px;margin-top:4px;text-align:left;line-height:1.5}
+.bad{color:var(--bad)}.ok{color:var(--ok)}.wn{color:var(--warn)}
+.hl{border-radius:8px;padding:7px 9px;font-size:12.5px;font-weight:700;margin-top:6px}
+.hl.g{background:#dcfce7;color:#166534}.hl.y{background:#fef3c7;color:#92400e}.hl.r{background:#fee2e2;color:#991b1b}.hl small{display:block;font-weight:400;margin-top:2px}
+canvas{width:100%;height:190px;display:block;touch-action:pan-y}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:6px}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+label{display:flex;flex-direction:column;font-size:11px;color:#475569;gap:2px}
+input,select,button{padding:5px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;width:100%;background:#fff;color:var(--tx)}
+input:disabled{background:#eef2f7;color:#475569}
+button{width:auto;background:#f1f5f9;cursor:pointer}
+summary{font-weight:700;padding:5px 0;cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:12px;text-align:right;white-space:nowrap}
+th,td{padding:4px;border-bottom:1px solid #eef2f7}th{background:#f1f5f9;font-weight:600}.w{overflow-x:auto}
+.tg{display:flex;gap:10px;flex-wrap:wrap}.tg label{flex-direction:row;align-items:center;font-size:12px;gap:4px}.tg input{width:auto}
+.ck{flex-direction:row;align-items:center;gap:4px;font-size:12px}.ck input{width:auto}
+.row{display:grid;gap:3px;margin-bottom:3px;align-items:center}
+.r-etf{grid-template-columns:2fr 1fr 1fr 1fr 34px 30px}.r-tl{grid-template-columns:1.4fr 1fr 30px}.r-lg{grid-template-columns:1.45fr 1.25fr .9fr 1.2fr 30px}
+.r-h1{grid-template-columns:2fr 1fr 30px}.r-h2{grid-template-columns:1fr 1fr 1fr}
+.er-t td,.er-t th{padding:3px 4px}.er-t tr.x{background:#f8fafc}.er-t td.l{text-align:left}.tagr{display:inline-block;font-size:10px;padding:0 4px;border-radius:4px;background:#fef3c7;color:#92400e;margin-left:3px}.chips{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0}.chips button{font-size:11.5px;padding:3px 8px}.chips button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.lkw{display:flex;gap:3px}.lkw button{padding:3px 5px;font-size:13px}
+.hb{border:1px solid var(--line);border-radius:8px;padding:6px;margin-bottom:6px;background:var(--soft)}
+.h{font-size:10.5px;color:var(--mut);line-height:1.5}.sub{font-weight:700;font-size:12px;margin:8px 0 4px}
+.st{font-weight:700;font-size:13px;margin:12px 0 4px;color:var(--pri)}
+.tabs{display:flex;gap:6px;margin-bottom:10px}.tabs button{flex:1;font-weight:700;padding:8px}.tabs button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.seg{display:flex;margin:6px 0}.seg button{flex:1;border-radius:0}.seg button:first-child{border-radius:6px 0 0 6px}.seg button:last-child{border-radius:0 6px 6px 0}.seg button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.lg{font-size:11px;text-align:center;color:var(--mut)}.lg i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin:0 3px 0 8px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:6px}.top button{font-size:12px;padding:3px 8px}.top .seg{margin:0;flex:0 0 auto}.top .seg button{font-size:11.5px;padding:3px 8px}
+body.simple .pro{display:none!important}body:not(.simple) .simp{display:none!important}body.simple #pgR,body.simple #pgS{display:none!important}body.simple #pgF{display:block!important}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:8px}.hdr h2{text-align:left;margin:6px 0}.hdr .seg{margin:0;flex:0 0 auto}.hdr .seg button{font-size:12px;padding:4px 10px}
+.top{flex-wrap:wrap}.top .seg button{white-space:nowrap}.segs{display:flex;gap:6px;flex-wrap:wrap}#rngS button{min-width:34px}
+#cvi{font-size:11.5px;min-height:17px;margin:2px 0;display:flex;flex-wrap:wrap;gap:1px 6px;align-items:center;color:#334155}#cvi .x{margin-left:auto;cursor:pointer;color:var(--mut);padding:0 6px;font-size:13px}
+.lg span{cursor:pointer;white-space:nowrap;display:inline-block;user-select:none}.lg span.off{opacity:.35;text-decoration:line-through}
+.verdict{background:#eef2ff;border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.7;margin-top:6px}
+.gs{font-size:12px;color:#64748b;background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:6px;padding:6px;cursor:pointer;align-self:end}
+.r-in{display:grid;grid-template-columns:88px 80px 1fr 76px 84px 100px 30px;gap:3px;align-items:center;margin-bottom:3px}.r-in select,.r-in input{padding:4px;font-size:12.5px;width:100%}.r-in .w-n{font-size:12px;color:#334155}.r-in button{justify-self:end}
+@media(min-width:561px){.mob{display:none}}
+@media(max-width:560px){.r-in{grid-template-columns:1fr 1fr 1fr;padding-bottom:4px;border-bottom:1px dashed var(--line)}.r-in.h{display:none}}
+.gg{position:relative;height:52px;margin:20px 8px 2px;font-size:11px}.gl{position:absolute;left:0;right:0;top:9px;height:4px;background:#e2e8f0;border-radius:2px}.gm{position:absolute;top:5px;width:12px;height:12px;border-radius:50%;transform:translateX(-50%)}.gm.ga{width:0;height:0;border-radius:0;background:none!important;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:12px solid #16a34a;top:-1px}.gt{position:absolute;font-size:11px!important;font-weight:400;white-space:nowrap;color:#475569;line-height:1.2}
+.trw>summary{font-weight:700}.tgd{border:1px solid var(--line);border-radius:8px;margin:6px 0;background:var(--soft)}.tgd>summary{padding:6px 8px;font-size:12.5px}
+.tr{border-top:1px solid var(--line);padding:5px 6px}.trl{display:flex;flex-wrap:wrap;gap:3px;align-items:center}.trl select,.trl input{padding:4px;font-size:12.5px}
+.trl .w-ac{width:82px}.trl .w-k{width:62px}.trl .w-c{width:80px}.trl .w-n{flex:1 1 90px;font-size:12px;color:#334155;min-width:80px}.trl .w-q{width:84px}.trl .w-p{width:84px}
+.trl .fe{font-size:11.5px;color:var(--mut);cursor:pointer;white-space:nowrap;padding:0 4px}.trl button{padding:3px 7px;font-size:12px}.tre{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}
+.sug{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}.sug button{font-size:11.5px;padding:2px 6px;background:#eef2ff;border-color:#c7d2fe}
+.trh td:first-child,.trh th:first-child{position:sticky;left:0;background:#fff;text-align:left;z-index:1}.trh tr.x td{background:#f1f5f9;font-weight:700;text-align:left}.trh tr.sr td{font-weight:700;border-top:1px solid #cbd5e1}.trh input{width:70px;padding:3px;font-size:12px;text-align:right}.trh small{color:var(--mut)}
+.r-t1{grid-template-columns:1.35fr 1.05fr .85fr 30px}.r-t2{grid-template-columns:1fr 1fr 1fr}.r-t3{grid-template-columns:1fr 1fr}.trh td,.trh th{padding:3px 4px}.r-etf3{grid-template-columns:2fr 1fr 1.3fr 30px}
+.chz{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.chc{display:flex;flex-direction:column;gap:4px;text-align:left;padding:10px;border-radius:10px;border:2px solid var(--line);background:#fff;width:100%;cursor:pointer}.chc:hover{border-color:var(--pri)}.chc b{font-size:15px}.chc span{font-size:12.5px;font-weight:600}.chc small{color:var(--mut);font-size:11.5px;line-height:1.6}
+@media(max-width:420px){.chz{grid-template-columns:1fr}}
+#chp.pin{position:sticky;top:0;z-index:5;box-shadow:0 3px 10px #0002}#chp.pin #gearp{max-height:42vh;overflow:auto}
+@media(max-width:600px){#chp.pin canvas{height:150px}}
+.top button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.sct td.l,.sct th.l{text-align:left;position:sticky;left:0;z-index:1;background:#fff;box-shadow:1px 0 0 var(--line)}.sct th.l{background:#f1f5f9}.sct th.sel,.sct td.sel{background:#fef2f2}.sct td{vertical-align:top}.sct small{color:var(--mut)}
+.ru{border:1px solid var(--line);border-radius:8px;padding:6px;margin-bottom:6px;background:var(--soft)}.ru.off{opacity:.55}.ru .hd{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.r-ru{grid-template-columns:1.6fr 1fr}.pill{font-size:11px;border-radius:10px;padding:1px 7px;white-space:nowrap}.pill.y{background:#fef3c7;color:#92400e}.pill.g{background:#dcfce7;color:#166534}.pill.n{background:#f1f5f9;color:#64748b}
+#gearp{display:none;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px;background:var(--soft)}
+#toast{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);background:#1e293b;color:#fff;border-radius:8px;padding:8px 12px;font-size:13px;display:none;z-index:8;gap:10px;align-items:center}
+#toast button{background:#fff;color:#1e293b;padding:3px 10px}
+.md{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:9;padding:12px}
+.md>div{background:#fff;border-radius:12px;padding:14px;max-width:580px;max-height:88vh;overflow:auto;line-height:1.6}
+.md h3{margin:10px 0 2px;font-size:14px}.md ul,.md ol{margin:2px 0;padding-left:20px}
+body.ws-st .lw,body.ws-as .lw{display:none!important}body:not(.ws-st) .stw{display:none!important}body:not(.ws-as) .asw{display:none!important}
+.wsw{margin:0 0 10px}.wsw button{font-weight:700;padding:7px 4px;font-size:13.5px}
+.stbd{display:inline-block;min-width:16px;padding:0 4px;margin-left:4px;border-radius:8px;background:var(--bad);color:#fff;font-size:11px;line-height:16px;font-weight:700}
+.stc{border:1px solid var(--line);border-radius:8px;padding:4px 8px;margin:6px 0;background:#fff}.stc[open]{background:var(--soft)}.stc>summary{font-weight:600;font-size:13px}
+.stm{font-size:12px;margin:2px 0 6px;color:#334155;line-height:1.6}
+.stw textarea,.stc textarea{width:100%;padding:5px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;background:#fff;color:var(--tx)}
+.stc label{margin-top:4px}.stc .g label{margin-top:0}
+.r-pl{display:grid;grid-template-columns:auto 1fr 70px 1fr auto;gap:4px;align-items:center;margin-bottom:3px}
+.r-rv{display:grid;grid-template-columns:140px 80px 110px 1fr auto;gap:4px;align-items:center;margin-bottom:3px}
+.r-tr{display:grid;grid-template-columns:140px 80px 1fr 1fr 1fr;gap:4px;align-items:end;padding:3px 0;border-bottom:1px dashed var(--line)}.r-tr input,.r-tr select,.r-pl input,.r-pl select,.r-rv input,.r-rv select{padding:4px;font-size:12.5px}
+@media(max-width:560px){.r-pl{grid-template-columns:auto 1fr 60px}.r-pl select{grid-column:1/3}.r-rv{grid-template-columns:1fr 1fr 1fr}.r-tr{grid-template-columns:1fr 1fr 1fr}.r-rv [data-p$=".note"]{grid-column:1/3}}
+.stS{padding:0 5px;border-radius:6px;font-size:11.5px;background:#f1f5f9}.stS.build{background:#dbeafe;color:#1e40af}.stS.hold{background:#dcfce7;color:#166534}.stS.exit{background:#e5e7eb;color:#475569}.stS.plan{background:#fef3c7;color:#92400e}
+.stal{border:1px solid #fcd34d;background:#fffbeb;border-radius:8px;padding:6px 8px;font-size:12.5px}.stal>div{margin-top:3px}.stal button{font-size:11.5px;padding:1px 6px}
+.stv{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}.stv input{flex:1;min-width:160px;width:auto}
+.thc{font-size:11px;padding:0 5px;border-radius:6px;background:#f1f5f9;color:var(--mut);cursor:pointer;white-space:nowrap}.thc.on{background:#ede9fe;color:var(--pri)}
+.ths{font-size:11px;padding:0 5px;margin-left:2px}
+.stt th,.stt td{font-size:11.5px}#stPerfT td:first-child,#stThT td:first-child,#stPerfT th:first-child{text-align:left}
+#stTplW select{width:auto;flex:1;min-width:140px}
+.ast{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px}.ast .c b{font-size:15px}
+@media(max-width:560px){.ast{grid-template-columns:1fr 1fr}}
+.asl{font-size:12.5px;margin-top:5px;line-height:1.6}.asl .h{font-size:11.5px}
+button.lk{border:0;background:none;color:var(--pri);padding:0 2px;font-size:12px;text-decoration:underline;cursor:pointer}
+.fh{display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;-webkit-user-select:none;user-select:none}.fh .h{font-size:12px;text-align:right}.fhx{cursor:pointer}.p.fd>*:not(.ash){display:none}.p.fd .ash>*:not(b){display:none}
+.mtb{font-size:12px;margin-top:4px}.mtb td,.mtb th{padding:2px 6px;text-align:right}.yrr:hover{background:var(--line)}
+.trc{width:100%;height:auto;display:block;touch-action:pan-y}.trc text{font-size:9px;fill:var(--mut)}.trlg{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;margin-top:4px}.trlg i{display:inline-block;width:14px;height:0;border-top:2px solid;vertical-align:middle;margin-right:3px}.trrd{font-size:12.5px;min-height:18px;margin-top:2px}.rkl{font-size:12.5px;padding:2px 0;border-top:1px dashed var(--line)}
+.asbar{display:flex;height:14px;border-radius:7px;overflow:hidden;margin-top:6px;background:#e2e8f0}.asbar span{display:block;height:100%}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;vertical-align:baseline}
+.ash{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap}.ash .seg{margin:0}.ash .ck{margin:0}
+.seg.sm button{padding:4px 8px;font-size:12px}
+.asgs{display:flex;gap:6px;flex-wrap:wrap;font-size:12.5px}.asgs select{padding:3px 4px;font-size:12.5px}.asflt{margin:4px 0}.asflt button{padding:3px 8px;font-size:12px}.ckmb{padding:1px 6px;font-size:11.5px;margin-left:4px}.ckfx{margin:3px 0 2px 22px;padding:4px 6px;border-left:3px solid #f59e0b;background:#fffbeb;border-radius:4px;font-size:12.5px}.ckfx button{padding:2px 8px;font-size:12px;margin:1px 2px}.ckfx input{padding:3px 5px;font-size:12.5px;margin:2px 0}.ckfx.ckhi{outline:2px solid #f59e0b}.asfx{background:#fffbeb;border-color:#fcd34d}.asfx>summary{cursor:pointer}.ckto{margin:3px 0;font-size:13px}.ckto button{padding:2px 8px;font-size:12px;margin:1px 2px}.ckrec{margin:4px 0;font-size:12.5px}.ckrec>summary{cursor:pointer}
+.asgh{display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin:10px 0 2px;padding-bottom:2px;border-bottom:1px solid var(--line)}
+.asr{border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:5px 0;background:#fff;cursor:pointer}.asr:hover{border-color:var(--pri)}
+.asr .a1,.asr .a2{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}.asr .a1{font-size:13.5px}.asr .a2{font-size:12px;color:#475569;margin-top:2px}.asr .a2.wn{color:var(--bad)}
+.asbtn{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.aitabs{display:flex;gap:6px;margin:6px 0 8px}.aitabs button{flex:1;font-weight:700;padding:8px}.aitabs button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.aiseg{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}.aiseg button{padding:6px 10px;font-size:13px}.aiseg button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.aitg{font-size:11px;font-weight:600;border-radius:8px;padding:1px 6px;white-space:nowrap}.aitg.t1{background:#fde68a;color:#78350f}.aitg.t2{background:#dbeafe;color:#1e3a8a}.aitg.t3{background:#e5e7eb;color:#374151}
+.aapv pre{white-space:pre-wrap;word-break:break-word;max-height:55vh;overflow:auto;font-size:12px;background:var(--bg);padding:8px;border-radius:6px}.aipk{display:flex;flex-wrap:wrap;gap:4px 12px;margin:4px 0}.ovh .aiq{margin-left:auto;font-size:13px;padding:4px 10px}
+.tmst{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;margin:2px 0 4px}.tmr{border-top:1px dashed var(--line);padding:5px 0;font-size:12.5px;line-height:1.55}.tmr button{font-size:12px;padding:2px 8px;margin:2px 4px 0 0}
+.asal{border:1px solid #fca5a5;background:#fef2f2;color:#991b1b;border-radius:8px;padding:7px 9px;margin:8px 0;font-size:12.5px;line-height:1.6}.aspc{cursor:pointer}.aspa{display:inline-block;transition:transform .15s}.aspc.on .aspa{transform:rotate(90deg)}.aspd{display:none;text-align:left;font-size:11.5px;margin-top:4px;border-top:1px dashed var(--line);padding-top:3px}.aspc.on .aspd{display:block}.aspd b{font-size:12px!important}
+.aidf{border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:8px 0;font-size:12.5px}.aidf:empty{display:none}.aidl{margin-top:3px}.aidok{color:var(--ok)}.aih{margin:0 0 4px 22px}.asck .aiq{font-size:12.5px;padding:3px 8px}
+.asfab{position:fixed;left:0;right:0;bottom:0;z-index:7;display:flex;gap:8px;justify-content:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);box-shadow:0 -2px 8px #0001}.asfab button{flex:1;max-width:220px;padding:10px 8px;font-size:14px}
+body.ws-as{padding-bottom:64px}body.ws-as #toast{bottom:76px}button.pri{background:var(--pri);color:#fff;border-color:var(--pri);font-weight:700}
+.ov{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:60;display:none;align-items:flex-start;justify-content:center;padding:16px 8px;overflow:auto}
+.ovb{background:var(--bg,#f8fafc);border-radius:12px;max-width:640px;width:100%;padding:10px 12px 16px;box-shadow:0 10px 30px rgba(0,0,0,.25);max-height:calc(100vh - 32px);overflow:auto}
+.ovh{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:15px}.ovh button{padding:2px 9px}
+.asth{border:1px solid #c7d2fe;background:#eef2ff;border-radius:8px;padding:7px 9px;margin:8px 0;font-size:12.5px;line-height:1.6}.asth label{margin-top:4px}
+.asth textarea{width:100%;padding:5px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;background:#fff}
+.astl{display:grid;grid-template-columns:88px 1fr auto;gap:6px;align-items:center;font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line)}.astl button{padding:1px 7px}
+.rsc{font-size:11px;padding:0 5px;border-radius:6px;background:#fef3c7;color:#92400e;white-space:nowrap;margin-right:2px}
+.ash2{font-weight:700;font-size:13.5px}.ash2 .h{font-weight:400}
+.ctg{display:inline-block;font-size:10.5px;line-height:1.3;padding:0 4px;border-radius:4px;margin-right:3px;font-weight:600;vertical-align:1px}.ctgb{background:#dbeafe;color:#1e40af}.ctgt{background:#fef3c7;color:#92400e}.ctgc{background:#fce7f3;color:#9d174d}.ctgm{background:#e0e7ff;color:#3730a3}
+.olc{border:1px dashed #c7d2fe;border-radius:8px;padding:5px 8px;margin:6px 0;background:#fff;font-size:12.5px}.olc>summary{cursor:pointer}.oladd{margin:4px 0}.oladd>summary{cursor:pointer;color:#4f46e5}.olr{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:3px 0}.olr>span:first-child{min-width:150px}.olf{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0}.olf input{padding:4px 6px}.olr.old,.olth.old{opacity:.7}.olth{border-top:1px solid #eef2f7;padding:4px 0;margin-top:2px}.olth>summary{cursor:pointer;list-style:none}.olth>summary::-webkit-details-marker{display:none}.stv1{font-size:12.5px;font-weight:600;margin-top:2px}.stv1.ok{color:#15803d}.stv1.wn{color:#b45309}.stv1.bad{color:#b91c1c}.stv1.h{color:#64748b}
+.ckb{font-size:11px;white-space:nowrap;margin-left:2px}.ckw{display:block;font-size:11.5px}.ckl{margin:3px 0 0 2px}.ckc{border-color:#a7f3d0;background:#f7fffb}
+.asck{border:1px dashed #c7d2fe;border-radius:8px;padding:5px 8px;margin:6px 0;font-size:12.5px;background:#fff}.asck .ck{display:flex;gap:6px;align-items:flex-start;margin:3px 0;font-size:12.5px;line-height:1.45}.asck .ck input{margin-top:2px;width:auto}
+details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
+.cdd>summary{font-size:13px;font-weight:700;margin:6px 0 0;cursor:pointer}body.simple .cdd>summary{display:none}
+.r-in .w-c0{width:100%}
+@media(max-width:560px){.r-in{grid-template-columns:1fr 1fr 1fr}}
+.aii{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:5px 0;background:#fff;font-size:12.5px;line-height:1.55;cursor:pointer}.aii input{margin-top:3px;width:auto}.aii.aie{background:#fef2f2;border-color:#fca5a5}.aii.aid{background:#fffbeb;border-color:#fcd34d}.aii .bad{color:var(--bad)}
+#iosHint{font-size:12px;margin-top:6px}
+.gds{border-top:1px solid var(--line);padding:6px 0}.gds>summary{font-weight:700;font-size:15px;cursor:pointer;padding:4px 0}.gds h3{font-size:13.5px;margin:8px 0 2px}
+.gdtoc button{font-size:12px;padding:3px 8px}
+</style></head><body>
+<div class="hdr"><h2>投資帳本 <small style="font-size:12px;font-weight:600;color:var(--mut)">資產・策略・信貸</small></h2><div class="seg"><button id="uiS" onclick="setUi('simple')">簡易</button><button id="uiP" onclick="setUi('pro')">專業</button></div></div>
+<div class="seg pro wsw"><button id="wsAS" onclick="setWs('as')">📊 資產</button><button id="wsST" onclick="setWs('st')">🧭 策略<span id="stBadge"></span></button><button id="wsLN" onclick="setWs('loan')">💰 信貸</button></div>
+
+<div class="p lw" id="chp">
+ <div class="top"><div class="segs"><div class="seg pro"><button id="cvA" onclick="setCv('af')">借貸淨效益</button><button id="cvR" onclick="setCv('re')">真實淨資產</button></div><div class="seg" id="rngS"><button data-r="1" onclick="setRng('1')">1年</button><button data-r="3" onclick="setRng('3')">3年</button><button data-r="all" onclick="setRng('all')">全部</button></div></div><div style="display:flex;gap:4px"><button id="pinB" onclick="tgPin()" title="往下捲動時把圖表固定在畫面上方">📌</button><button onclick="tgGear()" title="顯示項目">⚙️</button></div></div>
+ <div id="gearp"></div>
+ <div id="cvi"></div>
+ <canvas id="cv"></canvas>
+ <div class="lg" id="lg"></div>
+</div>
+<div class="p lw">
+ <div class="h" style="text-align:center" id="cvh"></div>
+ <div id="health"></div>
+ <div class="verdict simp" id="verdict"></div>
+ <details id="cardsD" class="cdd" open><summary id="cardsS">📋 信貸重點卡片</summary><div class="cd" id="cards"></div></details>
+ <div class="h simp" id="proNote" style="margin-top:6px"></div>
+ <div id="warn" class="bad" style="margin-top:6px;font-size:12px"></div>
+</div>
+
+<div class="tabs pro lw"><button id="tbS" onclick="tab('S')">📋 結算</button><button id="tbR" onclick="tab('R')">🛡️ 風險</button><button id="tbY" onclick="tab('Y')">📅 還款明細</button><button id="tbF" onclick="tab('F')">⚙️ 設定</button></div>
+<div class="h pro lw" style="margin:-2px 2px 6px">平常：📋 結算（每月或有買賣後）→ 🛡️ 風險看虧損上限；📅 還款明細看每月本金與利息；⚙️ 設定只在信貸條件或配置改變時調整。</div>
+
+<div id="pgF" class="lw">
+ <div class="p" id="ctl"></div>
+ <div class="p simp"><b>🔵 專業版還可以</b><ul class="h" style="margin:4px 0 8px;padding-left:18px;font-size:12px"><li>每月結算，追蹤實際績效（XIRR、被動／主動對 0050）</li><li>壓力情境：市場下跌、失業、升息時會不會被迫賣股</li><li>虧損上限三段停損規則與應對動作</li><li>ETF 歷史參考、稅費、撥款前持股、提前清償、年度明細</li></ul><button onclick="setUi('pro')">切換到專業版</button> <span class="h">切換不會改變任何數字</span></div>
+</div>
+
+<div id="pgY" class="lw">
+ <div class="p"><b>📅 年度明細（萬元，信貸年度）</b> <span class=h>點一年看每個月的本金與利息</span><div class="w"><table><thead><tr><th>年</th><th>期間</th><th>信貸月付</th><th>本金</th><th>利息</th><th>信貸餘額</th><th>A 面額</th><th>B 定投收益</th><th>C 機會成本</th></tr></thead><tbody id="tb"></tbody></table></div>
+ <div class="h">淨效益來自「最新預測」：有結算紀錄時從最新一次實際結算往後推，沒有時用目前設定從撥款日推。</div></div>
+
+ <div class="p"><b>🧾 回填 Excel：信貸本金餘額（各月 15 日，元）</b>
+  <div class="w"><table><thead><tr><th>月份</th><th>已繳期數</th><th>信貸本金餘額</th></tr></thead><tbody id="liab"></tbody></table></div>
+  <div class="h">依「結算月份」起列 12 個月。實際數字以銀行對帳單為準，有差異請在結算區填「剩餘本金(覆寫)」。</div></div>
+</div>
+
+<div id="pgR" class="lw">
+ <div class="p"><b>🧯 虧損上限（停損）</b>
+  <div class="h" style="margin:4px 0">設定這筆借款最多能接受虧多少。虧損＝A 面額為負的金額（借錢投資比「完全不借」少了多少錢）。用掉一定比例時，依下方「應對規則」①②③ 提醒；觸發後要不要買回由你自己判斷。</div>
+  <div class="g" id="slIn"></div>
+  <div class="h" id="slHint" style="margin-top:4px"></div>
+  <div class="cd" id="slOut"></div>
+ </div>
+ <div class="p"><b>🛡️ 壓力情境</b>
+  <div class="h" style="margin:4px 0">模擬壞事發生時會怎樣：市場下跌、配息縮水、升息、收入中斷或減薪、突發支出。家庭每月現金不夠付「固定支出＋信貸月付」時，依序動用：口袋緩衝 → 帳戶現金 → 被動 → 主動 → 撥款前原有持股（＝被迫賣股，含交易成本）。從最新一次結算（沒有時從撥款日）往後推。</div>
+  <div class="g" id="pkw"></div>
+  <div class="sub">選擇情境（點選後可修改下方參數）</div><div class="chips" id="scChips"></div>
+  <div id="scEd"></div>
+ </div>
+ <div class="p"><b>📊 情境比較</b> <span class="h">（表格可左右滑動，點表頭切換情境）</span><div class="w" style="margin-top:4px"><table class="sct" id="scT"></table></div>
+  <div class="h" style="margin-top:4px">紅底欄＝目前選定的情境，也會以紅色虛線畫在上方圖表。最大回撤：帳戶總值（含撥款前原有部位）從高點的最大跌幅，括號內為真實淨資產最多少掉的金額。被迫賣股：為了付生活費與月付而賣出的股票金額。可撐月數：帳戶現金＋被動＋原有被動＋口袋緩衝 ÷（固定支出＋月付）。</div></div>
+ <div class="p"><b>🧯 安全邊際（以選定情境的其他條件計算）</b><div class="cd" id="scM"></div></div>
+ <div class="p"><b>📏 應對規則</b>
+  <div class="h" style="margin:4px 0">每條規則可開關、改門檻、改你自己的應對動作。「目前」用最新一次結算判斷（還沒結算時用計畫值，部分規則需結算後才能判斷）；「情境」為選定情境中第一次觸發的月份。結算頁儲存前也會列出觸發的規則。</div>
+  <div id="rulesEd"></div>
+  <div class="g" id="rbw" style="margin-top:6px"></div></div>
+</div>
+
+<div id="pgS" class="lw">
+ 
+ <div class="p"><b>🎯 結算（金額單位：萬元）</b>
+  <div class="st">① 日期、現金與現價</div><div class="g" id="s1"></div>
+  <div class="h" style="margin-top:4px" id="s1h"></div>
+  <div class="sub">持股與現價</div><div class="h" id="sPxNote"></div>
+  <details id="sAdv" style="margin-top:6px"><summary>修正（通常不用填）</summary><div class="g" id="s3"></div></details>
+  <div class="st">② 結果與儲存</div>
+  <div class="cd" id="sres"></div>
+  <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button onclick="snap()">💾 儲存本次結算</button><button onclick="freshCur()">＋開新一期</button></div>
+  <div class="h" style="margin-top:6px">真實淨資產＝(股票＋現金)−剩餘本金−累計已繳月付金−開辦費(口袋付)−淨入金−外部費用。Alpha＝真實淨資產−「沒借錢估計值」（撥款前股票×(1＋0050同期報酬)＋撥款前現金）。</div>
+  <details id="ldW" style="margin-top:8px"><summary>出入金紀錄（口袋轉入、提領、外部費用時才需要）</summary>
+  <div class="row r-lg h"><span>日期</span><span>類型</span><span>金額</span><span>備註</span><span></span></div>
+  <div id="ledger"></div><button onclick="addRow('ledger')">＋新增一筆</button>
+  <div class="h">金額單位萬元，跨期累計。入金：從口袋轉進追蹤帳戶的新資金。出金：從追蹤帳戶提領出去。外部費用：用口袋支付、與這筆投資相關的成本（例如股利所得稅、若用口袋提前還款）。</div></details>
+ </div>
+ <div class="p"><div style="display:flex;justify-content:space-between;align-items:center"><b>📚 歷次結算</b><button onclick="expCsv()">⬇️ 匯出 CSV</button></div>
+  <div class="w"><table><thead><tr><th>日期</th><th>被動</th><th>主動</th><th>現金</th><th>股息</th><th>剩餘本金</th><th>真實淨資產</th><th>Alpha面額</th><th>Alpha機會</th><th>XIRR</th><th>被動/主動/0050</th><th>備註</th><th></th></tr></thead><tbody id="snaps"></tbody></table></div></div>
+</div>
+
+<div id="pgA" class="asw">
+ <div class="p" id="asTrend"></div>
+ <div class="p" id="asTop"></div>
+ <div id="asAl"></div>
+ <div id="asFix"></div>
+ <div class="p" id="asAlloc"></div>
+ <div class="p" id="asRisk"></div>
+ <div class="p" id="asInv"><div class="ash"><b class="fhx" id="asInvT" onclick="foldT('inv')">▾ 📦 庫存</b><div class="asgs" id="asGrp"></div><label class="ck"><input type="checkbox" id="asClosed" onchange="asShowClosed(this.checked)">顯示已出清</label></div><div class="chips asflt" id="asFlt"></div>
+  <div id="asList"></div>
+  <div class="asbtn"><button onclick="pxRefresh()">🔄 更新現價</button><button onclick="setWs('loan');tab('S')">🎯 去結算</button></div>
+  <div class="h" style="margin-top:4px">點一檔股票看當初為什麼買、損益拆解與每一筆交易。</div></div>
+ <div class="p"><details class="trw" id="trWrap"><summary>📒 交易紀錄 <span class="h" id="trHead"></span></summary>
+  <div class="h" style="margin:4px 0">撥款後的每一筆買進、賣出與配息（金額單位：元）。同一天的交易歸在一組；手續費與證交稅依試算頁「稅費與手續費」自動計算，點「✎」可改成成交回報上的實際金額、改日期或加備註。結算時「本期淨買進」會自動加總兩次結算之間的交易。</div>
+  <div id="trd"></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px"><input type="date" id="trNewD" style="width:auto"><button onclick="addTr(document.getElementById('trNewD').value)">＋新增這天的交易</button></div>
+  <div class="h" id="trSum2"></div>
+ </details></div>
+ <div class="p"><details id="asHoldD"><summary>📋 持股明細表（逐檔修改現價、看成本與配置目標）</summary>
+  <div class="h" style="margin:4px 0">股數＝期初持股＋交易紀錄。現價會自動帶入每個交易日的收盤價，也可以在這裡手動修改；手動修改的會標示「手填」。</div><div class="w"><table class="trh" id="trh"></table></div><div id="trMoreB" style="margin-top:4px"></div><div class="h" id="mvLine"></div><div class="h" id="trSum"></div>
+  <div class="h">股票名稱：證交所、櫃買中心開放資料（2026-11-03，上市＋上櫃股票與 ETF 共 2,375 檔）；找不到的可在「✎」自訂名稱。</div></details></div>
+</div>
+
+<div id="pgST" class="stw">
+ <div class="p"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;flex-wrap:wrap"><b>🧭 策略</b><span class="h">策略庫、績效與所有論點；每一檔的論點也可以在「📊 資產」點股票查看</span></div>
+  <div id="stAl" style="margin-top:6px"></div></div>
+ <div class="tabs" id="stTabs"></div>
+ <div id="st_th"><div class="p"><div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap"><div class="chips" id="stChips"></div><button onclick="stAddTh()">＋新增論點</button></div>
+  <div class="h">一檔股票的一次布局＝一個論點。交易紀錄選了論點，績效就會算到這個論點與它的策略；沒選的歸「未分類」。</div><div id="stList"></div></div></div>
+ <div id="st_lib"><div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center" id="stTplW"></div>
+  <div class="h" style="margin:4px 0">改了內容後，小地方可以「儲存為小修正」；邏輯或規則改變請「建立新版本」並寫原因，舊版本會保留，原本的論點仍跟隨舊版本。</div><div id="stLib"></div></div></div>
+ <div id="st_perf"><div class="p" id="stPerfTop"></div><div class="p"><b>依策略</b><div class="w"><table id="stPerfT" class="stt"></table></div>
+  <div class="h" style="margin-top:4px">進行／出場：論點數。勝率、賺賠比只算已出場的論點（賺賠比＝平均賺的報酬率 ÷ 平均賠的報酬率）。超額＝報酬率減去「同樣的錢、同樣的時間點買賣基準 ETF」的報酬率（含基準 ETF 配息）。最大回撤：用各次結算當時填的現價與今天的現價取樣，合計報酬率從高點最多回落幾個百分點。照規則＝已出場且有填「有沒有照規則做」的論點中，填「是」的比例。</div></div>
+  <div class="p"><b>依論點</b><div class="w"><table id="stThT" class="stt"></table></div><div class="h" style="margin-top:4px">持有未滿 6 個月顯示期間報酬（未年化）。點一列可打開該論點。</div></div></div>
+</div>
+
+<div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button></div>
+<div class="h" style="margin-top:6px">資料只存在這個瀏覽器。每次修改或結算後，請按「⬇️ 匯出設定檔」存到雲端硬碟或電腦；換手機、換電腦時用「⬆️ 匯入」還原。<span id="bkS"></span><br>本工具僅供試算，非投資或稅務建議。</div><div id="iosHint" class="stal" style="display:none"></div></div>
+
+<div id="toast"><span id="toastT"></span><button onclick="undo()">復原</button></div>
+
+<div class="md" id="chz"><div style="max-width:520px">
+<h2 style="margin:0">投資帳本｜資產・策略・信貸</h2><div style="text-align:center;font-weight:700;margin-top:4px">你想怎麼使用？</div>
+<div class="chz"><button class="chc" onclick="pickUi('simple')"><b>🟢 簡易版</b><span>借錢投資划算嗎？3 分鐘試算</span><small>・填貸款與投入金額<br>・看到期時比定期定額多賺多少<br>・設定最多能虧多少</small></button>
+<button class="chc" onclick="pickUi('pro')"><b>🔵 專業版</b><span>追蹤績效、壓力測試、停損</span><small>・每月結算實際績效<br>・壓力情境與停損規則<br>・ETF 歷史參考、稅費細節</small></button></div>
+<label style="flex-direction:row;align-items:center;justify-content:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:6px 8px;background:#f1f5f9;cursor:pointer">⬆️ 已有設定檔？匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label>
+<div class="h" style="text-align:center;margin-top:8px">之後可隨時在右上角切換｜資料只存在這個瀏覽器</div></div></div>
+
+<div class="md" id="gd"><div>
+<h2 style="text-align:left;margin:0">📖 使用說明</h2>
+<div class="simp"><h3>三個步驟</h3><ol><li><b>① 貸款</b>：金額、年期、年利率、撥款日、開辦費。</li>
+<li><b>② 投入</b>：被動、主動各投入多少（剩下的自動當保留現金）、分幾個月投入、主動預期報酬；被動 ETF 填比例與含息年報酬（股價漲幅＋配息），可增減。</li>
+<li><b>③ 每月與風險</b>：每月收入與固定支出（只用來檢查付不付得起）、最多能虧貸款的幾 %。</li></ol>
+<h3>怎麼看</h3><ul><li><b>A 面額</b>：借錢投資比「錢放著不投資」多賺多少。<b>C 機會成本</b>：比「每月定期定額」多賺多少，<b>主要看 C</b>。</li>
+<li><b>划算門檻</b>：每年含息報酬至少要多少，借錢才比定期定額好。</li>
+<li><b>停損線</b>：A 跌到這條線，代表虧到你設定的上限（已含已付利息）。</li>
+<li>按住圖表左右拖動看各月數值；「1 年｜3 年｜全部」切換範圍；點圖例開關線。</li></ul>
+<h3>資料與專業版</h3><ul><li>資料只存在這個瀏覽器，請用「⬇️ 匯出設定檔」備份到雲端硬碟。</li>
+<li>專業版還有資產首頁（庫存、損益、記交易）、策略與論點、每月結算、壓力情境、停損規則、ETF 歷史參考等功能；切換不會改變任何數字。</li>
+<li>本工具僅供試算，非投資建議。</li></ul></div>
+<div class="pro">
+<div class="h" style="margin:4px 0 6px">點目錄跳到想看的段落；每一段都可以收合。</div>
+<div class="chips gdtoc"><button onclick="gdGo('g1')">🚀 開始使用</button><button onclick="gdGo('g2')">📊 資產</button><button onclick="gdGo('g3')">✍️ 記交易</button><button onclick="gdGo('g4')">🧭 策略</button><button onclick="gdGo('g5')">💰 信貸</button><button onclick="gdGo('g6')">🔁 固定流程</button><button onclick="gdGo('g7')">💾 資料與備份</button><button onclick="gdGo('g8')">📚 名詞</button></div>
+
+<details class="gds" id="g1" open><summary>🚀 開始使用</summary>
+<ul><li>專業版最上方有三個頁面：<b>📊 資產</b>（首頁：庫存、損益、記交易）、<b>🧭 策略</b>（策略、論點、績效）、<b>💰 信貸</b>（借錢投資的試算、風險、結算）。右上角可切換簡易版，兩版共用同一份資料，<b>切換不會改變任何數字</b>。</li>
+<li>資產與策略只讀交易紀錄與現價，<b>不會改變任何信貸的計算結果</b>。</li>
+<li><b>已經有設定檔</b>：到頁面最下方按「⬆️ 匯入 JSON」選 <code>my-settings.json</code>。</li>
+<li><b>第一次使用</b>：先到 💰 信貸填信貸條件與資金配置；「撥款前狀態」選逐檔明細，填撥款前就有的每一檔股數、撥款日收盤價與原始成本（券商 App 上的付出成本），資產頁的損益就會和 App 對上。之後回 📊 資產記交易。</li>
+<li><b>加入主畫面</b>：Android（Chrome）右上「⋮」→「加入主畫面」或「安裝」，之後從「投資帳本」圖示打開，資料和 Chrome 是同一份。iPhone（Safari）下方「分享」→「加入主畫面」；主畫面 App 和 Safari 是分開的儲存空間，第一次要先在 Safari 匯出、再到主畫面 App 匯入。</li></ul></details>
+
+<details class="gds" id="g2"><summary>📊 資產（首頁）</summary>
+<ul><li><b>📦 我的庫存</b>（跟券商 App 一樣）：總市值、預估損益、已實現＋股利、總損益。撥款前的持股用「原始成本」，預估損益已先扣賣出手續費（0.1425% 不打折）與證交稅（股票 0.3%、ETF 0.1%），算法和券商 App 的「預估損益」相同。沒填原始成本的期初持股會標「未填原始成本」，暫用撥款日收盤價。</li>
+<li><b>📅 撥款後績效</b>（和信貸頁一致）：從撥款日起算，撥款前持股用撥款日收盤價。可以按「隱藏」關掉；信貸金額是 0 時預設不顯示。會再拆成「撥款後有買賣的」和「撥款前持股（之後沒有再買賣）」兩部分；庫存與個股頁的「撥款後」損益只顯示撥款後有買賣的股票。<b>vs 0050</b>＝同樣的錢在同樣的時間點改買基準 ETF，現在會多賺或少賺多少；「主動」那一格回答「自己選股有沒有贏 0050」。下面一行是信貸的 A／C。</li>
+<li><b>提醒列</b>：可以直接處理。營收、財報 → 一鍵「✅ 仍成立／⚠️ 有疑慮」；除息等事件到期 →「記配息」或「✓ 完成」；論點有待確認的條件 →「確認」；已出場還沒選原因 →「補填」。</li>
+<li><b>配置</b>：被動／主動／現金的實際比例與目標，以及各族群占主動部位的比例。</li>
+<li><b>📦 庫存</b>：上方「分組」選部位、策略、族群或不分組（族群＝族群標籤；沒填標籤用個股頁的「所屬主題」，再沒有用產業別），「排序」選市值、損益 %、占比、離停損或判斷結果；下面的按鈕可以只看「✅ 可以買／加碼」「⛔ 不買」「⚠️ 有提醒」；選過的會記住。可顯示已出清的股票。每一檔：股數、均價、現價（「收盤 11/05」＝自動，「手填」＝自己改過）、市值、占比、預估損益、撥款後損益、股利、論點標籤（T001·S01 或「未分類」）。跌破停損、達到目標價、超過個股上限會標示。</li>
+<li><b>點一檔股票＝個股頁</b>：最上方是論點（當初符合的策略條件、待確認的條件、接下來的事件、為什麼買、什麼情況代表我錯了、停損、目標價，可直接修改；「✅ 論點仍成立／⚠️ 有疑慮」）；下面是損益拆解、＋買進／－賣出／💰配息、交易時間軸（🤖＝從 AI 匯入，✎ 可修改或刪除）、過去的論點。沒有論點的主動持股，選一個策略就會建立，原本的交易與期初持股一起歸入。</li>
+<li><b>自動現價</b>：每個交易日收盤後（約 14:47、16:17、18:47、21:17）自動抓證交所、櫃買中心的全市場收盤價（公開資料，不含你的持股），打開 App 就帶入，也可以按「🔄 更新」。<b>盤中不會有即時價格</b>（資料來源不允許網頁直接讀取），盤中顯示前一個交易日收盤價，需要時在持股明細表手動修改。每筆交易當天的 0050 價格也會自動帶入。</li>
+<li><b>📋 持股明細表</b>：逐檔的成本、現價（可手動修改）、配置目標與還差。<b>📒 交易紀錄</b>：見「記交易」。</li></ul></details>
+
+<details class="gds" id="g3"><summary>✍️ 記交易（三種方式）</summary>
+<h3>① ＋記交易（手動）</h3>
+<ul><li>填日期、代號（自動帶出名稱）、部位、股數、成交價；手續費與證交稅自動算。</li>
+<li><b>第一次買一檔主動股票</b>：點一個策略 → 勾選現在符合的條件（＝買進理由，未達策略門檻會提醒，仍可儲存）→ 自動建立論點。「什麼情況代表我錯了」帶入策略的理由失效規則、分批計畫依策略的「分 N 批」建立、族群依產業別帶入；停損價＝成交價 ×（1 − 策略預設停損 %），並建議最多買幾股（每筆最多虧主動部位 × 策略「每筆風險 %」）與買進後占主動部位多少 %。</li>
+<li><b>加碼</b>：自動歸到原論點並對應下一批，點選依據（照計畫加碼／逢低加碼／其他）。</li>
+<li><b>賣出</b>：畫面顯示當初理由、什麼情況代表錯了、停損、目標與目前損益；點選賣出依據（停利／停損／理由失效／調整部位／超過期限／其他）與有沒有照規則做。股數歸零時論點自動標記「已出場」。</li>
+<li><b>配息</b>：除息日、每股配息、發放日；股數自動帶入除息前的持股。</li></ul>
+<h3>② 🤖 AI 討論（📋 問 AI｜📥 貼上回覆）</h3>
+<ul><li><b>分工</b>：App 管數字和規則，AI 管查資料和挑毛病，你管決定和紀錄。</li>
+<li><b>📋 問 AI</b>（資產頁最下方「🤖 AI 討論」、個股頁「🤖 問 AI」、出場訊號旁的 🤖）：選要問什麼（出場訊號／買或加碼／月底復盤／補資料／自由提問）和範圍（有提醒的持股／這一檔／自己勾／整個組合），按「📋 複製」或「📤 分享到 AI App」。文字裡有 App 已經算好的條件結果、觸發價、前瞻資料、過去的決定，以及給 AI 的回答規則與格式說明；預設只放比例，不放股數和金額。出場訊號只請 AI 查三件事（資料對不對、規則前提成不成立、有沒有一次性因素），決定由你做。</li><li>在分析股票的對話裡說「用投資帳本 v1 格式輸出今天的紀錄」（格式在專案文件〈工具說明與結算流程〉第 10 節）。每月或每季也可以請 AI 收集持股的法人 EPS 預估、法說指引和主題指標，用 outlook、themes 區塊匯入前瞻資料。</li>
+<li><b>每種問題各有一套回答規則和開頭格式</b>（2026-11-12）：買或加碼附買進後的占比、主題占比、壓力虧損變化，加碼只看下一批；月底復盤附這個月每一筆「不照做」「不適用」的原因；補資料要寫年度、共識或單一機構、查過哪裡；自由提問只能匯回 outlook、events。<b>匯入時也會檢查</b>：這種問題不該出現的欄位（例如出場訊號的回覆裡有 strategies）預設不勾。</li>
+<li><b>策略檢討</b>（季檢討用）：附所有啟用中的策略、「📚 策略庫 → 📝 共同規則與依據」、比例類的風險設定，可選附執行紀錄（不含金額），不附持股。AI 的每項修改要標放寬或收緊與依據；停損、上限變大卻標收緊，或大盤從高點回檔 10% 以上時放寬，預設不勾。</li>
+<li><b>出場訊號的複製文字</b>：每條出場規則都附判斷用的數字；現價和其他指標分開標日期（現價比檢核資料新時，本益比、股價淨值比照比例換算）；附策略【何時賣】原文和接下來的資料公布日；沒有 🔴 時改成請 AI 查資料、找最接近成立的條件，不會要它硬找訊號；只列這次範圍內的論點。</li>
+<li>在「🤖 AI 討論 → 📥 貼上回覆」：AI 有整理好檔案就按「📂 選擇檔案」；沒有就把整段回覆複製貼上（工具會自己找出 JSON，手機複製時被拆開的換行會自動接回）→「解析並預覽」。</li>
+<li>預覽每一筆都可以取消勾選。會提醒：<b>可能重複</b>（同日期、代號、買賣、股數、價格、部位，預設不匯入）、同一天同一檔但數字不同、價格超過前一日收盤 ±10%、買進後超過上限、策略條件未達門檻；格式錯誤會指出第幾行、缺什麼欄位。每一筆標 <b>🎯 會改變自動判斷</b>、<b>🔔 會改變提醒</b> 或 <b>📝 只是紀錄</b>；🎯 有疑點的預設不勾（沒有寫明機構或日期、超過 45 天、和同年度現有預估差超過 15%、AI 替你勾要自己判斷的條件、停損往下調、出場訊號討論裡的策略修改）。AI 的看法（review）只記在論點裡，不改判斷。複製時附的快照編號對不上（持股、停損、策略版本或資料日期變了）會提醒；認不得的欄位也會提醒。</li>
+<li><b>這次匯入會改變的判斷</b>：預覽下方先試算一次，列出匯入後哪些判斷會變（可以買／不買、出場條件、提醒、停損距離、壓力虧損），每一條標是哪一筆造成的；取消勾選會跟著重算。都沒變就顯示「這次匯入不會改變任何判斷」。</li>
+<li><b>從出場訊號問 AI</b>：貼回來匯入後直接顯示 AI 的看法和三個選擇（照規則賣出／這條不適用／不照做），決定時會一起記下「當時 AI 的看法」，之後檢討照不照 AI 的結果。</li>
+<li><b>同一檔只能有一個論點</b>（2026-11-12）：有兩個以上沒出場的論點時，提醒列和個股頁會標出，按「合併…」選要留哪一個，畫面列出會留下、會搬過去、會丟掉的內容；合併前自動存還原點。要換策略（例如 S04 事件結束轉 S01）用個股頁的「🔁 換策略」：舊論點以「轉換」結案、不產生交易，新論點用當天收盤當起算價、承接股數。AI 匯入同一檔不同策略的論點時，預設不勾，勾了就是轉換。</li>
+<li><b>撥款後損益</b>（個股頁）：撥款前持股和撥款後買進都有時，點那一格（▸）展開兩行：撥款前持股（從撥款日收盤）、撥款後買進（從成交價），加總就是那一格的數字。</li>
+<li><b>⬇️ 匯出</b>：選「全部（備份）」或「只有策略」（.json 或〈策略範本〉.md）。只有策略不含論點、交易、持股、金額，<b>不是備份</b>；匯入請用「📥 從 AI 貼上」，編號撞到時可以選更新自己的或新增成另一個編號，預覽會顯示工具讀得懂幾條。</li>
+<li><b>📅 明天要做的事</b>（資產頁最上面，2026-11-12 取代「⚠️ 提醒」）：上方是資料狀態（收盤價、指標、法人、融資的日期；收盤價和指標到齊才算定案，法人、融資還沒到的條件標「暫定」；平日 15:00 後還沒有今天的收盤價，會寫「今天資料還沒到，或今天休市」）。下面分三層：🔴 要動作（收盤已觸發的出場規則、跌破停損，附股數和約多少錢，旁邊就是三選一）、🟠 接近觸發（明天收盤碰到就成立的價位，距現價 5% 內）、🟡 要注意（法說、財報、除息、月營收、重新評估日、大盤回檔、虧損上限，以及其他提醒）。三層都沒有時寫「明天沒有要做的事」。另外列出<b>明天開盤要下的單</b>（規則一律收盤確認、隔天開盤執行，和回測一致）、<b>還能買多少</b>（壓力虧損剩餘額度；可以買的論點最多幾股，受限於每筆風險、個股上限、主題上限或壓力虧損）、<b>前一天計畫的執行情形</b>（資料定案時自動存當天的單，只存代號、買賣、股數），以及「🤖 盤前問 AI」（附這張清單，只請 AI 查隔夜消息有沒有改變任何一項）。</li>
+<li><b>不歸類</b>（2026-11-12）：撥款前持股進不了任何策略時，在論點的「所屬策略」選「不歸類」（或個股頁沒有論點時按「不歸類」）。沒有策略的出場規則，只有論點停損價和重新評估日（到期提醒），不算策略績效，每筆風險上限 1.5%。</li>
+<li><b>部位風險提醒</b>：持有中的論點，（現價 − 停損價）× 股數超過主動資本 × 策略每筆風險的 1.5 倍時，提醒列寫出要符合大約是幾股。停損釘在起算價、股價漲上去以後風險會變大；只是提醒，要不要減碼你決定。加碼補記或不歸類的論點時，記交易表單也會提醒這筆不算策略績效。</li>
+<li><b>從記交易表單問 AI</b>：買進時按條件上方的「🤖 問 AI（帶著這張表單）」，填到一半的表單會先保留；貼回 AI 對「要自己判斷」條件的看法（manual）後按「↩ 回到交易表單」，每個條件下方會顯示 AI 的看法和來源，<b>要自己點「勾選」才算</b>。原本「選什麼」沒達標、問 AI 後才補齊的，論點會註記「買進當下問 AI 後才補齊」。</li>
+<li>可以一次匯入多筆交易、新論點（同代號、同策略已有進行中的論點時改成更新）、修改既有論點、事件（除息、財報）與庫存核對（逐檔比對券商 App 的股數與成本）。</li>
+<li>匯入是「加進去」，不會取代原本的資料；匯入前自動存還原點，「📜 匯入紀錄」可以整批復原。匯入後會問要不要匯出備份（可關掉）。</li></ul>
+<h3>③ 📒 交易紀錄（逐筆檢視與修改）</h3>
+<ul><li>同一天的交易歸在一組，只有今天那組預設展開。「⧉」複製一筆，「✎」展開手續費、證交稅、日期、備註、自訂名稱、投資論點與當天基準 ETF 價格。</li>
+<li>手續費＝牌告 0.1425% × 折數（最低收費依設定）；賣出自動算證交稅（00 開頭以 ETF 稅率計）。留空＝自動，可改成成交回報上的實際金額。</li>
+<li><b>配息</b>：除息日到發放日之間結算會自動算成應收股利；單筆 ≥ 2 萬會提醒 2.11% 補充保費；匯到追蹤範圍以外的帳戶在「✎」勾選，發放日算成出金。<b>配股</b>只填股數，成本為 0。</li>
+<li>撥款前就有的持股不用補記，沿用信貸頁的「撥款前狀態」。股票名稱來自證交所與櫃買中心開放資料，找不到的可在「✎」自訂。</li></ul></details>
+
+<details class="gds" id="g4"><summary>🧭 策略</summary>
+<ul><li><b>📈 績效</b>：最上方是「主動部位有沒有贏 0050」。依策略列出論點數、勝率、平均賺賠比（只算已出場）、投入、損益、報酬率、超額報酬、最大回撤、照規則出場的比例；「未分類（主動）」「期初持股」「被動（依配置）」分開列。<b>勝率要累積 20 筆以上已出場的論點才有參考價值。</b></li>
+<li><b>📚 策略庫</b>：每個策略分成「選什麼／何時買（含買多少）／何時賣」。規則寫成一行一個條件（1. 2. 3.），第一行可寫【選什麼：全部符合】或【何時買：至少 2 項】設定門檻；寫「分 N 批」會自動建立分批計畫；出場規則裡「理由失效」那一條會成為論點預設的「錯了的條件」。另有預計持有期間、單一個股與族群上限、預設停損 %、每筆風險 %、<b>加碼間隔</b>（距上一批至少幾個交易日）、<b>加碼價差</b>（要比上一批低或高幾 %）、<b>暫停加碼</b>（跌破第 1 批買價 −N% 提醒暫停）。小地方改「儲存為小修正」，邏輯或規則改變「建立新版本」並寫原因，舊版本保留。</li>
+<li><b>📌 論點</b>：所有論點的完整表單。狀態依股數自動（沒買過＝規劃中、有股數＝持有中並顯示第幾批、歸零＝已出場）；條件區和個股頁的「📋 今日條件檢核」一樣：自動判斷得出來的只顯示結果，要自己判斷的條件才有「確認符合」按鈕；買進時記下的條件收在「買進時記錄」；分批計畫、預計期間、目標估值收在「更多」。</li>
+<li><b>策略的寫法</b>：每個策略照同樣的段落寫：【選什麼】→【何時買】（可以再分【進場訊號：至少 N 項】）→【不買】（任何一條成立就不買，不算買進理由）→【買多少】→ 何時賣。條件前面可以標〔基〕〔技〕〔籌〕〔盤〕，會顯示成小標籤。一個條件裡可以寫「3 項中至少 2 項：A；B；C」（用「；」分開）。策略還可以設定：<b>期別</b>（短 1～8 週／中 2～12 個月／長 1 年以上，記交易時先選期別再選策略）、<b>技術停損</b>（跌破 20 日最低、月線、季線 −5%、近一年最低、突破點 −5%，和固定 % 一起算、取比較近的）、<b>賺賠比檢查</b>（目標＝近一年最高收盤，低於 2 會提醒）、<b>策略合計上限</b>。</li>
+<li><b>🔭 前瞻資料與股票屬性</b>（個股頁）：股票屬性（結構性成長、景氣循環、產業龍頭、所屬主題）每檔確認一次；法人 EPS 預估（年度、EPS、來源、日期）、最近一次法說指引（下一季營收、毛利率方向）。策略裡寫「法人預估明年 EPS 年增 ≥ 15%」「近 3 個月法人 EPS 預估持平或上修」「最近一次法說營收與毛利率展望不低於持平」就會用這些資料自動判斷；超過 120 天顯示 ❔ 提醒更新。還沒有 3 個月前的預估紀錄時，先用月營收判斷。<b>🧭 主題指標</b>（📚 策略庫最上方）：例如「AI 伺服器」看雲端業者資本支出、「記憶體」看 DRAM 報價，一個主題套用到很多檔股票。</li>
+<li><b>📋 自動檢核</b>：策略條件裡有公開數字可以判斷的（均線、RSI、MACD、成交量、20 日高低點、投信／外資買賣超、融資餘額、月營收年增率、加權指數、千張大戶持股比例；每季的毛利率、EPS、負債比、現金流；本益比與近 5 年中位數、股價淨值比在近 10 年的位置、殖利率與配息率），每個交易日收盤後會自動判斷，在條件旁標「✅ 自動」或「❌ 自動」，並寫出用到的數字。記交易選策略時，今天自動符合的條件會先幫你勾好（可以取消）；個股頁有「📋 今日條件檢核」，依序加碼的策略會標出已買的批次和下一批（👉）；論點標題顯示依策略的判斷（例如「第 2 批：條件符合，可以加碼」「…但上一批 11/06 才買，約 11/13 後再看」）。<b>盤中價試算</b>：個股頁的現價改成盤中價（或網頁抓到比檢核資料新的收盤價）時，和價格有關的條件（均線、52 週高點、乖離、賺賠比）改用這個價格試算並標示；RSI、MACD、法人、融資、營收仍用檢核資料。<b>✏️ 要補資料</b>：條件缺股票屬性、法人 EPS 預估、法說指引或主題狀態時，條件下面直接出現填寫的地方；資產頁的「✏️ 待補資料」一次列出所有持股缺什麼（🔄＝舊了要更新：超過 4 個月、財報期限或法說會之後還沒更新；💡＝補了判斷更準），按「填寫」直接跳到那個欄位，「🤖 請 AI 幫我找」會複製一段請求給 AI。<b>⏳ 等資料累積</b>：例如千張大戶要累積 2 週，不用做事。看不懂或需要判斷的條件按「確認符合」，條件後面寫「（手動）」就一定不自動判斷。<b>寫法要像策略範本</b>，例如「收盤價在季線 ±3% 內」「投信近 5 日合計買超」「融資餘額近 10 日減少 ≥ 5%」；月線＝20 日、季線＝60 日、半年線＝120 日均線（收盤價、未還原除權息）。資料：證交所、櫃買中心、公開資訊觀測站、集保結算所的公開資料；三大法人約下午 4 點、融資約晚上 10 點、股權分散表每週六更新。<br><b>還原權息</b>：均線、高低點、RSI、MACD、賺賠比用還原價算（證交所、櫃買中心公布的除權息、減資、面額變更參考價；含現金股利，所以和券商 App 的均線會有一點差）；市值、損益、資產趨勢、信貸計算仍用原始收盤價。配股、減資、分割之前的法人 EPS 預估、每股盈餘、股利會換算成新的股數單位；持有中的股票遇到這類事件，提醒列會請你「換算」論點的停損價、目標價，並建議記一筆配股。股數變動落在視窗裡時，20 日均量、法人、融資的條件不判斷。<br><b>跳動保險</b>：近一年有單日漲跌超過 10.5%（多半是除權、分割或減資，股價還沒還原）的股票，和價格有關的條件標 ❔、不判斷，大盤與基本面條件照常。<br><b>記交易時預先打勾</b>只限：今天的交易、自動判斷符合、不是用月營收代替的前瞻條件；依序加碼的策略第一次買只看第 1 批。代號要從建議選（今天的全市場收盤檔裡有的）；找不到要按「仍要使用」才能存。成交價比前一日收盤超過 ±10% 會警告。</li>
+<li><b>🚪 出場條件</b>（個股頁、完整論點）：策略「何時賣」每一條也會自動判斷，成立時進提醒列，寫出要賣多少（例如「先賣一半」）。「跌破均價 −N%」用策略均價，「從最高點回落 N%」用持有期間最高收盤。成立時三選一：<b>照規則賣出</b>（直接打開賣出表單，股數、原因帶好，存檔後自動記成照規則）、<b>這條不適用</b>（寫一句原因，之後不再提醒，也不算進照規則比例）、<b>不照做</b>（一定要寫原因）。照規則賣出、不照做在條件不成立後自動解除；每次的決定都會留下，策略績效的「照規則」欄顯示「訊號 照做／全部」。理由失效用的落後指標（毛利率連 N 季下滑、月營收年增率轉負連 N 個月、EPS 連 N 季年減）如果在論點起算時就已經是這樣，標 ⏸、不算成立，等下一期新資料公布才判斷；撥款前持股事後歸入策略時，不會因為建倉前就公布的舊資料亮紅字。第一次持有時會記下進場停損與每股風險（之前就持有的標「補記」），之後用來算 R 倍數（賺賠是當初風險的幾倍）。</li>
+<li><b>今天的觸發價</b>（出場條件卡、🛡️ 風險）：和價格有關的出場規則，今天收盤到哪個價位就成立（均線用最近的檢核資料估，標「約」）；規則是收盤判斷，不需要盤中價。</li>
+<li><b>🛡️ 風險</b>（資產頁）：<b>壓力虧損</b>＝信貸占比 ×（主動所有停損同時觸發的虧損）＋信貸資金裡的被動 × 壓力跌幅（預設 25%，可改），直接和「剩下的虧損額度」比，超過就先降風險再加碼。撥款前就有的持股下跌時，撥款前淨資產也一起跌，不會用掉虧損額度，所以只算信貸占比。停損：已跌破還沒賣、或沒設停損的部位用回測最差 10% 跌幅估，離停損再近也至少算 3%。下面另外列整個主動部位（含撥款前持股）的停損合計、月付金保留（現金＋低風險標的可付幾個月月付金）、出場訊號照規則的比例、槓桿與虧損上限（含買回後重新起算的次數）。</li>
+<li><b>資產頁每一區都可以收合</b>（點標題，收合時顯示一行摘要，會記住）。<b>📈 資產趨勢</b>（資產頁最上面）：點圖例開關線條、線尾標最新數值；撥款日起每天收盤畫一個點；「資產」看總資產、持股市值、同金流 0050，「淨資產」看真實淨資產和撥款前淨資產。點圖上任一天看當天數字與交易；下方是時間加權報酬與每日最大回撤。</li>
+<li><b>帳戶現金</b>分成主動、被動兩格（資產頁與結算頁是同一組欄位，合計就是「追蹤帳戶現金合計」）；填了之後，之後的買賣與配息會自動加減，推算現在的現金。</li>
+<li><b>提醒</b>（🧭 策略按鈕上的紅色數字，資產頁也會顯示）：個股或族群超過上限、持有超過預計期間、跌破停損價、達到目標價、已出場還沒選原因、條件待確認、事件到期；每月 11 日起檢查上月營收（月營收於次月 10 日前公告）；財報公布後檢查（一般產業：第一季 5/15、第二季 8/14、第三季 11/14、年報 3/31 前）。</li></ul></details>
+
+<details class="gds" id="g5"><summary>💰 信貸（結算、風險、還款明細、設定）</summary>
+<ul><li><b>分頁</b>（2026-11-10 起）：📋 結算（每月或有買賣後）→ 🛡️ 風險（虧損上限分段、壓力情境、應對規則）→ 📅 還款明細（每年一列，點開看每個月的本金、利息、剩餘本金；回填 Excel 的本金餘額也在這裡）→ ⚙️ 設定（原本的「試算」：信貸條件、資金配置、現金流、撥款前狀態、稅費、情境；每段可收合並記住）。</li></ul>
+<h3>這頁在算什麼</h3>
+<ul><li>只追蹤放信貸資金的帳戶（股票＋交割現金），回答：<b>借錢投資，比不借錢多賺還是多賠？</b>收入與固定支出只用來檢查每個月付不付得起、壓力情境下會不會被迫賣股。三個分頁：🔮 試算、🛡️ 風險、📋 結算。</li>
+<li>上方的「📋 信貸重點卡片」可以收合成一行摘要；每張卡片標題旁的 ⓘ 可以看說明。</li></ul>
+<h3>圖表與 A／B／C 三條線</h3>
+<ul><li>同樣 7 年、每月同樣拿出月付金，比較三種做法——<b>甲</b>：借錢一次投入、每月還款；<b>乙</b>：不借錢，錢放著不投資；<b>丙</b>：不借錢，每月定期定額（年報酬＝機會成本報酬率）。</li>
+<li><b>A 面額＝甲−乙</b>（紫實線）、<b>B 定投收益＝丙−乙</b>（橘線）、<b>C 機會成本＝A−B＝甲−丙</b>（紫虛線）。不借錢時你本來就會定期定額，所以<b>主要看 C</b>，大於 0 代表借錢比慢慢投入好。</li>
+<li>灰虛線是原始計畫，綠點是實際結算，深紅實線是停損線；風險分頁會多一條紅虛線（選定的壓力情境）。按住圖表左右拖動看各月數值；「1 年｜3 年｜全部」切換範圍；點圖例開關線；📌 固定讓圖表停在畫面上方。</li></ul>
+<h3>第一次設定（⚙️ 設定）</h3>
+<ol><li><b>信貸條件</b>：金額、年期、撥款日、開辦費（預設從撥款金額扣除）；利率是依期數的時間軸，優惠期或調整就新增一列。</li>
+<li><b>資金配置</b>：保留現金、被動、主動合計等於可投入金額，🔒 鎖定的欄位不會被改動；被動 ETF 比例合計 100%，可用「📊 被動 ETF 歷史參考」帶入歷史報酬（歷史不代表未來）。</li>
+<li><b>每月現金流</b>：收入、固定支出都是時間軸，金額有變就新增一筆「從某月起」，不要改舊的。</li>
+<li><b>撥款前狀態</b>三選一：無（全新帳戶）／直接填總額／<b>逐檔明細</b>（最準：每一檔的部位、代號、股數、撥款日收盤價，選填原始成本）。另填撥款前現金、對照基準 ETF（預設 0050）、機會成本報酬率。</li>
+<li><b>稅費與手續費</b>：所得稅級距、證交稅、手續費折數與最低收費（被動、主動同一家券商可勾選只填一組）。<b>折讓方式</b>：成交時直接打折，或「交易時收全額、每月退回」（填退款日，大概就好）——選每月退回時，資產頁的成本用全額手續費（和 App 一樣），信貸與策略用折讓後的實際成本，結算時還沒退回的折讓自動加回現金。</li>
+<li><b>情境</b>（預設收合）：提前清償（綁約內計違約金）、原有部位成長。</li></ol>
+<ul><li><b>原始計畫線</b>：還沒有結算紀錄前跟著設定自動更新；儲存第一次結算後凍結，可在試算頁手動重設。</li></ul>
+<h3>🛡️ 風險</h3>
+<ul><li><b>虧損上限（停損）</b>：最多能虧貸款金額的幾 %（預設 20%）。虧損＝A 為負的金額（已含已付利息、開辦費、交易成本與股利稅）。<b>分段</b>（2026-11-10 依回測 v5 改）：① 用掉 50% 停止加碼 → ② 75% 主動部位減半 → ③ 100% 主動全出（被動先不動）→ ④ 150% 被動也出。<b>買回時機</b>：觸發 ②～④ 賣出後，0050 收盤站上半年線就提醒買回；買回後按「已買回，重新起算」，虧損上限從那天的狀態重新算。回測（2013～2019 每年起算的 7 年期）：舊的「用完一次全出、不買回」有 2 次最後鎖在 −60 萬；分段＋買回最差的一次和不設規則一樣。</li>
+<li><b>壓力情境</b>：輕度（跌 20%）、中度（跌 35%、配息縮水、升息 0.5、減薪 10%）、嚴重（類 2008：跌 45%、升息 1、失業 6 個月）、自訂。可調跌幅、下跌與回升月數、主動與債券倍數、升息、收入中斷、減薪、突發支出。現金不夠時依序動用：口袋緩衝 → 帳戶現金 → 被動 → 主動 → 撥款前持股（被迫賣股）。情境比較表列出最低真實淨資產、最大回撤、被迫賣股金額、何時觸及停損線等；安全邊際列出最大可承受跌幅與最長可承受收入中斷。</li>
+<li><b>應對規則</b>：虧損上限 ①②③、帳戶回撤、安全存量不足、槓桿過高、機會成本連續為負、XIRR 低於信貸成本、逢低加碼時機（基準 ETF 近期高點在這裡填）、利率上升；每條都可開關、改門檻、改應對動作。再平衡容許偏離也在這裡設定。</li></ul>
+<h3>📋 結算（哪天都可以，同一個月可以多次）</h3>
+<ol><li><b>結算日期自動跟著今天</b>；要結過去的日期（例如月底）就手動改，會標「📌 固定」，按「回到今天」恢復。現金如果是在結算日之前填的，會用之後的買賣、配息推算到結算日，並在結果區提醒你照 App 今天的餘額更新。</li>
+<li>填<b>主動帳戶現金、被動帳戶現金</b>（照券商 App 的交割帳戶餘額，合計就是追蹤帳戶現金）。現價已自動帶入（要改到 📊 資產的持股明細表），被動、主動市值自動計算。</li>
+<li>自動處理：還沒交割（T+2）的買賣、已除息還沒發放的股利、還沒退回的手續費折讓（選每月退回時）；有發生時結果區會列出金額。</li>
+<li>「修正（通常不用填）」：剩餘本金（以銀行為準時）、市值覆寫、本期淨買進覆寫（沒記交易時）。口袋轉入、提領、外部費用記在「出入金紀錄」。</li>
+<li>看結果（A／B／C、年化報酬、被動／主動 vs 0050、再平衡、應對規則），按「💾 儲存本次結算」，圖上出現綠點。</li>
+<li>匯出設定檔備份。歷次結算可匯出 CSV；「回填 Excel」列出各月信貸本金餘額。</li></ol>
+<h3>怎麼看結果</h3>
+<ul><li><b>划算門檻</b>：所有部位每年含息報酬至少要多少，到期 C 才打平（紫點＝定期定額線，主要看這個）；灰點＝不投資線（A 打平）；三角形＝你的假設，在紫點右邊越遠越安全。門檻可能比信貸利率低，因為本金每月在還。</li>
+<li><b>實際績效</b>：最新結算的 A／B／C 與年化報酬（XIRR）；未滿 6 個月顯示期間報酬（短期換算成一年會被放大）。B 在初期接近 0 是正常的。</li>
+<li><b>槓桿與安全存量</b>：信貸餘額 ÷ 帳戶總值；現金＋被動可撐幾個月的固定支出與月付。<b>提前清償比較</b>：提前還清 vs 持有到期的期末差額。</li>
+<li><b>健康燈號</b>：🔴 現金流為負、虧損達上限或預測會超過、安全存量不足；🟡 Alpha 為負、XIRR 低於信貸成本、資金配置合計不符或其他規則觸發；🟢 以上皆無。</li>
+<li>短期數字主要反映市場波動，判斷策略好壞建議看 1～2 年以上的趨勢。</li></ul></details>
+
+<details class="gds" id="g6"><summary>🔁 固定流程</summary>
+<ul><li><b>每天盤後（約 2 分鐘）</b>：在分析對話請 AI 用「投資帳本 v1」格式輸出今天的紀錄 →「🤖 AI 討論 → 📥 貼上回覆」選檔或貼上 → 看預覽 → 確認；或直接用「＋記交易」。要不要匯出備份看匯入後的詢問。</li>
+<li><b>每週</b>：把券商 App 的庫存截圖給 AI，請它一起輸出庫存核對（check），貼上後逐檔比對股數，抓漏記或重複記。</li>
+<li><b>每月</b>：11 日起依提醒檢查上月營收（一鍵記仍成立／有疑慮）；到 💰 信貸 → 📋 結算存一期；匯出設定檔到雲端硬碟。</li>
+<li><b>每季</b>：財報公布後依提醒檢查論點；到 🧭 策略看「主動部位有沒有贏 0050」。</li></ul></details>
+
+<details class="gds" id="g7"><summary>💾 資料與備份</summary>
+<ul><li>資料只存在這台裝置的瀏覽器（或主畫面 App）裡，不會上傳。建議<b>固定用一台裝置記錄</b>，其他裝置只看。</li>
+<li><b>⬇️ 匯出設定檔</b>：存成 <code>my-settings.json</code>，放到雲端硬碟。頁面下方會顯示有沒有未備份的變更，超過 7 天沒備份會提醒一次。</li>
+<li><b>⬆️ 匯入 JSON</b>：<b>整份取代</b>瀏覽器裡的資料。匯入前會自動存還原點；檔案的最後修改時間比瀏覽器裡的舊時，會先警告。舊版設定檔會自動升級。</li>
+<li><b>📥 貼上回覆</b>：一律是「加進去」，可以在「📜 匯入紀錄」整批復原。</li>
+<li><b>🛟 還原點</b>：每次匯入前自動存一份，只存在這台裝置的瀏覽器資料庫，保留最近 10 份，不會放進匯出的設定檔，也很小（目前一份約 12 KB）。在「📥 從 AI 貼上」最下方可以還原。</li>
+<li>刪除任何一列後，畫面下方會出現「復原」按鈕。</li>
+<li><b>iPhone</b>：Safari 裡的網站資料在一段時間沒打開時可能被清除，請加入主畫面並定期匯出備份。</li></ul></details>
+
+<details class="gds" id="g8"><summary>📚 名詞與限制</summary>
+<ul><li><b>被動／主動部位</b>：投資方式的分類（ETF／個股），不是帳戶。</li>
+<li><b>券商成本</b>：撥款前持股用原始成本、手續費每月退回時用全額，用在「📦 我的庫存」，和券商 App 一致。<b>撥款後成本</b>：撥款前持股用撥款日收盤價、手續費用折讓後，用在信貸、策略、「📅 撥款後績效」。</li>
+<li><b>預估損益</b>：市值 − 券商成本 − 預估賣出費用。有些券商 App 的報酬率用「扣股利前的成本」當分母，所以報酬率可能和 App 略有不同，損益金額會一致。</li>
+<li><b>A／B／C、划算門檻、vs 0050</b>：見「💰 信貸」與「📊 資產」。<b>年化報酬（XIRR）</b>考慮出入金時間點；未滿 6 個月顯示期間報酬。</li>
+<li><b>真實淨資產</b>＝（股票＋現金）−剩餘本金−累計已繳月付−開辦費（口袋付）−淨入金−外部費用。</li>
+<li><b>限制</b>：試算用固定報酬率，不代表未來；壓力情境是簡化模型；補充保費、股利稅以簡化方式估算（債券 ETF 配息的稅務屬性不同，建議每年用扣繳憑單校正）；盤中沒有即時價格；自動檢核只看公開資料、僅供參考，「千張大戶連 N 週上升」要累積 N+1 週的資料，「月營收創新高」是和近 3 年比較，「外資單日賣超前 5 大」是和資料庫裡已有的交易日比較。</li>
+<li>本工具僅供試算，非投資或稅務建議。</li></ul></details>
+</div>
+
+<label class="tg" style="margin-top:8px;flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="gdn" style="width:auto">下次開啟不再自動顯示</label>
+<button style="margin-top:8px" onclick="closeGd()">我知道了</button></div></div>
+
+<div class="asfab asw"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
+<div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
+<script src="data/etf-ref.js?v=20261113a"></script>
+<script src="data/stocks.js?v=20261113a"></script>
+<script src="js/engine.js?v=20261113a"></script>
+<script src="js/ui.js?v=20261113a"></script>
+<script src="js/strategy-engine.js?v=20261113a"></script>
+<script src="js/asset-engine.js?v=20261113a"></script>
+<script src="js/prices.js?v=20261113a"></script>
+<script src="js/check.js?v=20261113a"></script>
+<script src="js/outlook.js?v=20261113a"></script>
+<script src="js/strategy-ui.js?v=20261113a"></script>
+<script src="js/asset-ui.js?v=20261113a"></script>
+<script src="js/eval.js?v=20261113a"></script>
+<script src="js/ai-import.js?v=20261113a"></script>
+<script src="js/ai-ask.js?v=20261113a"></script>
+<script src="js/main.js?v=20261113a"></script>
+</body></html>
