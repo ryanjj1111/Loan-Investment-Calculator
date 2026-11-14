@@ -50,12 +50,29 @@ def wiki_symbols(url, lo, hi):
     print('表格：', [(len(t), [str(c)[:20] for c in t.columns][:6]) for t in tables if len(t) > 50])
     raise RuntimeError('找不到成分股表：' + url)
 
+def nasdaq100():
+    import requests
+    h = dict(UA, Accept='application/json, text/plain, */*', Origin='https://www.nasdaq.com', Referer='https://www.nasdaq.com/')
+    j = requests.get('https://api.nasdaq.com/api/quote/list-type/nasdaq100', headers=h, timeout=30).json()
+    rows = (((j.get('data') or {}).get('data') or {}).get('rows')) or []
+    syms = [str(r.get('symbol') or '').strip().upper() for r in rows]
+    syms = [x for x in syms if x and len(x) <= 6]
+    if not 95 <= len(syms) <= 110:
+        raise RuntimeError(f'Nasdaq-100 回傳 {len(syms)} 檔')
+    return syms
+
 def build_universe():
     old = load('universe.json') or {}
     idx = {}
     for key, url, lo, hi in (('sp500', 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies', 480, 520), ('ndx', 'https://en.wikipedia.org/wiki/Nasdaq-100', 95, 110)):
         try:
-            idx[key] = sorted(set(wiki_symbols(url, lo, hi)))
+            try:
+                idx[key] = sorted(set(nasdaq100())) if key == 'ndx' else sorted(set(wiki_symbols(url, lo, hi)))
+            except Exception as e1:
+                if key != 'ndx':
+                    raise
+                print('Nasdaq 網站的成分股抓不到，改用維基百科：', e1)
+                idx[key] = sorted(set(wiki_symbols(url, lo, hi)))
             print(f'{key}: {len(idx[key])} 檔')
         except Exception as e:
             idx[key] = old.get(key) or []
@@ -65,7 +82,7 @@ def build_universe():
     if len(idx['sp500']) < 400:
         print('S&P 500 成分股不足，這次不更新範圍')
         return old.get('all') or allsym, old
-    u = {'upd': now_tw(), 'src': 'S&P 500、Nasdaq-100 成分股（Wikipedia）＋固定 ETF 類別清單', 'sp500': idx['sp500'], 'ndx': idx['ndx'], 'etf': ETFS, 'all': allsym}
+    u = {'upd': now_tw(), 'src': 'S&P 500（Wikipedia）、Nasdaq-100（Nasdaq 網站）成分股＋固定 ETF 類別清單', 'sp500': idx['sp500'], 'ndx': idx['ndx'], 'etf': ETFS, 'all': allsym}
     if {k: old.get(k) for k in ('sp500', 'ndx', 'etf')} != {k: u[k] for k in ('sp500', 'ndx', 'etf')}:
         save('universe.json', u)
         print(f'範圍已更新：{len(allsym)} 檔')
