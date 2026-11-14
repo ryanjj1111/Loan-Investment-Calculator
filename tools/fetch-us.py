@@ -38,12 +38,16 @@ def save(name, obj):
 def wiki_symbols(url, lo, hi):
     import requests, pandas as pd
     html = requests.get(url, headers=UA, timeout=30).text
-    for t in pd.read_html(io.StringIO(html)):
-        cols = [str(c) for c in t.columns]
-        for c in ('Symbol', 'Ticker'):
-            if c in cols and lo <= len(t) <= hi:
-                syms = [str(x).strip().upper() for x in t[c].tolist()]
-                return [s for s in syms if s and s != 'NAN' and len(s) <= 6]
+    tables = pd.read_html(io.StringIO(html))
+    for t in tables:
+        cols = [' '.join(map(str, c)) if isinstance(c, tuple) else str(c) for c in t.columns]
+        for i, c in enumerate(cols):
+            if ('symbol' in c.lower() or 'ticker' in c.lower()) and lo <= len(t) <= hi:
+                syms = [str(x).strip().upper() for x in t.iloc[:, i].tolist()]
+                syms = [x for x in syms if x and x != 'NAN' and len(x) <= 6 and x.replace('.', '').isalnum()]
+                if len(syms) >= lo:
+                    return syms
+    print('表格：', [(len(t), [str(c)[:20] for c in t.columns][:6]) for t in tables if len(t) > 50])
     raise RuntimeError('找不到成分股表：' + url)
 
 def build_universe():
