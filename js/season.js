@@ -29,7 +29,7 @@ function ssAlHtml(A){const row=a=>typeof asAlRow=='function'?asAlRow(a):`<div>·
  h+=rest.map(row).join('');
  if(calm.length){const cid=[...new Set(calm.map(a=>a.th))],nAi=cid.filter(id=>info[id].ai&&info[id].ai.view=='仍成立').length;
   h+=`<details class=ssd ${SSOPEN?'open':''} ontoggle="SSOPEN=this.open?1:0"><summary>✅ ${cid.length} 檔財報／營收公布後，出場規則都沒有觸發${nAi?`（AI 看過 ${nAi} 檔：仍成立）`:''}：<span class=h>${cid.map(id=>info[id].T?esc(cU(info[id].T.code))+' '+esc(nameOf(info[id].T.code)):esc(id)).join('、')}</span></summary>
-   ${calm.map(a=>row(a)+aiLine(a.th)).join('')}</details><div class=asbtn><button onclick="ssAllOk()">✅ 這 ${cid.length} 檔全部標「仍成立」</button></div><div class=h>「沒有觸發」是 App 用策略的出場條件算的；還沒問 AI 的，建議先按上面的「🤖 財報季檢查」。</div>`}
+   ${calm.map(a=>row(a)+aiLine(a.th)).join('')}</details><div class=asbtn><button onclick="ssAllOk()">✅ 這 ${cid.length} 檔全部標「仍成立」</button>${tipI('「沒有觸發」是 App 用策略的出場條件算的；還沒問 AI 的，建議先按上面的「🤖 財報季檢查」。','整批標仍成立')}</div>`}
  if(old.length)h+=`<details class=ssd><summary class=h>📅 ${old.length} 則已經過期的財報日期提醒</summary>${old.map(row).join('')}</details><div class=asbtn><button onclick="ssOldDone()">✓ 這 ${old.length} 則全部完成</button></div>`;
  return h}
 const ssCalm=()=>{const A=stAlerts(S),fin=ssFin(A);return fin.filter(a=>{const T=stThesis(S,a.th);if(!T)return false;const ai=ssAi(T);return!ssRed(T).length&&!(ai&&ai.view=='有疑慮')})};
