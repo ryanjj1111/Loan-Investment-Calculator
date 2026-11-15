@@ -133,7 +133,7 @@ const aaRules=q=>'【回答規則】\n'+[AA_R0].concat(AA_RQ[q]||AA_RQ.free).map
 const AA_QK={exit:['review','outlook','events'],buy:['manual','outlook','events'],review:['outlook','themes','events'],fill:['outlook','themes','events'],free:['outlook','events'],strat:['strategies'],pre:['events'],eval:['theses','manual','outlook','events']};
 function aaFmt(snap){const q=AA.q,y=+TODAY.slice(0,4),CS=new Set(q=='strat'||q=='pre'?[]:aaCodes()),Ts=(S.theses||[]).filter(T=>q!='strat'&&q!='pre'&&T.status!='exit'&&(CS.has(cU(T.code))||T.id==AA.th)).map(T=>{const st=stStrat(S,T.sid);return`${T.id} ${cU(T.code)} ${T.sid} v${T.sver||(st&&st.ver)||''}`});
  const ex={format:'投資帳本 v1',ai:'你的名稱（例如 Claude、Gemini）',q,snap};
- const T0=(AA.th&&stThesis(S,AA.th))||aaThOf(aaCodes()[0]||'')||(S.theses||[])[0]||{id:'T001',code:'2301'},x0=AA.th&&AA.rule&&T0?(exRules(stStrat(S,T0.sid))||[]).find(z=>z.key==AA.rule):null,c0=cU(T0.code||'2301');
+ const T0=(AA.th&&stThesis(S,AA.th))||aaThOf(aaCodes()[0]||'')||(S.theses||[])[0]||{id:'T001',code:'2330'},x0=AA.th&&AA.rule&&T0?(exRules(stStrat(S,T0.sid))||[]).find(z=>z.key==AA.rule):null,c0=cU(T0.code||'2330');
  const D0='<YYYY-MM-DD>',rv={thesis:T0.id,rule:x0?x0.lb:'<規則名稱>',view:'<五種看法之一>',why:'<一句話>',src:[{name:'<來源>',date:D0,url:'<網址>'}]},ol={code:c0,eps:[{year:'<年度>',eps:'<數字>',src:'<機構（引用的媒體）>',date:D0}],guide:{rev:'<up/flat/down>',gm:'<up/flat/down>',date:D0,src:'<法說會或公告>',note:'<一句重點>'}},
   tm={name:'<主題名稱>',status:'<up/flat/down>',date:D0,src:'<來源>',note:'<一句重點>'},ev={date:D0,code:c0,type:'<法說／財報／除息／營收>',note:'<一句重點>'},up={thesis:T0.id,stop:'<新的停損價>'};
  const K=AA_QK[q]||AA_QK.free;
@@ -150,10 +150,10 @@ ${q=='strat'?'- 只能有 strategies；不要輸出 trades、theses、updates、
 範例（只示範格式；< > 裡要換成真實內容，數字和 true/false 不加引號，查不到的欄位整個拿掉，不要照抄）：
 ${JSON.stringify(eg)}${Ts.length?'\n這次範圍內的論點與策略版本：'+Ts.join('｜'):''}`}
 // 策略檢討（2026-11-12）：只放策略、共同規則、比例類的風險設定與（選擇附上的）不含金額的績效；不放持股、金額
-// 加權指數離 250 日高點幾 %（策略檢討與匯入檢查用；回檔 10% 以上不放寬規則）
+// 加權指數離 250 日高點幾 %（策略檢討與匯入檢查用）
 const aaDD=()=>{const t=CK&&CK.mkt&&CK.mkt.taiex;return t&&t.c&&t.hi250?(t.c/t.hi250-1)*100:null};
 function aaStrat(){const L=[],dd=aaDD();
- L.push(`【大環境】加權指數${dd!=null?`離 250 日高點 ${aaPct(dd)}${dd<=-10?'（回檔 10% 以上：這段期間不放寬規則）':''}`:'：沒有資料'}`);
+ L.push(`【大環境】加權指數${dd!=null?`離 250 日高點 ${aaPct(dd)}`:'：沒有資料'}`);
  L.push(`【共同規則與依據】（我手寫的）\n${String(S.stratDoc||'（還沒填）').trim()}`);
  L.push(`【風險設定（比例）】信貸虧損上限＝貸款金額 ${S.loss??'—'}%，分段：50% 停止加碼、75% 主動減半、100% 主動全出、150% 被動也出；壓力跌幅 ${S.stressP??25}%；買回後重新起算最多 ${S.lossRebuyMax??1} 次`);
  if(AA.perf){const P=[];for(const st of S.strategies||[]){if(!+st.on)continue;const it=stThesisItems(S,st.id).filter(o=>!stBk(o.T)),a=stAgg(it);P.push(`- ${st.id}：持有中 ${a.open||0}、已出場 ${a.closed||0}${a.win!=null?`、勝率 ${a.win.toFixed(0)}%`:''}${a.sn?`、出場訊號照規則 ${a.sf}／${a.sn}`:''}`)}

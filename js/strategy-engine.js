@@ -262,7 +262,7 @@ function stMerge(S,keepId,dropId){const P=stMergePlan(S,keepId,dropId);if(!P)ret
  tr.filter(x=>x.k=='buy').sort((a,b)=>(a.dt||'')<(b.dt||'')?-1:1).forEach(x=>stLinkPlan(K,x));
  {const m=/^T(\d+)$/.exec(D.id||'');if(m)S.thMax=Math.max(+S.thMax||0,+m[1])}S.theses=S.theses.filter(T=>T.id!=D.id);return K}
 // 轉換論點：舊論點以「轉換」結案（不產生交易，用當天收盤結算），新論點用當天收盤當起算價、承接股數
-// 用在 S04 事件結束轉 S01／S06、短期轉長期、改歸類；舊論點是補記的，新論點也算補記
+// 用在事件型轉長期、短期轉長期、改歸類；舊論點是補記的，新論點也算補記
 function stConvert(S,oldId,sid,px,d){const O=stThesis(S,oldId),st=stStrat(S,sid);px=num(px);d=d||TODAY;if(!O||!st||px==null||O.status=='exit')return null;
  const p=stPerf(S,O);if(!(p.q>0))return null;
  const N=stNewThesis(S,{code:O.code,sid,sver:st.ver,status:'hold',created:d,convFrom:{id:O.id,d,px,q:p.q},convBk:stBk(O)?1:0,why:O.why||'',expectM:''});

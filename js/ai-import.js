@@ -58,7 +58,7 @@ function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],sg:[],rv:[],mn:[
  // 新論點
  arr('theses').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},lb=`theses 第 ${i+1} 筆`;P.th.push(it);
   const c=cU(o.code||'');if(!c)it.err.push(`${lb} 缺 code（代號）`);const sid=String(o.strategy||'').trim().toUpperCase(),st=sid?stStrat(S,sid):null;
-  if(!sid)it.err.push(`${lb} 缺 strategy（策略編號，例如 S04）`);else if(!st)it.err.push(`${lb}：策略庫沒有 ${sid}`);
+  if(!sid)it.err.push(`${lb} 缺 strategy（策略編號，例如 S01）`);else if(!st)it.err.push(`${lb}：策略庫沒有 ${sid}`);
   let ver=st?st.ver:1;if(st&&o.ver!=null){const v=aiNum(o.ver);if(!(st.hist||[]).some(h=>h.ver==v))it.err.push(`${lb}：${sid} 沒有 v${o.ver}（目前是 v${st.ver}）`);else{ver=v;if(v<st.ver)it.warn.push(`用的是 ${sid} 舊版 v${v}（目前 v${st.ver}）`)}}
   it.c=c;it.sid=sid;it.st=st;it.ver=ver;it.ref=String(o.ref||('#'+c));refs[it.ref]=it;
   if(o.created!=null&&!aiDate(o.created))it.err.push(`${lb}：created 日期格式要是 YYYY-MM-DD`);it.created=aiDate(o.created)||'';
@@ -119,7 +119,7 @@ function aiPlan(j){const P={tr:[],th:[],up:[],ev:[],ol:[],tm:[],sg:[],rv:[],mn:[
  arr('themes').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},lb=`themes 第 ${i+1} 筆`;P.tm.push(it);const n=String(o.name||'').trim();if(!n){it.err.push(`${lb} 缺 name`);return}
   it.n=n;it.t={st:olDir(o.status??o.st),d:aiDate(o.date)||TODAY,src:String(o.src||''),note:String(o.note||'')};if(!it.t.st)it.err.push(`${lb} 的 status 看不懂（用 up／flat／down）`)});
  // 策略新版本：有改到的欄位才更新，版本號 +1，舊版本留在版本紀錄；upgradeTheses＝進行中的論點改跟隨新版
- arr('strategies').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},lb=`strategies 第 ${i+1} 筆`;P.sg.push(it);const id=String(o.id||'').trim().toUpperCase();if(!id){it.err.push(`${lb} 缺 id（例如 S04）`);return}
+ arr('strategies').forEach((o,i)=>{const it={i,o,err:[],warn:[],info:[],on:1},lb=`strategies 第 ${i+1} 筆`;P.sg.push(it);const id=String(o.id||'').trim().toUpperCase();if(!id){it.err.push(`${lb} 缺 id（例如 S01）`);return}
   const st=stStrat(S,id);it.id=id;it.st=st;it.f={};for(const k of ST_FIELDS){if(o[k]===undefined||o[k]===null)continue;let v=o[k];if(k=='rr')v=v===true||v==1||v=='1'?1:0;else if(typeof v=='number')v=String(v);else v=String(v);it.f[k]=v}
   if(!st&&!it.f.name){it.err.push(`${lb}：策略庫沒有 ${id}，要新增策略的話請給 name`);return}
   it.diff=st?Object.keys(it.f).filter(k=>String(st[k]??'')!==String(it.f[k])):Object.keys(it.f);

@@ -181,7 +181,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 
 <div id="pgF" class="lw">
  <div class="p" id="ctl"></div>
- <div class="p simp"><b>🔵 專業版還可以</b><ul class="h" style="margin:4px 0 8px;padding-left:18px;font-size:12px"><li>每月結算，追蹤實際績效（XIRR、被動／主動對 0050）</li><li>壓力情境：市場下跌、失業、升息時會不會被迫賣股</li><li>虧損上限三段停損規則與應對動作</li><li>ETF 歷史參考、稅費、撥款前持股、提前清償、年度明細</li></ul><button onclick="setUi('pro')">切換到專業版</button> <span class="h">切換不會改變任何數字</span></div>
+ <div class="p simp"><b>🔵 專業版還可以</b><ul class="h" style="margin:4px 0 8px;padding-left:18px;font-size:12px"><li>📊 資產：台股＋美股的持股、損益、資產趨勢；「今日」列出明天開盤要下的單</li><li>🧭 策略：策略庫、每一檔為什麼買和停損價，自動檢查出場條件</li><li>💰 信貸追蹤：每月結算看實際績效（XIRR、對 0050）、壓力情境、虧損上限三段規則</li><li>🗓️ 月結：每月一步步對帳、結算、備份</li><li>其他：ETF 歷史參考、稅費、提前清償、年度明細</li></ul><button onclick="setUi('pro')">切換到專業版</button> <span class="h">切換不會改變任何數字</span></div>
 </div>
 
 <div id="pgY" class="lw">
@@ -264,8 +264,8 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
   <div class="p"><b>依論點</b> <span class="ib" role="button" tabindex="0" data-tn="依論點" data-tt="持有未滿 6 個月顯示期間報酬（未年化）。點一列可打開該論點。">ⓘ</span><div class="w"><table id="stThT" class="stt"></table></div></div></div>
 </div>
 
-<div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button><button class="pro" onclick="msOpen()">🗓️ 月結</button><button class="pro" id="usAddB" onclick="usStart()">🇺🇸 ＋新增美股帳戶</button><button onclick="location.href='v20261114/index.html'" title="美股整合前的版本，資料和這裡是同一份">🕘 開啟 11/14 的舊版</button></div>
-<div class="h" style="margin-top:6px"><span id="bkS"></span> <span class="ib" role="button" tabindex="0" data-tn="資料與備份" data-tt="資料只存在這個瀏覽器。每次修改或結算後，請按「⬇️ 匯出設定檔」存到雲端硬碟或電腦；換手機、換電腦時用「⬆️ 匯入」還原。&#10;「🕘 開啟 11/14 的舊版」是美股整合前的版本，和這裡共用同一份資料，可以隨時打開對照；按手機的上一頁回到新版。">ⓘ</span><br>本工具僅供試算，非投資或稅務建議。</div><div id="iosHint" class="stal" style="display:none"></div></div>
+<div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button><button class="pro" onclick="msOpen()">🗓️ 月結</button><button class="pro" id="usAddB" onclick="usStart()">🇺🇸 ＋新增美股帳戶</button></div>
+<div class="h" style="margin-top:6px"><span id="bkS"></span> <span class="ib" role="button" tabindex="0" data-tn="資料與備份" data-tt="資料只存在這個瀏覽器。每次修改或結算後，請按「⬇️ 匯出設定檔」存到雲端硬碟或電腦；換手機、換電腦時用「⬆️ 匯入」還原。">ⓘ</span><br>本工具僅供試算，非投資或稅務建議。</div><div id="iosHint" class="stal" style="display:none"></div></div>
 
 <div id="toast"><span id="toastT"></span><button onclick="undo()">復原</button></div>
 
@@ -326,7 +326,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li>預覽每一筆都可以取消勾選。會提醒：<b>可能重複</b>（同日期、代號、買賣、股數、價格、部位，預設不匯入）、同一天同一檔但數字不同、價格超過前一日收盤 ±10%、買進後超過上限、策略條件未達門檻；格式錯誤會指出第幾行、缺什麼欄位。每一筆標 <b>🎯 會改變自動判斷</b>、<b>🔔 會改變提醒</b> 或 <b>📝 只是紀錄</b>；🎯 有疑點的預設不勾（沒有寫明機構或日期、超過 45 天、和同年度現有預估差超過 15%、AI 替你勾要自己判斷的條件、停損往下調、出場訊號討論裡的策略修改）。AI 的看法（review）只記在論點裡，不改判斷。複製時附的快照編號對不上（持股、停損、策略版本或資料日期變了）會提醒；認不得的欄位也會提醒。</li>
 <li><b>這次匯入會改變的判斷</b>：預覽下方先試算一次，列出匯入後哪些判斷會變（可以買／不買、出場條件、提醒、停損距離、壓力虧損），每一條標是哪一筆造成的；取消勾選會跟著重算。都沒變就顯示「這次匯入不會改變任何判斷」。</li>
 <li><b>從出場訊號問 AI</b>：貼回來匯入後直接顯示 AI 的看法和三個選擇（照規則賣出／這條不適用／不照做），決定時會一起記下「當時 AI 的看法」，之後檢討照不照 AI 的結果。</li>
-<li><b>同一檔只能有一個論點</b>（2026-11-12）：有兩個以上沒出場的論點時，提醒列和個股頁會標出，按「合併…」選要留哪一個，畫面列出會留下、會搬過去、會丟掉的內容；合併前自動存還原點。要換策略（例如 S04 事件結束轉 S01）用個股頁的「🔁 換策略」：舊論點以「轉換」結案、不產生交易，新論點用當天收盤當起算價、承接股數。AI 匯入同一檔不同策略的論點時，預設不勾，勾了就是轉換。</li>
+<li><b>同一檔只能有一個論點</b>（2026-11-12）：有兩個以上沒出場的論點時，提醒列和個股頁會標出，按「合併…」選要留哪一個，畫面列出會留下、會搬過去、會丟掉的內容；合併前自動存還原點。要換策略（例如短線事件結束、改成長期持有）用個股頁的「🔁 換策略」：舊論點以「轉換」結案、不產生交易，新論點用當天收盤當起算價、承接股數。AI 匯入同一檔不同策略的論點時，預設不勾，勾了就是轉換。</li>
 <li><b>撥款後損益</b>（個股頁）：撥款前持股和撥款後買進都有時，點那一格（▸）展開兩行：撥款前持股（從撥款日收盤）、撥款後買進（從成交價），加總就是那一格的數字。</li>
 <li><b>⬇️ 匯出</b>：選「全部（備份）」或「只有策略」（.json 或〈策略範本〉.md）。只有策略不含論點、交易、持股、金額，<b>不是備份</b>；匯入請用「📥 從 AI 貼上」，編號撞到時可以選更新自己的或新增成另一個編號，預覽會顯示工具讀得懂幾條。</li>
 <li><b>台股、美股的畫面與用詞統一</b>（2026-11-15）：兩邊都是「📈 資產趨勢 → 💼 損益總覽 → 要注意 → 配置 → 持股」，每一塊都可以點標題收合。用詞統一成：<b>持股市值</b>（只算股票）、<b>帳戶總值</b>（持股＋現金）、<b>未實現損益</b>（台股就是券商 App 的「預估損益」，已扣預估賣出費用）、<b>成本</b>（券商顯示的成本）、<b>占比</b>。只改畫面上的字，數字沒有變。</li>
@@ -338,7 +338,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li><b>備份</b>（2026-11-15）：每天第一次開啟會自動存一份還原點；匯出選單多了「📤 分享到雲端硬碟」（手機可以直接存到雲端硬碟）；儲存結算後會直接跳出匯出選單。</li>
 <li><b>交易紀錄</b>（2026-11-15）：填好的交易每筆收成一行，點一下才展開編輯。</li>
 <li><b>資產頁分成四格</b>（2026-11-14）：<b>今日</b>（明天要做的事、待補資料）｜<b>總覽</b>（台股＋美股的新台幣全資產、配置、幣別曝險）｜<b>台股</b>（趨勢、損益總覽、配置、風險、持股、交易紀錄、持股明細，內容和以前相同）｜<b>美股</b>。沒有美股資料時只有「今日｜台股」。上次停在哪一格會記在這台裝置。</li>
-<li><b>🇺🇸 美股</b>（2026-11-14）：到頁面最下方按「＋新增美股帳戶」，每個帳戶（例如海外券商、員工認股、複委託）各建一個，照券商 App 顯示的數字填代號、股數、成本（總額或均價擇一，沒有就留空）和美元現金。之後有買賣就按「＋更新部位」改那一檔；每次儲存會自動記下變動。同一檔在不同帳戶會自動合併。現價目前要手填（點那一檔或在更新部位時填）。帳面損益＝市值 − 券商成本，不含已賣出的部分和現金股利。<b>美股的任何數字都不進信貸計算</b>。</li>
+<li><b>🇺🇸 美股</b>（2026-11-14）：到頁面最下方按「＋新增美股帳戶」，每個帳戶（例如海外券商、複委託）各建一個，照券商 App 顯示的數字填代號、股數、成本（總額或均價擇一，沒有就留空）和美元現金。之後有買賣就按「＋更新部位」改那一檔；每次儲存會自動記下變動。同一檔在不同帳戶會自動合併。現價目前要手填（點那一檔或在更新部位時填）。帳面損益＝市值 − 券商成本，不含已賣出的部分和現金股利。<b>美股的任何數字都不進信貸計算</b>。</li>
 <li><b>💱 匯率</b>：「總覽」用臺灣銀行美金即期買入與賣出的中價換算新台幣，每個營業日傍晚自動更新；抓不到時改用備援來源並標示，也可以手填。</li>
 <li><b>美股自動現價</b>（2026-11-15）：S&P 500、Nasdaq-100 成分股與常見 ETF 每個美股交易日收盤後自動更新（台灣早上）；不在範圍內的仍要手填。自動價和手填價取日期比較新的。</li>
 <li><b>📥 貼上 AI 整理的截圖</b>（美股 → 帳戶）：把券商庫存截圖和「📋 複製給 AI 的說明」交給 AI，回來的 JSON 貼上，先看差異再套用；預設整個帳戶覆寫，截圖只截到一部分時勾「只更新出現的代號」。套用後可以「↩ 復原這次貼上」。</li>
@@ -364,7 +364,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li><b>📚 策略庫</b>：每個策略分成「選什麼／何時買（含買多少）／何時賣」。規則寫成一行一個條件（1. 2. 3.），第一行可寫【選什麼：全部符合】或【何時買：至少 2 項】設定門檻；寫「分 N 批」會自動建立分批計畫；出場規則裡「理由失效」那一條會成為論點預設的「錯了的條件」。另有預計持有期間、單一個股與族群上限、預設停損 %、每筆風險 %、<b>加碼間隔</b>（距上一批至少幾個交易日）、<b>加碼價差</b>（要比上一批低或高幾 %）、<b>暫停加碼</b>（跌破第 1 批買價 −N% 提醒暫停）。小地方改「儲存為小修正」，邏輯或規則改變「建立新版本」並寫原因，舊版本保留。</li>
 <li><b>📌 論點</b>：所有論點的完整表單。狀態依股數自動（沒買過＝規劃中、有股數＝持有中並顯示第幾批、歸零＝已出場）；條件區和個股頁的「📋 今日條件檢核」一樣：自動判斷得出來的只顯示結果，要自己判斷的條件才有「確認符合」按鈕；買進時記下的條件收在「買進時記錄」；分批計畫、預計期間、目標估值收在「更多」。</li>
 <li><b>策略的寫法</b>：每個策略照同樣的段落寫：【選什麼】→【何時買】（可以再分【進場訊號：至少 N 項】）→【不買】（任何一條成立就不買，不算買進理由）→【買多少】→ 何時賣。條件前面可以標〔基〕〔技〕〔籌〕〔盤〕，會顯示成小標籤。一個條件裡可以寫「3 項中至少 2 項：A；B；C」（用「；」分開）。策略還可以設定：<b>期別</b>（短 1～8 週／中 2～12 個月／長 1 年以上，記交易時先選期別再選策略）、<b>技術停損</b>（跌破 20 日最低、月線、季線 −5%、近一年最低、突破點 −5%，和固定 % 一起算、取比較近的）、<b>賺賠比檢查</b>（目標＝近一年最高收盤，低於 2 會提醒）、<b>策略合計上限</b>。</li>
-<li><b>🔭 前瞻資料與股票屬性</b>（個股頁）：股票屬性（結構性成長、景氣循環、產業龍頭、所屬主題）每檔確認一次；法人 EPS 預估（年度、EPS、來源、日期）、最近一次法說指引（下一季營收、毛利率方向）。策略裡寫「法人預估明年 EPS 年增 ≥ 15%」「近 3 個月法人 EPS 預估持平或上修」「最近一次法說營收與毛利率展望不低於持平」就會用這些資料自動判斷；超過 120 天顯示 ❔ 提醒更新。還沒有 3 個月前的預估紀錄時，先用月營收判斷。<b>🧭 主題指標</b>（📚 策略庫最上方）：例如「AI 伺服器」看雲端業者資本支出、「記憶體」看 DRAM 報價，一個主題套用到很多檔股票。</li>
+<li><b>🔭 前瞻資料與股票屬性</b>（個股頁）：股票屬性（結構性成長、景氣循環、產業龍頭、所屬主題）每檔確認一次；法人 EPS 預估（年度、EPS、來源、日期）、最近一次法說指引（下一季營收、毛利率方向）。策略裡寫「法人預估明年 EPS 年增 ≥ 15%」「近 3 個月法人 EPS 預估持平或上修」「最近一次法說營收與毛利率展望不低於持平」就會用這些資料自動判斷；超過 120 天顯示 ❔ 提醒更新。還沒有 3 個月前的預估紀錄時，先用月營收判斷。<b>🧭 主題指標</b>（📚 策略庫最上方）：例如「雲端」看雲端業者資本支出、「記憶體」看 DRAM 報價，一個主題套用到很多檔股票。</li>
 <li><b>📋 自動檢核</b>：策略條件裡有公開數字可以判斷的（均線、RSI、MACD、成交量、20 日高低點、投信／外資買賣超、融資餘額、月營收年增率、加權指數、千張大戶持股比例；每季的毛利率、EPS、負債比、現金流；本益比與近 5 年中位數、股價淨值比在近 10 年的位置、殖利率與配息率），每個交易日收盤後會自動判斷，在條件旁標「✅ 自動」或「❌ 自動」，並寫出用到的數字。記交易選策略時，今天自動符合的條件會先幫你勾好（可以取消）；個股頁有「📋 今日條件檢核」，依序加碼的策略會標出已買的批次和下一批（👉）；論點標題顯示依策略的判斷（例如「第 2 批：條件符合，可以加碼」「…但上一批 11/06 才買，約 11/13 後再看」）。<b>盤中價試算</b>：個股頁的現價改成盤中價（或網頁抓到比檢核資料新的收盤價）時，和價格有關的條件（均線、52 週高點、乖離、賺賠比）改用這個價格試算並標示；RSI、MACD、法人、融資、營收仍用檢核資料。<b>✏️ 要補資料</b>：條件缺股票屬性、法人 EPS 預估、法說指引或主題狀態時，條件下面直接出現填寫的地方；資產頁的「✏️ 待補資料」一次列出所有持股缺什麼（🔄＝舊了要更新：超過 4 個月、財報期限或法說會之後還沒更新；💡＝補了判斷更準），按「填寫」直接跳到那個欄位，「🤖 請 AI 幫我找」會複製一段請求給 AI。<b>⏳ 等資料累積</b>：例如千張大戶要累積 2 週，不用做事。看不懂或需要判斷的條件按「確認符合」，條件後面寫「（手動）」就一定不自動判斷。<b>寫法要像策略範本</b>，例如「收盤價在季線 ±3% 內」「投信近 5 日合計買超」「融資餘額近 10 日減少 ≥ 5%」；月線＝20 日、季線＝60 日、半年線＝120 日均線（收盤價、未還原除權息）。資料：證交所、櫃買中心、公開資訊觀測站、集保結算所的公開資料；三大法人約下午 4 點、融資約晚上 10 點、股權分散表每週六更新。<br><b>還原權息</b>：均線、高低點、RSI、MACD、賺賠比用還原價算（證交所、櫃買中心公布的除權息、減資、面額變更參考價；含現金股利，所以和券商 App 的均線會有一點差）；市值、損益、資產趨勢、信貸計算仍用原始收盤價。配股、減資、分割之前的法人 EPS 預估、每股盈餘、股利會換算成新的股數單位；持有中的股票遇到這類事件，提醒列會請你「換算」論點的停損價、目標價，並建議記一筆配股。股數變動落在視窗裡時，20 日均量、法人、融資的條件不判斷。<br><b>跳動保險</b>：近一年有單日漲跌超過 10.5%（多半是除權、分割或減資，股價還沒還原）的股票，和價格有關的條件標 ❔、不判斷，大盤與基本面條件照常。<br><b>記交易時預先打勾</b>只限：今天的交易、自動判斷符合、不是用月營收代替的前瞻條件；依序加碼的策略第一次買只看第 1 批。代號要從建議選（今天的全市場收盤檔裡有的）；找不到要按「仍要使用」才能存。成交價比前一日收盤超過 ±10% 會警告。</li>
 <li><b>🚪 出場條件</b>（個股頁、完整論點）：策略「何時賣」每一條也會自動判斷，成立時進提醒列，寫出要賣多少（例如「先賣一半」）。「跌破均價 −N%」用策略均價，「從最高點回落 N%」用持有期間最高收盤。成立時三選一：<b>照規則賣出</b>（直接打開賣出表單，股數、原因帶好，存檔後自動記成照規則）、<b>這條不適用</b>（寫一句原因，之後不再提醒，也不算進照規則比例）、<b>不照做</b>（一定要寫原因）。照規則賣出、不照做在條件不成立後自動解除；每次的決定都會留下，策略績效的「照規則」欄顯示「訊號 照做／全部」。理由失效用的落後指標（毛利率連 N 季下滑、月營收年增率轉負連 N 個月、EPS 連 N 季年減）如果在論點起算時就已經是這樣，標 ⏸、不算成立，等下一期新資料公布才判斷；撥款前持股事後歸入策略時，不會因為建倉前就公布的舊資料亮紅字。第一次持有時會記下進場停損與每股風險（之前就持有的標「補記」），之後用來算 R 倍數（賺賠是當初風險的幾倍）。</li>
 <li><b>今天的觸發價</b>（出場條件卡、🛡️ 風險）：和價格有關的出場規則，今天收盤到哪個價位就成立（均線用最近的檢核資料估，標「約」）；規則是收盤判斷，不需要盤中價。</li>
@@ -439,27 +439,27 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button><button onclick="usAsk()">🤖 問 AI</button></div>
 <div class="asfab asw" id="twFab"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261115h"></script>
-<script src="data/stocks.js?v=20261115h"></script>
-<script src="js/tip.js?v=20261115h"></script>
-<script src="js/engine.js?v=20261115h"></script>
-<script src="js/ui.js?v=20261115h"></script>
-<script src="js/strategy-engine.js?v=20261115h"></script>
-<script src="js/asset-engine.js?v=20261115h"></script>
-<script src="js/us-engine.js?v=20261115h"></script>
-<script src="js/prices.js?v=20261115h"></script>
-<script src="js/check.js?v=20261115h"></script>
-<script src="js/outlook.js?v=20261115h"></script>
-<script src="js/strategy-ui.js?v=20261115h"></script>
-<script src="js/order.js?v=20261115h"></script>
-<script src="js/asset-ui.js?v=20261115h"></script>
-<script src="js/us-ui.js?v=20261115h"></script>
-<script src="js/eval.js?v=20261115h"></script>
-<script src="js/ai-import.js?v=20261115h"></script>
-<script src="js/ai-ask.js?v=20261115h"></script>
-<script src="js/back.js?v=20261115h"></script>
-<script src="js/watch.js?v=20261115h"></script>
-<script src="js/season.js?v=20261115h"></script>
-<script src="js/month.js?v=20261115h"></script>
-<script src="js/main.js?v=20261115h"></script>
+<script src="data/etf-ref.js?v=20261115i"></script>
+<script src="data/stocks.js?v=20261115i"></script>
+<script src="js/tip.js?v=20261115i"></script>
+<script src="js/engine.js?v=20261115i"></script>
+<script src="js/ui.js?v=20261115i"></script>
+<script src="js/strategy-engine.js?v=20261115i"></script>
+<script src="js/asset-engine.js?v=20261115i"></script>
+<script src="js/us-engine.js?v=20261115i"></script>
+<script src="js/prices.js?v=20261115i"></script>
+<script src="js/check.js?v=20261115i"></script>
+<script src="js/outlook.js?v=20261115i"></script>
+<script src="js/strategy-ui.js?v=20261115i"></script>
+<script src="js/order.js?v=20261115i"></script>
+<script src="js/asset-ui.js?v=20261115i"></script>
+<script src="js/us-ui.js?v=20261115i"></script>
+<script src="js/eval.js?v=20261115i"></script>
+<script src="js/ai-import.js?v=20261115i"></script>
+<script src="js/ai-ask.js?v=20261115i"></script>
+<script src="js/back.js?v=20261115i"></script>
+<script src="js/watch.js?v=20261115i"></script>
+<script src="js/season.js?v=20261115i"></script>
+<script src="js/month.js?v=20261115i"></script>
+<script src="js/main.js?v=20261115i"></script>
 </body></html>
