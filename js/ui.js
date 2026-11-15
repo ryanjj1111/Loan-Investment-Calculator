@@ -9,7 +9,7 @@ const todayT=H=>{const t=ym2t(S,TODAY.slice(0,7));return isNaN(t)?0:Math.max(0,M
 function rngAB(H){const n=S.rng=='1'?12:S.rng=='3'?36:0;if(!n||n>=H)return[0,H];let a=Math.max(0,todayT(H)-3);if(a+n>H)a=H-n;return[a,a+n]}
 function niceStep(r){if(!(r>0))return 1;const e=Math.pow(10,Math.floor(Math.log10(r))),f=r/e;return(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*e}
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);v===null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){return null}}
-function load(){try{const j=JSON.parse(ls('lc3'));if(j){S=migrate(j).o;fixCur();return}}catch(e){}S=norm(clone(DEF));fixCur()}
+function load(){try{const j=JSON.parse(ls('lc3'));if(j){S=migrate(j).o;fixCur();return}}catch(e){}S=norm(clone(DEF));if(typeof stSeed=='function')stSeed(S);fixCur()}
 function fixCur(){if(!S.cur.dt){S.cur.dt=TODAY;S.cur.m=TODAY.slice(0,7)}}
 function save(){const e=sigE();if(e!==ls('lce')){if(ls('lce')!=null)S.edited=new Date().toISOString();ls('lce',e)}ls('lc3',JSON.stringify(S));if(typeof bkUpd=='function')bkUpd()}
 // 最後修改時間：只看實際內容（不含現價自動更新、畫面狀態），匯入舊檔時用來警告

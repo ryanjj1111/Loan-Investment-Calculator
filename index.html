@@ -360,7 +360,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li>撥款前就有的持股不用補記，沿用信貸頁的「撥款前狀態」。股票名稱來自證交所與櫃買中心開放資料，找不到的可在「✎」自訂。</li></ul></details>
 
 <details class="gds" id="g4"><summary>🧭 策略</summary>
-<ul><li><b>📈 績效</b>：最上方是「主動部位有沒有贏 0050」。依策略列出論點數、勝率、平均賺賠比（只算已出場）、投入、損益、報酬率、超額報酬、最大回撤、照規則出場的比例；「未分類（主動）」「期初持股」「被動（依配置）」分開列。<b>勝率要累積 20 筆以上已出場的論點才有參考價值。</b></li>
+<ul><li><b>剛開始用</b>：新的設定檔會先放 3 個範例策略（核心長抱、營收成長、低基期價值），條件都是 App 能自動判斷的寫法，可以直接拿來「🔍 評估」或「🤖 AI 討論」試用。範例只是示範怎麼寫，不是投資建議；在「📚 策略庫」改成自己的方法或刪掉。策略庫是空的時候，可以按「載入 3 個範例策略」，或「🤖 請 AI 幫我寫第一個策略」：複製一段請求貼給 AI，AI 會先問你幾個問題再寫，回覆貼到「📥 貼上回覆」匯入。</li><li><b>📈 績效</b>：最上方是「主動部位有沒有贏 0050」。依策略列出論點數、勝率、平均賺賠比（只算已出場）、投入、損益、報酬率、超額報酬、最大回撤、照規則出場的比例；「未分類（主動）」「期初持股」「被動（依配置）」分開列。<b>勝率要累積 20 筆以上已出場的論點才有參考價值。</b></li>
 <li><b>📚 策略庫</b>：每個策略分成「選什麼／何時買（含買多少）／何時賣」。規則寫成一行一個條件（1. 2. 3.），第一行可寫【選什麼：全部符合】或【何時買：至少 2 項】設定門檻；寫「分 N 批」會自動建立分批計畫；出場規則裡「理由失效」那一條會成為論點預設的「錯了的條件」。另有預計持有期間、單一個股與族群上限、預設停損 %、每筆風險 %、<b>加碼間隔</b>（距上一批至少幾個交易日）、<b>加碼價差</b>（要比上一批低或高幾 %）、<b>暫停加碼</b>（跌破第 1 批買價 −N% 提醒暫停）。小地方改「儲存為小修正」，邏輯或規則改變「建立新版本」並寫原因，舊版本保留。</li>
 <li><b>📌 論點</b>：所有論點的完整表單。狀態依股數自動（沒買過＝規劃中、有股數＝持有中並顯示第幾批、歸零＝已出場）；條件區和個股頁的「📋 今日條件檢核」一樣：自動判斷得出來的只顯示結果，要自己判斷的條件才有「確認符合」按鈕；買進時記下的條件收在「買進時記錄」；分批計畫、預計期間、目標估值收在「更多」。</li>
 <li><b>策略的寫法</b>：每個策略照同樣的段落寫：【選什麼】→【何時買】（可以再分【進場訊號：至少 N 項】）→【不買】（任何一條成立就不買，不算買進理由）→【買多少】→ 何時賣。條件前面可以標〔基〕〔技〕〔籌〕〔盤〕，會顯示成小標籤。一個條件裡可以寫「3 項中至少 2 項：A；B；C」（用「；」分開）。策略還可以設定：<b>期別</b>（短 1～8 週／中 2～12 個月／長 1 年以上，記交易時先選期別再選策略）、<b>技術停損</b>（跌破 20 日最低、月線、季線 −5%、近一年最低、突破點 −5%，和固定 % 一起算、取比較近的）、<b>賺賠比檢查</b>（目標＝近一年最高收盤，低於 2 會提醒）、<b>策略合計上限</b>。</li>
@@ -439,27 +439,27 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button><button onclick="usAsk()">🤖 問 AI</button></div>
 <div class="asfab asw" id="twFab"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261115j"></script>
-<script src="data/stocks.js?v=20261115j"></script>
-<script src="js/tip.js?v=20261115j"></script>
-<script src="js/engine.js?v=20261115j"></script>
-<script src="js/ui.js?v=20261115j"></script>
-<script src="js/strategy-engine.js?v=20261115j"></script>
-<script src="js/asset-engine.js?v=20261115j"></script>
-<script src="js/us-engine.js?v=20261115j"></script>
-<script src="js/prices.js?v=20261115j"></script>
-<script src="js/check.js?v=20261115j"></script>
-<script src="js/outlook.js?v=20261115j"></script>
-<script src="js/strategy-ui.js?v=20261115j"></script>
-<script src="js/order.js?v=20261115j"></script>
-<script src="js/asset-ui.js?v=20261115j"></script>
-<script src="js/us-ui.js?v=20261115j"></script>
-<script src="js/eval.js?v=20261115j"></script>
-<script src="js/ai-import.js?v=20261115j"></script>
-<script src="js/ai-ask.js?v=20261115j"></script>
-<script src="js/back.js?v=20261115j"></script>
-<script src="js/watch.js?v=20261115j"></script>
-<script src="js/season.js?v=20261115j"></script>
-<script src="js/month.js?v=20261115j"></script>
-<script src="js/main.js?v=20261115j"></script>
+<script src="data/etf-ref.js?v=20261115k"></script>
+<script src="data/stocks.js?v=20261115k"></script>
+<script src="js/tip.js?v=20261115k"></script>
+<script src="js/engine.js?v=20261115k"></script>
+<script src="js/ui.js?v=20261115k"></script>
+<script src="js/strategy-engine.js?v=20261115k"></script>
+<script src="js/asset-engine.js?v=20261115k"></script>
+<script src="js/us-engine.js?v=20261115k"></script>
+<script src="js/prices.js?v=20261115k"></script>
+<script src="js/check.js?v=20261115k"></script>
+<script src="js/outlook.js?v=20261115k"></script>
+<script src="js/strategy-ui.js?v=20261115k"></script>
+<script src="js/order.js?v=20261115k"></script>
+<script src="js/asset-ui.js?v=20261115k"></script>
+<script src="js/us-ui.js?v=20261115k"></script>
+<script src="js/eval.js?v=20261115k"></script>
+<script src="js/ai-import.js?v=20261115k"></script>
+<script src="js/ai-ask.js?v=20261115k"></script>
+<script src="js/back.js?v=20261115k"></script>
+<script src="js/watch.js?v=20261115k"></script>
+<script src="js/season.js?v=20261115k"></script>
+<script src="js/month.js?v=20261115k"></script>
+<script src="js/main.js?v=20261115k"></script>
 </body></html>

@@ -99,7 +99,7 @@ function stBuild(){if(!$('pgST'))return;
  const L=(S.theses||[]).slice().sort((a,b)=>{const o={build:0,hold:1,plan:2,exit:3};return(o[a.status]-o[b.status])||((b.created||'')>(a.created||'')?1:-1)});
  $('stList').innerHTML=L.length?L.map(stThCard).join(''):`<div class=h style="margin:8px 0">還沒有投資論點。先到「📚 策略庫」建立策略，再按「＋新增論點」記下一檔股票的建倉計畫。</div>`;
  $('stChips').innerHTML=[['all','全部']].concat(ST_STATUS).map(([k,l])=>`<button class="${stFilter==k?'on':''}" onclick="stFilter='${k}';stBuild();stCalc()">${l} <span id="stc_${k}"></span></button>`).join('');
- $('stLib').innerHTML=`<div class=asbtn style="margin:4px 0"><button onclick="expMenu()">📤 匯出策略</button></div><details class=stc data-sl="_doc" ${stLibOpen.has('_doc')?'open':''}><summary>📝 共同規則與依據 <span class=h>${S.stratDoc?'已填':'還沒填'}</span></summary><div class=h>不要寫持股名稱和金額。${tipI('放策略本身沒有欄位的東西：共同規則、證據分級、回測數字、待回測清單。「🤖 AI 討論 → 策略檢討」會附上這一段。','共同規則與依據')}</div>${stTxt('stratDoc',S.stratDoc,'例如：停損一律收盤判斷、隔天開盤執行；某策略只有初步證據…',8)}</details>`+(typeof olThemesHtml=='function'?olThemesHtml():'')+((S.strategies||[]).map(stLibCard).join('')||`<div class=h style="margin:8px 0">還沒有策略。可以從範例建立，再改成自己的方法。</div>`);
+ $('stLib').innerHTML=`<div class=asbtn style="margin:4px 0"><button onclick="expMenu()">📤 匯出策略</button></div><details class=stc data-sl="_doc" ${stLibOpen.has('_doc')?'open':''}><summary>📝 共同規則與依據 <span class=h>${S.stratDoc?'已填':'還沒填'}</span></summary><div class=h>不要寫持股名稱和金額。${tipI('放策略本身沒有欄位的東西：共同規則、證據分級、回測數字、待回測清單。「🤖 AI 討論 → 策略檢討」會附上這一段。','共同規則與依據')}</div>${stTxt('stratDoc',S.stratDoc,'例如：停損一律收盤判斷、隔天開盤執行；某策略只有初步證據…',8)}</details>`+(typeof olThemesHtml=='function'?olThemesHtml():'')+((S.strategies||[]).map(stLibCard).join('')||stEmptyHtml());
  $('stTplW').innerHTML=`<select id="stTpl"><option value="">空白策略</option>${ST_TPL.map((t,k)=>`<option value="${k}">${esc(t.name)}</option>`).join('')}</select><button onclick="stAddSt()">＋新增策略</button>`}
 function stMet(p){if(!p||!p.first)return'<span class=h>尚未買進</span>';const t=xirrT0(p),B=p.base;
  return`${B?`<span class=h>${stBaseTxt(B)}</span><br>`:''}投入 ${W2(p.inv)} 萬｜${B?'起算後損益':'損益'} ${p.pl==null?'<span class=wn>需填現價</span>':`<span class="${stCls(p.pl)}">${p.pl>=0?'+':''}${R(p.pl)}（${stPct(p.ret)}）</span>`}｜${B?'起算後':'持有'} ${Math.round(p.days)} 天｜${t}<br>vs ${esc(bmC(S))}：${p.ex!=null?`<span class="${stCls(p.ex)}">${stPp(p.ex)}</span>`:p.miss.length?`<span class=wn>需補 ${p.miss.length} 筆交易當天的 ${esc(bmC(S))} 價格</span>`:p.bmNowMiss?`<span class=wn>需填 ${esc(bmC(S))} 現價</span>`:'—'}${p.open?`｜現價 ${p.px??'—'}`:''}`}
@@ -166,3 +166,33 @@ window.expMenu=()=>{asOvOpen(`<div class=ovh><button onclick="asClose()">✕</bu
   <label class=ck><input type=checkbox id=expHist onchange="if(this.checked)toast('版本紀錄的改版原因是自由文字，可能寫到持股名稱；分享前請先看過',1)">附版本紀錄（每次改版的原因，預設不附）</label>
   <div class=asbtn><button onclick="expStrat('json')">⬇️ 策略（.json）</button><button onclick="expStrat('md')">⬇️ 策略範本（.md）</button></div>${tipI('策略範本（.md）和專案的〈策略範本〉同樣段落；App 改策略後匯出，上傳專案取代舊的那份。','策略範本')}</div>`)};
 window.expStrat=k=>{const h=!!($('expHist')&&$('expHist').checked);if(k=='md')dl(`策略範本_${TODAY}.md`,stExpMd(S,{hist:h}),'text/markdown');else dl(`策略_${TODAY}.json`,JSON.stringify(stExpObj(S,{hist:h}),null,1),'application/json');toast(`已匯出${k=='md'?'策略範本':'策略'}${h?'（含版本紀錄）':''}，不是備份`,0)};
+
+// ---------- 策略庫是空的（2026-11-15）：載入範例，或請 AI 幫忙寫第一個策略
+function stEmptyHtml(){return`<div class=stal style="margin:6px 0"><b>策略庫是空的</b><div class=h>評估、策略檢討都要先有策略。可以先載入範例試用，或請 AI 問你幾個問題、幫你寫第一個策略。</div><div class=asbtn><button class=pri onclick="stSeedBtn()">載入 3 個範例策略</button><button onclick="stAiNew()">🤖 請 AI 幫我寫第一個策略</button></div></div>`}
+window.stSeedBtn=()=>{const n=stSeed(S,1);stBuild();upd();if(typeof asCalc=='function')asCalc();if($('asOv')&&$('asOv').style.display=='flex'&&typeof evRender=='function'&&typeof EV!='undefined')evRender();if($('aiAsk')&&typeof aaRender=='function')aaRender();toast(n?`已載入 ${n} 個範例策略（📚 策略庫可以改或刪）`:'範例策略已經在策略庫裡',0)};
+function stAiNewText(){const id=stNextId(S.strategies||[],'S',2);
+ return`請你當我的投資策略教練，幫我寫「第一個」買賣策略，最後輸出成我的記帳 App（投資帳本）能匯入的格式。
+
+【先問我，不要直接給答案】
+一次問一題，問完 5 題再寫：
+1. 打算持有多久（幾週、幾個月、一年以上）
+2. 一筆最多能接受虧多少 %
+3. 偏好哪一類股票（大型穩定、成長、低基期、高股息…）
+4. 有沒有不碰的股票或產業
+5. 願意花多少時間看盤（每天、每週、每月）
+
+【寫法】
+- 選什麼、何時買、何時賣都用條列，盡量用下面這些 App 能自動判斷的寫法（數字可以改）；寫不進去的條件可以照常寫，App 會標成「要自己判斷」。
+- 選什麼：近3年EPS穩定、近4季EPS合計>0、負債比<60%、自由現金流為正、月營收年增率連3個月>20%、毛利率沒有連2季下滑、殖利率≥4%、近3年平均配息率>50%、股價淨值比落在近10年區間的下1/3、近20日平均成交量≥1,000張
+- 何時買：本益比≤近5年本益比中位數、股價位於季線與半年線之上、收盤站回月線、突破前波高點或整理區、外資近5日合計買超、投信連3日買超、月營收年增率由負轉正、大盤從高點回檔≥10%、RSI<30
+- 不買（任一項成立就不買）：融資餘額近10日增加超過20%
+- 何時賣：本益比到近5年區間上緣、股價淨值比到近10年區間上1/3、月營收年增率轉負連2個月、EPS連2季年減、收盤跌破季線、從最高收盤回落15%、跌破均價−15%、持有超過12個月
+- 每一條賣出規則寫成「條件：動作」，動作是「全部賣出」「賣出一半」或「重新評估」。停損寫成「停損：跌破均價−15%」。
+
+【輸出】
+寫完先用白話說明這個策略的邏輯和缺點，再輸出下面的 JSON（放在一個程式碼區塊裡，欄位名稱不要改）：
+{"format":"投資帳本 v1","ai":"你的名稱","q":"strat","strategies":[{"id":"${id}","name":"策略名稱","term":"短／中／長 選一個","logic":"一兩句話說明為什麼這樣做會賺錢","screen":"【選什麼：全部符合】\\n1. …\\n2. …","entry":"【何時買：至少 1 項】\\n1. …\\n2. …\\n【買多少】分 2 批、每批 1/2","exit":"1. 理由失效：…\\n2. …：賣出一半\\n3. 停損：跌破均價−15%","holdMin":3,"holdMax":12,"capStock":15,"capGroup":35,"stopPct":15,"riskPct":1}]}
+- holdMin／holdMax：持有月數下限／上限；capStock：單一個股占主動部位上限 %；capGroup：單一族群上限 %；stopPct：預設停損 %；riskPct：每筆最多虧主動部位幾 %。
+- 這是記帳工具用的規則，請不要推薦特定股票。`}
+window.stAiNew=()=>{const t=stAiNewText(),ok=()=>{toast('已複製。貼到 AI 對話；AI 回覆後到「🤖 AI 討論 → 📥 貼上回覆」匯入',1)},fb=()=>{const e=document.createElement('textarea');e.value=t;document.body.appendChild(e);e.select();try{document.execCommand('copy')}catch(x){}e.remove();ok()};
+ if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb()};
