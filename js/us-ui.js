@@ -27,7 +27,7 @@ const avCur=()=>avViews().includes(AV)?AV:'today';
 function avApply(){try{document.body.dataset.av=avCur()}catch(e){}}
 window.avSet=v=>{AV=v;ls('lcav',v);avApply();asCalc();scrollTo(0,0)};
 // asCalc() 每次畫完資產頁之後呼叫
-function avAfter(){avApply();const v=avCur(),n=$('avNav');if(!n)return;if(typeof msAfter=='function')msAfter();
+function avAfter(){avApply();const v=avCur(),n=$('avNav');if(!n)return;if(typeof msAfter=='function')msAfter();if(typeof wlAfter=='function')wlAfter();
  n.innerHTML=avViews().map(k=>`<button class="${k==v?'on':''}" onclick="avSet('${k}')">${AV_N[k]}</button>`).join('');
  const b=$('usAddB');if(b){const has=typeof S!='undefined'&&S&&S.us&&Array.isArray(S.us.accts);b.style.display=avOn()?'none':'';b.textContent=has?'🇺🇸 顯示美股':'🇺🇸 ＋新增美股帳戶'}
  const td=$('usToday'),uv=$('usView'),av=$('allView');
