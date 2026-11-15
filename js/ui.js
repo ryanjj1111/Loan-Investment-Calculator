@@ -128,7 +128,10 @@ const TK=[['buy','買進'],['sell','賣出'],['div','配息'],['sdiv','配股']]
 const nameOf=c=>{c=String(c||'').trim().toUpperCase();return(S.names||{})[c]||STK[c]||''};
 function trGroups(){const G={};(S.trades||[]).forEach((x,i)=>{const d=x.dt||'';(G[d]=G[d]||[]).push(i)});return Object.keys(G).sort((a,b)=>a==''?1:b==''?-1:(a>b?-1:1)).map(d=>({d,ix:G[d]}))}
 function trRow(i){const x=S.trades[i],dv=x.k=='div',ed=trEd.has(i),nm=nameOf(x.n);
- return`<div class=tr><div class=trl><select class=w-ac data-p="trades.${i}.ac" data-t="s"><option value=p ${x.ac!='a'?'selected':''}>被動部位</option><option value=a ${x.ac=='a'?'selected':''}>主動部位</option></select><select class=w-k data-p="trades.${i}.k" data-t="s">${TK.map(([v,t])=>`<option value=${v} ${x.k==v?'selected':''}>${t}</option>`).join('')}</select>${inp('trades.'+i+'.n',x.n,'s','class=w-c placeholder="代號或名稱" autocomplete=off')}<span class=w-n id="tn${i}">${esc(nm)||(String(x.n||'').trim()?'<span class=h>（點 ✎ 自訂名稱）</span>':'')}</span>
+ // 2026-11-15：填好的交易預設收成一行，點了才展開編輯；欄位都還在畫面裡（只是藏起來），其他計算照舊
+ const full=ed||!String(x.n||'').trim()||num(x.q)==null,kt=(TK.find(t=>t[0]==x.k)||['','?'])[1];
+ const sum=full?'':`<div class=trs onclick="edTr(${i})"><span class="trk k-${esc(x.k||'')}">${kt}</span><b>${esc(cU(x.n))}</b> ${esc(nm)}<span class=trq>${dv?`每股 ${esc(String(x.dps??''))} × ${(+x.q||0).toLocaleString()}`:x.k=='sdiv'?`${(+x.q||0).toLocaleString()} 股`:`${(+x.q||0).toLocaleString()} 股 @ ${esc(String(x.px??''))}`}</span><span class=h>${x.ac=='a'?'主動':'被動'}</span><span class=tre1>✎</span></div>`;
+ return`<div class="tr${full?'':' trc1'}">${sum}<div class=trl><select class=w-ac data-p="trades.${i}.ac" data-t="s"><option value=p ${x.ac!='a'?'selected':''}>被動部位</option><option value=a ${x.ac=='a'?'selected':''}>主動部位</option></select><select class=w-k data-p="trades.${i}.k" data-t="s">${TK.map(([v,t])=>`<option value=${v} ${x.k==v?'selected':''}>${t}</option>`).join('')}</select>${inp('trades.'+i+'.n',x.n,'s','class=w-c placeholder="代號或名稱" autocomplete=off')}<span class=w-n id="tn${i}">${esc(nm)||(String(x.n||'').trim()?'<span class=h>（點 ✎ 自訂名稱）</span>':'')}</span>
   ${dv?inp('trades.'+i+'.dps',x.dps,'o','class=w-p placeholder="每股配息"')+inp('trades.'+i+'.q',x.q,'o','class=w-q data-tq="'+i+'" placeholder="股數"')+`${dIn('trades.'+i+'.pdt',x.pdt,'發放日','class=w-p style="width:120px"')}`:x.k=='sdiv'?inp('trades.'+i+'.q',x.q,'o','class=w-q placeholder="配股股數"'):inp('trades.'+i+'.q',x.q,'o','class=w-q placeholder="股數"')+inp('trades.'+i+'.px',x.px,'o','class=w-p placeholder="成交價"')}
   <span class=fe id="tf${i}" onclick="edTr(${i})" title="手續費、證交稅、日期、備註"></span>${typeof stChip=='function'?stChip(i):''}<button onclick="cpTr(${i})" title="複製一筆">⧉</button>${del('trades',i)}</div>
   <div class=sug id="ts${i}"></div>
@@ -152,7 +155,7 @@ const LBL={sals:'收入',livs:'固定支出',rates:'利率',etfs:'ETF',ledger:'�
 window.addRow=l=>{S[l].push(NEW[l]());build();upd()};
 window.delRow=(l,i)=>{if(l=='trades')trEd.clear();if(l=='rates'&&S.rates.length<=1){toast('至少要保留一列利率',0);return}trash={l,i,item:S[l][i]};S[l].splice(i,1);build();upd();toast('已刪除一筆'+(LBL[l]||''),1)};
 window.undo=()=>{if(!trash)return;S[trash.l].splice(trash.i,0,trash.item);trash=null;$('toast').style.display='none';build();upd()};
-function toast(t,u){$('toastT').innerText=t;$('toast').querySelector('button').style.display=u?'':'none';$('toast').style.display='flex';clearTimeout(ttm);ttm=setTimeout(()=>{$('toast').style.display='none';trash=null},8000)}
+function toast(t,u){$('toastT').innerText=t;$('toast').querySelector('button').style.display=u?'':'none';$('toast').style.display='flex';clearTimeout(ttm);ttm=setTimeout(()=>{$('toast').style.display='none';trash=null},u?8000:5000)}
 window.setCv=v=>{S.cv=v;build();upd()};
 function simpleCtl(){const one=a=>a&&a.length==1;
  const rateF=one(S.rates)?`<label>年利率(%)${inp('rates.0.r',S.rates[0].r)}</label>`:`<div class=gs onclick="goPro()">多段利率：${S.rates.slice().sort((a,b)=>a.k-b.k).map(e=>'第 '+e.k+' 期起 '+e.r+'%').join('、')}<br>（點此到專業版編輯）</div>`;

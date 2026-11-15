@@ -180,7 +180,7 @@ function aaText(){const snap=aaSnap(),q=AA.q,P=[q=='strat'?`【投資帳本｜${
  if(q=='pre'){P.push(aaMarket());P.push(aaPre());P.push(aaRules(q));P.push(aaFmt(snap));return P.join('\n\n')}
  if(q=='strat'){P.push(aaStrat());P.push(aaRules(q));P.push(aaFmt(snap));return P.join('\n\n')}
  if(q=='fill'){let t=typeof ckAiText=='function'?ckAiText():'';const k=t.indexOf('最後請用');if(k>0)t=t.slice(0,k).trim();P.push(t||'目前沒有待補資料。');P.push(aaAsk());P.push(aaRules(q));P.push(aaFmt(snap));return P.join('\n\n')}
- P.push(aaMarket());if(q=='review')P.push(aaPortfolio());const C=aaCodes();
+ P.push(aaMarket());if(q=='review')P.push(aaPortfolio());if((q=='review'||q=='free')&&!AA.nous&&typeof usAskBrief=='function'){const u=usAskBrief(AA.amt);if(u)P.push(u)}const C=aaCodes();
  if(!C.length&&q!='free')P.push('（這個範圍沒有股票）');for(const c of C)P.push(aaStock(c));
  P.push(aaAsk());P.push(aaRules(q));P.push(aaFmt(snap));return P.filter(Boolean).join('\n\n')}
 
@@ -198,7 +198,7 @@ function aaRender(){const el=$('aiAsk');if(!el)return;const t=aaText(),al=aaAler
  ${AA.q=='pre'?`<div class=h style="margin-top:6px">範圍：資產頁「📅 明天要做的事」的清單（要動作、接近觸發、要注意、明天要下的單）。</div>`:AA.q=='strat'?`<div class=h style="margin-top:6px">範圍：所有啟用中的策略、「📚 策略庫 → 📝 共同規則與依據」、比例類的風險設定；不附持股與金額。</div><label class=ck><input type=checkbox ${AA.perf?'checked':''} onchange="aaSet('perf',this.checked?1:0)">附我的執行紀錄（筆數、勝率、照規則比例，不含金額）</label>`:AA.q=='fill'?`<div class=h style="margin-top:6px">範圍：資產頁「✏️ 待補資料」裡缺的與要更新的資料。</div>`:AA.q=='eval'?aaEvPick():`<div class=sub>範圍</div><select onchange="aaSet('scope',this.value)">${scs}</select>
  ${AA.scope=='pick'?`<div class=aipk>${aaActive().map(c=>`<label class=ck><input type=checkbox ${AA.codes.includes(c)?'checked':''} onchange="aaPick('${c}',this.checked)">${nm(c)}</label>`).join('')}</div>`:''}`}
  ${AA.q=='free'?`<div class=sub>你的問題</div><textarea id=aaFree rows=3 style="width:100%" oninput="AA.free=this.value" onchange="aaRender()">${esc(AA.free)}</textarea>`:`<details ${AA.free?'open':''}><summary class=h>補充問題（可不填）</summary><textarea id=aaFree rows=2 style="width:100%" oninput="AA.free=this.value" onchange="aaRender()">${esc(AA.free)}</textarea></details>`}
- ${AA.q=='strat'||AA.q=='pre'?'':`<label class=ck><input type=checkbox ${AA.amt?'checked':''} onchange="aaSet('amt',this.checked?1:0)">附上股數與金額（預設只放比例；貼給其他公司的 AI 時建議不勾）</label>
+ ${AA.q=='strat'||AA.q=='pre'?'':`<label class=ck><input type=checkbox ${AA.amt?'checked':''} onchange="aaSet('amt',this.checked?1:0)">附上股數與金額（預設只放比例；貼給其他公司的 AI 時建議不勾）</label>${(AA.q=='review'||AA.q=='free')&&typeof usAskBrief=='function'&&usAskBrief()?`<label class=ck><input type=checkbox ${AA.nous?'checked':''} onchange="aaSet('nous',this.checked?1:0)">不含美股</label>`:''}
  <label class=ck><input type=checkbox ${AA.merge?'checked':''} onchange="aaSet('merge',this.checked?1:0)">買進條件裡已符合的合併成一行（出場條件一律逐條附數字）</label>`}
  <div class=asbtn><button class=pri onclick="aaCopy()">📋 複製</button>${navigator.share?'<button onclick="aaShare()">📤 分享到 AI App</button>':''}</div>
  <details class=aapv><summary class=h>預覽（${t.length.toLocaleString()} 字）</summary><pre>${esc(t)}</pre></details>`}

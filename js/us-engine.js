@@ -101,10 +101,11 @@ function usWatch(us,T,auto,ev,mac,today){const W=[],o=usWOpt(us),E=(ev&&ev.earn)
   if(r.w!=null&&r.w>=o.cap)W.push({k:'cap',pr:2,n:r.n,w:r.w,t:`${r.n} 占美股持股 ${r.w.toFixed(0)}%，超過你設的 ${o.cap}%`})}
  for(const e of (mac&&mac.ev)||[]){if(!US_MAC[e.k])continue;const tw=usMacTw(e),n=usDays(today,tw.d);if(n>=0&&n<=7)W.push({k:'macro',pr:n<=1?1:2,d:tw.d,mk:e.k,days:n,t:`${US_MAC[e.k]}：台灣 ${tw.d} ${tw.when}${n==0?'（今天）':n==1?'（明天）':''}${e.tent?'（暫定）':''}`})}
  return W.sort((a,b)=>a.pr-b.pr||(a.days??0)-(b.days??0))}
-// 跨市場主題集中度：twGrp＝{主題:新台幣}（台股主動持股，現有函式算的），美股用 attr.tag；分母 tot＝新台幣全資產
+const US_NOTAG='美股（未分主題）';
+// 跨市場主題集中度：沒填主題的美股合成一格（不提醒）。twGrp＝{主題:新台幣}（台股主動持股，現有函式算的），美股用 attr.tag；分母 tot＝新台幣全資產
 function usThemes(twGrp,T,fx,tot){const M={},f=fx?fx.v:null,get=g=>M[g]||(M[g]={g,tw:0,us:0});
  for(const g in twGrp||{})get(g).tw+=+twGrp[g]||0;
- if(f)for(const r of T.rows)if(r.mvC>0)get(r.tag||'美股未標籤').us+=r.mvC/100*f;
+ if(f)for(const r of T.rows)if(r.mvC>0)get(r.tag||US_NOTAG).us+=r.mvC/100*f;
  return Object.values(M).map(x=>Object.assign(x,{v:x.tw+x.us,p:tot>0?(x.tw+x.us)/tot*100:0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v)}
 // 金額走勢：同一天只留一筆；超過一年的每個月只留最後一筆
 function usHistAdd(hist,pt,today){const M={};for(const h of hist||[])if(h&&h.d)M[h.d]=h;if(pt&&pt.d)M[pt.d]=pt;let L=Object.values(M).sort((a,b)=>a.d<b.d?-1:1);
@@ -121,4 +122,4 @@ function usPasteApply(A,pos,partial){const old=usClean(A?A.items:[]),O={};for(co
  const cash=pos&&usNum(pos.cash)!=null?usNum(pos.cash):(A?usNum(A.cash):null),after={name:A?A.name:(pos&&pos.account)||'',cash,items:usClean(items)};
  return{after,diff:A?usDiff(A,after):after.items.map(x=>`${x.n} 新增 ${x.q} 股`).concat(cash!=null?[`現金 ${cash}`]:[]),px,bad}}
 
-if(typeof module!='undefined'&&module.exports)module.exports={US_V,usNum,usCode,usC,usQ,usDays,usDef,usAcctDef,usOn,usNewId,usPx,usClean,usAcctCalc,usCalc,usAlloc,usFx,usAlerts,usAllView,usDiff,usAuto,usWeekdays,US_MAC,usMacTw,usWOpt,usWatch,usThemes,usHistAdd,usPasteApply};
+if(typeof module!='undefined'&&module.exports)module.exports={US_V,usNum,usCode,usC,usQ,usDays,usDef,usAcctDef,usOn,usNewId,usPx,usClean,usAcctCalc,usCalc,usAlloc,usFx,usAlerts,usAllView,usDiff,usAuto,usWeekdays,US_MAC,usMacTw,usWOpt,usWatch,usThemes,usHistAdd,usPasteApply,US_NOTAG};

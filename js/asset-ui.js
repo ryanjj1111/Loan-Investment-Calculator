@@ -27,7 +27,7 @@ const asFolded=k=>!!FOLD[k];
 function fold(k,title,sum,body){const c=asFolded(k);return`<div class=fh onclick="foldT('${k}')"><b>${c?'▸':'▾'} ${title}</b><span class=h>${c?sum||'':''}</span></div>${c?'':body}`}
 window.foldT=k=>{FOLD[k]=FOLD[k]?0:1;try{localStorage.setItem('lcfold',JSON.stringify(FOLD))}catch(e){}if(k=='inv')asFoldInv();else asCalc()};
 function asFoldInv(){const p=$('asInv');if(p){p.classList.toggle('fd',asFolded('inv'));const b=$('asInvT');if(b)b.textContent=(asFolded('inv')?'▸':'▾')+' 📦 庫存'}}
-function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)sp.innerHTML='現價：'+(typeof pxStatus=='function'?pxStatus():'')+` <button class=lk onclick="setWs('as')">到資產頁看持股 ›</button>`;
+function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)sp.innerHTML='現價：'+(typeof pxStatus=='function'?pxStatus():'')+` <button class=lk onclick="setWs('as');if(typeof avSet=='function')avSet('tw')">到資產頁看持股 ›</button>`;
  if(stWs()!='as')return;
  const z=asSum(S),all=asVsBm(S),act=asVsBm(S,'a'),bm=esc(bmC(S));let loan='💰 信貸：結算填了現金後顯示 A／C';
  try{const r=settle(S,curEff());if(r)loan=`💰 信貸：A <b class="${asC(r.af)}">${asM(r.af)}</b>｜C <b class="${asC(r.ao)}">${asM(r.ao)}</b>`}catch(e){}
