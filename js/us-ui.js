@@ -73,7 +73,7 @@ const usOrdIx=k=>{const i=(S.us.ord||[]).indexOf(k);return i<0?1e6:i};
 // 每一檔的標示（和台股持股列上的 ⚠️ 一樣）：超過占比上限、財報日、單日大漲跌
 const usFlags=(n,W)=>(W||[]).filter(w=>w.n==n&&(w.k=='cap'||w.k=='earn'||w.k=='earnDone'||w.k=='move')).map(w=>w.k=='cap'?`⚠️ 占比 ${w.w.toFixed(0)}%，超過上限 ${usWOpt(S.us).cap}%`:w.k=='earn'?`📅 ${esc(usD(w.d))} 財報${w.days==0?'（今天）':w.days==1?'（明天）':''}`:w.k=='earnDone'?`📝 ${esc(usD(w.d))} 已公布財報`:`${w.chg>=0?'📈':'📉'} 單日 ${w.chg>=0?'+':''}${w.chg.toFixed(1)}%`);
 function usViewHtml(T,fx,AL,W){const al=usAlloc(T),om=typeof ORDM!='undefined'?ORDM:'';
- if(!T.accts.length)return`<div class=p><b>🇺🇸 美股</b><div class=asl>還沒有帳戶。按下面的「＋更新部位」新增第一個帳戶（例如海外券商、員工認股、複委託各一個）。</div>${usFoot()}</div>`;
+ if(!T.accts.length)return`<div class=p><b>🇺🇸 美股</b><div class=asl>還沒有帳戶。按下面的「＋更新部位」新增第一個帳戶（例如海外券商、複委託各一個）。</div>${usFoot()}</div>`;
  const so=(a,b,key)=>USS=='my'?usOrdIx(key(a))-usOrdIx(key(b))||(b.mvC??-1)-(a.mvC??-1):USS=='pl'?(b.plp??-1e9)-(a.plp??-1e9):USS=='w'?(b.w??-1)-(a.w??-1):(b.mvC??-1)-(a.mvC??-1);
  const sel=(v,f,L)=>`<select onchange="${f}(this.value)">${L.map(([k,l])=>`<option value="${k}" ${v==k?'selected':''}>${l}</option>`).join('')}</select>`;
  let h=usTrendHtml(T,fx);
@@ -163,7 +163,7 @@ window.usAcct=id=>{const us=S.us&&Array.isArray(S.us.accts)?S.us:usDef(),A=id?(u
  if(!USE.rows.length)USE.rows.push({n:'',q:'',c:'',px:'',px0:''});asOvOpen(usAcctHtml())};
 function usAcctHtml(){const e=USE,i=(k,j,ph,t)=>`<input ${t||'type=number step=any inputmode=decimal'} value="${esc(e.rows[j][k])}" placeholder="${ph}" onchange="usEd(${j},'${k}',this.value)">`;
  return`<div class=ovh><button onclick="asClose()">✕</button><b>${e.id?'更新部位':'新增美股帳戶'}</b></div>
- <div class=g><label>帳戶名稱<input value="${esc(e.name)}" placeholder="例如 海外券商、員工認股、複委託" onchange="USE.name=this.value"></label><label>美元現金（USD）<input type=number step=any inputmode=decimal value="${esc(e.cash)}" placeholder="沒有就留空" onchange="USE.cash=this.value"></label></div>
+ <div class=g><label>帳戶名稱<input value="${esc(e.name)}" placeholder="例如 海外券商、複委託" onchange="USE.name=this.value"></label><label>美元現金（USD）<input type=number step=any inputmode=decimal value="${esc(e.cash)}" placeholder="沒有就留空" onchange="USE.cash=this.value"></label></div>
  ${e.mode=='ledger'?'<div class=wn>這個帳戶是帳本模式；目前的版本先照快照顯示與編輯。</div>':''}
  <div class=ash style="margin-top:8px"><b>持股</b><div class="seg sm"><button class="${e.cm=='t'?'on':''}" onclick="usEdCm('t')">成本填總額</button><button class="${e.cm=='a'?'on':''}" onclick="usEdCm('a')">成本填均價</button></div></div>
  <div class=h>照券商 App 顯示的數字填，金額都是美元。成本沒有就留空（只看市值）。現價留空＝不改。</div>
@@ -204,7 +204,7 @@ window.usStock=n=>{n=usCode(n);const us=S.us,T=usCalc(us,usAu()),r=T.rows.find(x
  <div class=sub>各帳戶</div>${r.parts.map(x=>`<div class=asr onclick="usAcct('${esc(x.id)}')"><div class=a1><b>${esc(x.name||x.id)}</b><b>${usMn(x.mvC,fx)}</b></div><div class=a2><span>${usQt(x.q)} 股${x.cC!=null?'・成本 '+usU(x.cC,2):'・沒填成本'}</span><span>${x.plC!=null?`<b class="${usCl(x.plC)}">${usSg(x.plC,fx)}（${usPc(x.plp)}）</b>`:''}</span></div></div>`).join('')}
  <div class=asbtn><button onclick="usAsk('earn','${esc(n)}')">🤖 財報後檢查</button>${ee?`<span class=h style="align-self:center">財報日 ${esc(ee.d)}</span>`:''}</div>
  <div class=asth><b>現價與標籤</b>${p&&p.src=='a'?`<div class=h>這一檔有自動收盤價（${esc(usD(p.d))}）；手填的日期比它新才會用手填的。</div>`:''}<div class=g><label>現價（USD）<input id=usPxV type=number step=any inputmode=decimal value="${p&&p.src=='m'?p.v:''}" placeholder="${p?p.v:'手填'}"></label><label>價格日期<input id=usPxD type=date value="${p&&p.src=='m'&&p.d?esc(p.d):TODAY}"></label></div>
-  <div class=g><label>名稱（選填）<input id=usNmV value="${esc(at.name||'')}" placeholder="公司或 ETF 名稱"></label><label>主題（選填，和台股用同一組名稱）<input id=usTgV list=usTgL value="${esc(at.tag||'')}" placeholder="例如 AI 伺服器"><datalist id=usTgL>${tags.map(t=>`<option value="${esc(t)}">`).join('')}</datalist></label></div>
+  <div class=g><label>名稱（選填）<input id=usNmV value="${esc(at.name||'')}" placeholder="公司或 ETF 名稱"></label><label>主題（選填，和台股用同一組名稱）<input id=usTgV list=usTgL value="${esc(at.tag||'')}" placeholder="例如 半導體"><datalist id=usTgL>${tags.map(t=>`<option value="${esc(t)}">`).join('')}</datalist></label></div>
   <div class=asbtn><button class=pri onclick="usStockSave('${esc(n)}')">💾 儲存</button></div></div>`)};
 window.usStockSave=n=>{const us=S.us,v=usNum($('usPxV').value),d=$('usPxD').value||TODAY,nm=$('usNmV').value.trim(),tg=$('usTgV').value.trim();if(v!=null&&v<=0){toast('現價要大於 0',0);return}if(d>TODAY){toast('價格日期不能是未來',0);return}
  us.px=us.px||{};us.pxd=us.pxd||{};us.pxa=us.pxa||{};us.attr=us.attr||{};if(v!=null){us.px[n]=v;us.pxd[n]=d;us.pxa[n]='手填'}

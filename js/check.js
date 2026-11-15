@@ -10,7 +10,7 @@ function ckM0(c){c=cU(c);if(!CK||!c)return null;if(CKM[c]!==undefined)return CKM
 // RSI、MACD、均線、法人、融資、營收維持用檢核資料
 function ckM(c){const o=ckM0(c);if(!o)return o;c=cU(c);const px=num((S.px||{})[c]),d=(S.pxd||{})[c]||'',auto=!!(S.pxa||{})[c];
  if(px==null||px==o.c)return o;if(auto?d>CK.d:d>=CK.d||!d){const r=o.c>0?px/o.c:1;
-  // 本益比、股價淨值比是用檢核資料那天的收盤算的；換成新價格時一起等比例換算，不然觸發價和判斷會把兩天的數字混在一起（2026-11-11 零壹）
+  // 本益比、股價淨值比是用檢核資料那天的收盤算的；換成新價格時一起等比例換算，不然觸發價和判斷會把兩天的數字混在一起
   return Object.assign({},o,{c:px,live:{px,d,auto,c0:o.c,pe:o.pe,pb:o.pb},pe:o.pe!=null?Math.round(o.pe*r*100)/100:o.pe,pb:o.pb!=null?Math.round(o.pb*r*100)/100:o.pb})}return o}
 // 股價淨值比在近 10 年區間的位置：用現價換算時改用門檻比較（pbQ＝下 1/3、上 1/3 的門檻，和 pbPct10 同一個定義）
 const ckPbLo=m=>m.live&&m.pbQ&&m.pbQ[0]!=null&&m.pb!=null?m.pb<=m.pbQ[0]:m.pbPct10<=1/3,ckPbHi=m=>m.live&&m.pbQ&&m.pbQ[1]!=null&&m.pb!=null?m.pb>m.pbQ[1]:m.pbPct10>=2/3;
@@ -218,7 +218,7 @@ const CK_ATTR={growth:'產業有 2 年以上結構性成長',cyc:'景氣循環�
 function ckFixHtml(c,F){c=cU(c);const y=+TODAY.slice(0,4),dir=(f,on)=>(typeof OL_DIR!='undefined'?OL_DIR:[['up','向上'],['flat','持平'],['down','向下']]).map(([v,l])=>`<button onclick="${on.replace('$V',v)}">${l}</button>`).join('');
  return[...new Set(F)].map(f=>{
   if(f.startsWith('attr:')&&f!='attr:theme'){const k=f.slice(5);return`<div class=ckfx data-k="${f}">✏️ ${CK_ATTR[k]||k}？<button onclick="ckFix.attr('${c}','${k}',1)">是</button><button onclick="ckFix.attr('${c}','${k}',0)">否</button></div>`}
-  if(f=='attr:theme')return`<div class=ckfx data-k="attr:theme">✏️ 所屬主題 <input list=ckThL placeholder="例如 AI 伺服器" style="width:140px"><datalist id=ckThL>${Object.keys(S.themes||{}).map(n=>`<option value="${esc(n)}">`).join('')}</datalist><button onclick="ckFix.theme(this,'${c}')">儲存</button></div>`;
+  if(f=='attr:theme')return`<div class=ckfx data-k="attr:theme">✏️ 所屬主題 <input list=ckThL placeholder="例如 半導體" style="width:140px"><datalist id=ckThL>${Object.keys(S.themes||{}).map(n=>`<option value="${esc(n)}">`).join('')}</datalist><button onclick="ckFix.theme(this,'${c}')">儲存</button></div>`;
   if(f.startsWith('theme:')){const n=f.slice(6);return`<div class=ckfx data-k="theme" data-n="${esc(n)}">✏️ 主題「${esc(n)}」現在 ${dir('',`ckFix.th(this,'$V')`)}<div class=h>日期記今天；來源和重點可以到「🧭 策略 → 📚 策略庫 → 🧭 主題指標」補</div></div>`}
   if(f=='eps')return`<div class=ckfx data-k="eps">✏️ 法人 EPS 預估：${y} 年 <input type=number step=any class=e1 style="width:72px"> ${y+1} 年 <input type=number step=any class=e2 style="width:72px"><br><input class=es placeholder="來源，例如 FactSet 中位數、元大投顧" style="width:190px"> <input type=date class=ed value="${TODAY}" style="width:135px"> <button onclick="ckFix.eps(this,'${c}')">新增</button><div class=h>今年和明年都要填；不知道去哪找，可以按資產頁「✏️ 待補資料」裡的「🤖 請 AI 幫我找」</div></div>`;
   if(f=='guide')return`<div class=ckfx data-k="guide">✏️ 最近一次法說：下一季營收 ${dir('',`ckFix.guide(this,'${c}','rev','$V')`)}　毛利率 ${dir('',`ckFix.guide(this,'${c}','gm','$V')`)}<br>法說日期 <input type=date class=gd value="${TODAY}" style="width:135px"> <input class=gs placeholder="來源" style="width:110px"></div>`;
@@ -279,7 +279,7 @@ ${eps.length?`
 4. 股票屬性：${at.join('；')}
 `:''}
 最後請用「投資帳本 v1」格式輸出一個 json（只放有找到的），例如：
-{"format":"投資帳本 v1","outlook":[{"code":"2301","eps":[{"year":${y},"eps":11.19,"src":"FactSet 中位數（鉅亨網）","date":"${TODAY}"}],"guide":{"rev":"up","gm":"flat","date":"${TODAY}","src":"法說會","note":"一句重點"},"attr":{"growth":true,"cyc":false,"lead":true,"theme":"AI 伺服器"}}],"themes":[{"name":"PC","status":"down","date":"${TODAY}","src":"IDC","note":"一句重點"}]}`;
+{"format":"投資帳本 v1","outlook":[{"code":"2330","eps":[{"year":${y},"eps":52.3,"src":"FactSet 中位數（鉅亨網）","date":"${TODAY}"}],"guide":{"rev":"up","gm":"flat","date":"${TODAY}","src":"法說會","note":"一句重點"},"attr":{"growth":true,"cyc":false,"lead":true,"theme":"半導體"}}],"themes":[{"name":"手機","status":"down","date":"${TODAY}","src":"IDC","note":"一句重點"}]}`;
  return t}
 // 「🤖 請 AI 幫我找」改成打開 🤖 AI 討論的「補資料」
 window.ckAiAsk=()=>aiOpen({q:'fill'});
@@ -364,7 +364,7 @@ window.exDecide=(id,key,k)=>{const T=stThesis(S,id);if(!T)return;const x=(exRule
  if(k=='sell'){const c=cU(T.code),h=holdings(S).filter(o=>o.ac=='a'&&cU(o.n)==c).reduce((a,o)=>a+(+o.q||0),0),fr=x.frac||1;
   if(typeof asTradeOpen!='function')return;asTradeOpen({k:'sell',c,ac:'a'});Object.assign(AT,{q:h?String(fr>=1?h:Math.round(h*fr)):'',rs:EX_RS(x.lb),note:`照規則：${x.lb||'出場條件'}${x.act?' → '+x.act:''}`,sig:id+'|'+key});if(typeof asTh=='function'){asOvOpen(asTradeHtml());asTh();asPrev()}return}
  let n='';if(k=='skip'){n=prompt('不照做的原因（一句話，之後檢討用）：','');if(n==null)return;n=n.trim();if(!n){alert('請寫一句原因');return}}
- else if(k=='na'){n=prompt('為什麼這條不適用？（例如「健鼎在上升段，這條是谷底建倉的停損」）','');if(n==null)return;n=n.trim()}
+ else if(k=='na'){n=prompt('為什麼這條不適用？（例如「股價在上升段，這條是谷底建倉才用的停損」）','');if(n==null)return;n=n.trim()}
  exMark(T,key,k,n);save();upd();if(typeof asCalc=='function')asCalc();exReStock()};
 const exReStock=()=>{try{if(typeof asCur!='undefined'&&asCur&&!AT&&$('asOv')&&$('asOv').style.display=='flex'){const b=$('asOvB'),h=b.scrollTop;asStock(asCur.c,asCur.ac);$('asOvB').scrollTop=h}}catch(e){}};
 window.exUndo=(id,key)=>{const T=stThesis(S,id);if(!T||!T.exAck)return;delete T.exAck[key];T.exLog=(T.exLog||[]);for(let i=T.exLog.length-1;i>=0;i--)if(T.exLog[i].key==key){T.exLog.splice(i,1);break}save();upd();if(typeof asCalc=='function')asCalc();exReStock()};

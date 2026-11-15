@@ -64,7 +64,7 @@ function msRender(){const b=$('msBody');if(!b)return;const m=msCur(),L=msSteps()
 window.msSnap=()=>{const n0=JSON.stringify((S.snaps||[]).map(s=>[sDate(s),s.c,s.p,s.a]));try{snap()}catch(e){}if(JSON.stringify((S.snaps||[]).map(s=>[sDate(s),s.c,s.p,s.a]))!=n0)toast('已結算，接著匯出備份',0);msRender()};
 
 // 「今日」的月結卡：每月 11 日起、還沒做完時出現；做到一半一直在
-function msAfter(){const el=$('msToday');if(!el)return;if(!msPro()){el.innerHTML='';return}const m=msCur(),day=+TODAY.slice(8);if(!m&&day<11){el.innerHTML='';return}
+function msAfter(){const el=$('msToday');if(!el)return;if(!msPro()||!((S.trades||[]).length||(S.init||[]).length||(S.snaps||[]).length||(S.theses||[]).length||(S.us&&(S.us.accts||[]).length))){el.innerHTML='';return}const m=msCur(),day=+TODAY.slice(8);if(!m&&day<11){el.innerHTML='';return}
  const L=m?msSteps():[],n=L.filter(s=>s.ok).length;if(m&&n==L.length){el.innerHTML='';return}const nx=L.find(s=>!s.ok);
  el.innerHTML=`<div class=p style="margin-bottom:10px"><div class="asl alll" onclick="msOpen()"><span><b>🗓️ ${+msMon().slice(5)} 月月結</b> ${m?`<span class=h>完成 ${n}／${L.length}${nx?'，下一步：'+nx.t:''}</span>`:'<span class=h>對帳 → 現金 → 配息 → 資料 → 結算 → 備份</span>'}</span><button class=pri>${m?'繼續':'開始'}</button></div></div>`}
 

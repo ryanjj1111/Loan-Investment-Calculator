@@ -7,7 +7,7 @@ const AS_RS2EXIT={tp:'target',sl:'stop',inv:'invalid',to:'timeout',adj:'other',o
 const asRsN=k=>{if(!k)return'';for(const t in AS_RS){const f=AS_RS[t].find(x=>x[0]==k);if(f)return f[1]}return''};
 // 這檔股票目前進行中的論點（沒有就 null）
 // 2026-11-12：同一檔同時間只屬於一個論點。萬一有兩個（舊資料或匯入），先取持有中、再取規劃中；同狀態取最早建立的
-// （之前取「最新建立」，規劃中的新論點會把持有中的蓋掉：智易 T009／T010）
+// （之前取「最新建立」，規劃中的新論點會把持有中的蓋掉）
 const AS_THO={hold:0,plan:1};
 const asThesisOf=(S,c)=>(S.theses||[]).filter(T=>T.status!='exit'&&cU(T.code)==cU(c)).sort((a,b)=>((AS_THO[a.status]??1)-(AS_THO[b.status]??1))||((a.created||'')<(b.created||'')?-1:(a.created||'')>(b.created||'')?1:String(a.id)<String(b.id)?-1:1))[0]||null;
 
@@ -74,12 +74,13 @@ function asSizeHint(S,px,stopPct,riskPct){px=num(px);stopPct=num(stopPct);riskPc
 // ================= 風險：未平倉風險、槓桿、離虧損上限 =================
 // 沒設停損、或已經跌破停損還沒賣的部位，用回測 v4 各策略「持有期間最大跌幅」最差 10% 估
 // 2026-11-10 審查 v6：已跌破停損不再算 0；離停損再近也至少算 3%（跳空）
-const AS_STRESS={S01:13,S02:12,S03:10,S04:23,S05:10,S06:41,S07:18},AS_STRESS_DEF=20,AS_MIN_GAP=3;
+// 壓力跌幅：策略庫每個策略自己填（stressP），沒填用 20%
+const AS_STRESS_DEF=20,AS_MIN_GAP=3,asStressP=(S,sid)=>{const s=(S.strategies||[]).find(x=>x.id==sid),v=s?num(s.stressP):null;return v!=null&&v>0?v:AS_STRESS_DEF};
 function asOpenRisk(S){const E=stExposure(S),L=[];let tot=0,noStop=0,broken=0;
- for(const r of asRows(S)){if(r.ac!='a'||!r.open||r.px==null)continue;const T=asThesisOf(S,r.c),st=T?num(T.stop):null,sp=T?(AS_STRESS[T.sid]??AS_STRESS_DEF):AS_STRESS_DEF;let v,how;
+ for(const r of asRows(S)){if(r.ac!='a'||!r.open||r.px==null)continue;const T=asThesisOf(S,r.c),st=T?num(T.stop):null,sp=T?asStressP(S,T.sid):AS_STRESS_DEF;let v,how;
   if(st!=null&&st<r.px){const g=Math.max(r.px-st,r.px*AS_MIN_GAP/100);v=r.q*g;how=`停損 ${st}（−${((1-st/r.px)*100).toFixed(1)}%）`+(g>r.px-st?`，太近用 −${AS_MIN_GAP}% 算`:'')}
   else if(st!=null){v=r.q*r.px*sp/100;how=`已跌破停損 ${st} 還沒賣：用 −${sp}% 估`;broken++}
-  else{v=r.q*r.px*sp/100;how=`沒設停損，用 −${sp}% 估${T?'（'+T.sid+' 回測最差 10%）':''}`;noStop++}
+  else{v=r.q*r.px*sp/100;how=`沒設停損，用 −${sp}% 估${T?'（'+T.sid+' 的壓力跌幅）':''}`;noStop++}
   tot+=v;L.push({c:r.c,v,how,th:T?T.id:''})}
  return{tot,pct:E.tot>0?tot/E.tot*100:null,base:E.tot,baseSrc:E.baseSrc,L:L.sort((a,b)=>b.v-a.v),noStop,broken}}
 
