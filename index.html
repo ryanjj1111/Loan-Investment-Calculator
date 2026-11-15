@@ -112,7 +112,7 @@ button.lk{border:0;background:none;color:var(--pri);padding:0 2px;font-size:12px
 .asal{border:1px solid #fca5a5;background:#fef2f2;color:#991b1b;border-radius:8px;padding:7px 9px;margin:8px 0;font-size:12.5px;line-height:1.6}.aspc{cursor:pointer}.aspa{display:inline-block;transition:transform .15s}.aspc.on .aspa{transform:rotate(90deg)}.aspd{display:none;text-align:left;font-size:11.5px;margin-top:4px;border-top:1px dashed var(--line);padding-top:3px}.aspc.on .aspd{display:block}.aspd b{font-size:12px!important}
 .aidf{border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:8px 0;font-size:12.5px}.aidf:empty{display:none}.aidl{margin-top:3px}.aidok{color:var(--ok)}.aih{margin:0 0 4px 22px}.asck .aiq{font-size:12.5px;padding:3px 8px}
 .avn{margin:0 0 10px}.avn button{padding:8px 4px;font-size:14px;font-weight:700}
-body[data-av=today] #pgA>:not(#avNav):not(#asAl):not(#asFix):not(#usToday):not(#msToday),body[data-av=tw] #pgA>#asAl,body[data-av=tw] #pgA>#asFix,body[data-av=tw] #pgA>#usToday,body[data-av=tw] #pgA>#msToday,body[data-av=tw] #pgA>#usView,body[data-av=tw] #pgA>#allView,body[data-av=us] #pgA>:not(#avNav):not(#usView),body[data-av=all] #pgA>:not(#avNav):not(#allView){display:none}
+body[data-av=today] #pgA>:not(#avNav):not(#asAl):not(#asFix):not(#usToday):not(#msToday):not(#wlToday),body[data-av=tw] #pgA>#asAl,body[data-av=tw] #pgA>#asFix,body[data-av=tw] #pgA>#usToday,body[data-av=tw] #pgA>#msToday,body[data-av=tw] #pgA>#wlToday,body[data-av=tw] #pgA>#usView,body[data-av=tw] #pgA>#allView,body[data-av=us] #pgA>:not(#avNav):not(#usView),body[data-av=all] #pgA>:not(#avNav):not(#allView){display:none}
 body[data-av=us] #twFab,body[data-av=all] #twFab,body:not([data-av=us]) #usFab{display:none}
 .usr{display:grid;grid-template-columns:1.1fr 1fr 1.2fr 1fr 34px;gap:4px;margin:3px 0;align-items:center}.usr input{padding:6px 4px;min-width:0;width:100%}.usr button{padding:5px 0}.usr.h span{padding-left:4px}
 .allb{font-size:26px;font-weight:800;margin:4px 0}.alll{display:flex;justify-content:space-between;gap:8px;cursor:pointer}
@@ -229,6 +229,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
  <div id="asAl"></div>
  <div id="asFix"></div>
  <div id="msToday"></div>
+ <div id="wlToday"></div>
  <div id="usToday"></div>
  <div class="p" id="asAlloc"></div>
  <div class="p" id="asRisk"></div>
@@ -327,6 +328,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li><b>同一檔只能有一個論點</b>（2026-11-12）：有兩個以上沒出場的論點時，提醒列和個股頁會標出，按「合併…」選要留哪一個，畫面列出會留下、會搬過去、會丟掉的內容；合併前自動存還原點。要換策略（例如 S04 事件結束轉 S01）用個股頁的「🔁 換策略」：舊論點以「轉換」結案、不產生交易，新論點用當天收盤當起算價、承接股數。AI 匯入同一檔不同策略的論點時，預設不勾，勾了就是轉換。</li>
 <li><b>撥款後損益</b>（個股頁）：撥款前持股和撥款後買進都有時，點那一格（▸）展開兩行：撥款前持股（從撥款日收盤）、撥款後買進（從成交價），加總就是那一格的數字。</li>
 <li><b>⬇️ 匯出</b>：選「全部（備份）」或「只有策略」（.json 或〈策略範本〉.md）。只有策略不含論點、交易、持股、金額，<b>不是備份</b>；匯入請用「📥 從 AI 貼上」，編號撞到時可以選更新自己的或新增成另一個編號，預覽會顯示工具讀得懂幾條。</li>
+<li><b>👀 觀察名單</b>（2026-11-15）：在「🔍 評估」評估一檔股票，或用「從策略找股票」找到想追蹤的，按「👀 加入觀察」。名單在「🔍 評估」最上面，每天用同一套策略規則重新判斷，依「可以買 → 還差幾項 → 不買」排序，並顯示加入後的漲跌。條件都符合時「今日」會提醒。它只是追蹤清單：不是論點、不算策略績效、最多 30 檔。「從策略找股票」超過 40 檔時可以「顯示全部」。</li>
 <li><b>🗓️ 月結</b>（2026-11-15）：每月 11 日起「今日」會出現月結卡（頁面最下方也有「🗓️ 月結」）。一條流程逐步打勾：台股股數對帳 → 交割帳戶現金 → 配息與配股（自動找出持有期間有除權息、但還沒記的）→ 營收財報與前瞻資料 → 美股核對 → 結算 → 月底復盤 → 匯出備份。App 看得出來的步驟會自己打勾；中途離開可以回來接著做。進度只記在這台裝置。</li>
 <li><b>備份</b>（2026-11-15）：每天第一次開啟會自動存一份還原點；匯出選單多了「📤 分享到雲端硬碟」（手機可以直接存到雲端硬碟）；儲存結算後會直接跳出匯出選單。</li>
 <li><b>交易紀錄</b>（2026-11-15）：填好的交易每筆收成一行，點一下才展開編輯。</li>
@@ -432,23 +434,24 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button><button onclick="usAsk()">🤖 問 AI</button></div>
 <div class="asfab asw" id="twFab"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261115b"></script>
-<script src="data/stocks.js?v=20261115b"></script>
-<script src="js/engine.js?v=20261115b"></script>
-<script src="js/ui.js?v=20261115b"></script>
-<script src="js/strategy-engine.js?v=20261115b"></script>
-<script src="js/asset-engine.js?v=20261115b"></script>
-<script src="js/us-engine.js?v=20261115b"></script>
-<script src="js/prices.js?v=20261115b"></script>
-<script src="js/check.js?v=20261115b"></script>
-<script src="js/outlook.js?v=20261115b"></script>
-<script src="js/strategy-ui.js?v=20261115b"></script>
-<script src="js/asset-ui.js?v=20261115b"></script>
-<script src="js/us-ui.js?v=20261115b"></script>
-<script src="js/eval.js?v=20261115b"></script>
-<script src="js/ai-import.js?v=20261115b"></script>
-<script src="js/ai-ask.js?v=20261115b"></script>
-<script src="js/back.js?v=20261115b"></script>
-<script src="js/month.js?v=20261115b"></script>
-<script src="js/main.js?v=20261115b"></script>
+<script src="data/etf-ref.js?v=20261115c"></script>
+<script src="data/stocks.js?v=20261115c"></script>
+<script src="js/engine.js?v=20261115c"></script>
+<script src="js/ui.js?v=20261115c"></script>
+<script src="js/strategy-engine.js?v=20261115c"></script>
+<script src="js/asset-engine.js?v=20261115c"></script>
+<script src="js/us-engine.js?v=20261115c"></script>
+<script src="js/prices.js?v=20261115c"></script>
+<script src="js/check.js?v=20261115c"></script>
+<script src="js/outlook.js?v=20261115c"></script>
+<script src="js/strategy-ui.js?v=20261115c"></script>
+<script src="js/asset-ui.js?v=20261115c"></script>
+<script src="js/us-ui.js?v=20261115c"></script>
+<script src="js/eval.js?v=20261115c"></script>
+<script src="js/ai-import.js?v=20261115c"></script>
+<script src="js/ai-ask.js?v=20261115c"></script>
+<script src="js/back.js?v=20261115c"></script>
+<script src="js/watch.js?v=20261115c"></script>
+<script src="js/month.js?v=20261115c"></script>
+<script src="js/main.js?v=20261115c"></script>
 </body></html>
