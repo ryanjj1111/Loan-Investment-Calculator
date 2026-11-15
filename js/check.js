@@ -203,7 +203,7 @@ function ckCardHtml(T,st){if(!st)return'';const c=cU(T.code),C=stConds(st);if(!C
  const why=r=>`<div class=h>${esc(r.why)}${r.miss?' <i>'+esc(r.miss)+'</i>':''}</div>`;
  const row=(i,gi,ii,pre)=>i.r?`<div class=ckl>${i.r.v===true?'✅':i.r.v===false?'❌':ckFixable(i.r)?'✏️':'⏳'} ${pre||''}${ckT(i.t)}${why(i.r)}${i.r.v==null&&ckFixable(i.r)?ckFixHtml(c,i.r.fix):''}</div>`
   :`<div class=ckl>${M.has(i.t)?'☑️':'❔'} ${pre||''}${ckT(i.t)} <button class=ckmb onclick="ckMetTog('${T.id}',${gi},${ii})">${M.has(i.t)?'取消確認':'確認符合'}</button><div class=h>${M.has(i.t)?'你確認過符合':'要自己判斷，符合就按「確認符合」'}</div></div>`;
- return`<div class="asck ckc"><b>📋 今日條件檢核</b> <span class=h>${esc(ckAsOf())}</span><div class=h style="font-size:11.5px">✅ 符合　❌ 不符合　✏️ 要補資料（在下面直接填）　⏳ 等資料累積（不用做事）　❔ 要自己判斷</div>${lv?`<div class=wn style="font-size:12.5px">${esc(lv)}</div>`:''}${G.map((g,gi)=>{
+ return`<div class="asck ckc"><b>📋 今日條件檢核</b> <span class=h>${esc(ckAsOf())}</span>${tipI('✅ 符合\n❌ 不符合\n✏️ 要補資料（在下面直接填）\n⏳ 等資料累積（不用做事）\n❔ 要自己判斷','圖示')}${lv?`<div class=wn style="font-size:12.5px">${esc(lv)}</div>`:''}${G.map((g,gi)=>{
   if(g.need=='none')return`<div style="margin-top:4px"><b>⛔ ${esc(g.sec)}</b> <span class=h>任何一項成立就不買</span>${g.items.map(i=>i.r?`<div class=ckl>${i.r.v===true?'⛔ 成立':i.r.v===false?'✓ 沒有':ckFixable(i.r)?'✏️':'⏳'} ${ckT(i.t)}${why(i.r)}${i.r.v==null&&ckFixable(i.r)?ckFixHtml(c,i.r.fix):''}</div>`:`<div class=ckl>❔ ${ckT(i.t)}<div class=h>要自己判斷</div></div>`).join('')}</div>`;
   if(/依序/.test(g.rule||''))return`<div style="margin-top:4px"><b>${esc(g.sec)}</b> <span class=h>依序加碼，已買 ${Math.min(D.n,g.items.length)}／${g.items.length} 批</span>${g.items.map((i,ii)=>ii<D.n?`<div class="ckl h">🟢 已買${D.d[ii]?' '+ckMD(D.d[ii]):''}　${ckT(i.t)}</div>`:row(i,gi,ii,ii==D.n?'👉 ':'')).join('')}</div>`;
   const A=g.items.filter(i=>i.r),ok=A.filter(i=>i.r.v===true).length,mn=g.items.filter(i=>!i.r),mk=mn.filter(i=>M.has(i.t)).length;
@@ -258,8 +258,8 @@ function ckTodoHtml(){const L=ckTodo();if(!L.length)return'';const nm=c=>esc(c+'
   if(o.k=='soft')return`<div class=ckto>💡 ${nm(o.c)}：${esc(o.w)} <button onclick="ckGo('${o.c}','eps',1)">填寫</button></div>`;
   return`<div class=ckto>${o.k=='old'?'🔄':'✏️'} ${nm(o.c)}：${lb}${o.k=='old'?' '+esc(o.w):''} <button onclick="ckGo('${o.c}','${o.f}',${o.k=='old'?1:0})">${o.k=='old'?'更新':'填寫'}</button></div>`};
  const n=L.filter(o=>o.k!='soft').length;
- return`<details class="stal asfx" ${ls('lcfx')=='0'?'':'open'} ontoggle="ls('lcfx',this.open?'1':'0')"><summary><b>✏️ 待補資料（${n}）</b> <span class=h>補了之後，條件會自動重新判斷</span></summary>${L.map(row).join('')}
-  <div class=h style="margin-top:4px">✏️ 缺的資料　🔄 舊了要更新（超過 4 個月、財報期限或法說會之後）　💡 補了判斷更準</div><div class=asbtn><button onclick="ckAiAsk()">🤖 請 AI 幫我找（複製請求）</button></div></details>`}
+ return`<details class="stal asfx" ${ls('lcfx')=='0'?'':'open'} ontoggle="ls('lcfx',this.open?'1':'0')"><summary><b>✏️ 待補資料（${n}）</b></summary>${L.map(row).join('')}
+  <div class=asbtn><button onclick="ckAiAsk()">🤖 請 AI 幫我找</button>${tipI('✏️ 缺的資料\n🔄 舊了要更新（超過 4 個月、財報期限或法說會之後）\n💡 補了判斷更準\n\n補了之後，條件會自動重新判斷。按「請 AI 幫我找」會複製一段請求，貼給 AI。','待補資料')}</div></details>`}
 // 跳到個股頁的填寫位置
 window.ckGo=(c,f,old)=>{asStock(c,'a');setTimeout(()=>{const b=$('asOvB');if(!b)return;let el=!old&&b.querySelector(`.ckfx[data-k="${f}"]`);
  if(!el){const d=b.querySelector('details.olc');if(d){d.open=true;el=f=='eps'?b.querySelector('#olV'):f=='guide'?d.querySelector('.olf input[type=date]'):d}}
@@ -377,7 +377,7 @@ function ckExitHtml(T,st){if(!st||T.status!='hold')return'';const L=exRules(st);
  if(!CK)return`<div class="asck ckc"><b>🚪 出場條件</b><div class=h>${ckErr?'讀不到自動檢核資料。':'資料讀取中…'}</div></div>`;
  const E=exEval(T),X=exCtx(T);
  const p=stPerf(S,T),rm=typeof stRmul=='function'?stRmul(T,p.ret):null;
- return`<div class="asck ckc"><b>🚪 出場條件</b> <span class=h>策略均價 ${X.avg!=null?f2(X.avg):'—'}${X.peak!=null?`｜持有期間最高 ${f2(X.peak)}`:''}${num(T.risk0)?`｜進場停損 ${f2(num(T.stop0))}（每股風險 ${f1(num(T.risk0))}%${T.rec0=='補記'?'，補記':''}）${rm!=null?`，目前 ${rm>=0?'+':''}${rm.toFixed(2)}R`:''}`:''}</span><div class=h style="font-size:11.5px">🔴 成立（照規則處理）　✓ 沒有成立　⏸ 起算前就已知、等新資料　⏳ 資料不足　❔ 要自己判斷</div>${E.map(x=>{const r=x.r,ic=(exAckOf(T,x.key)||{}).k=='na'?'🚫':!r?'❔':r.v===true?'🔴':r.pre?'⏸':r.v===false?'✓':'⏳';
+ return`<div class="asck ckc"><b>🚪 出場條件</b> <span class=h>策略均價 ${X.avg!=null?f2(X.avg):'—'}${X.peak!=null?`｜持有期間最高 ${f2(X.peak)}`:''}${num(T.risk0)?`｜進場停損 ${f2(num(T.stop0))}（每股風險 ${f1(num(T.risk0))}%${T.rec0=='補記'?'，補記':''}）${rm!=null?`，目前 ${rm>=0?'+':''}${rm.toFixed(2)}R`:''}`:''}</span>${tipI('🔴 成立（照規則處理）\n✓ 沒有成立\n⏸ 起算前就已知、等新資料\n⏳ 資料不足\n❔ 要自己判斷','圖示')}${E.map(x=>{const r=x.r,ic=(exAckOf(T,x.key)||{}).k=='na'?'🚫':!r?'❔':r.v===true?'🔴':r.pre?'⏸':r.v===false?'✓':'⏳';
   return`<div class=ckl>${ic} ${x.lb?`<b>${esc(x.lb)}</b>：`:''}${ckT(x.cond)}${x.act?` → <b>${esc(x.act)}</b>`:''}${r?`<div class=h>${esc(r.why)}${r.miss?' <i>'+esc(r.miss)+'</i>':''}</div>`:'<div class=h>要自己判斷</div>'}${(()=>{const a=exAckOf(T,x.key);if(a&&a.k=='na')return`<div class=h>🚫 ${ckMD(a.d)} 標為不適用${a.n?'：'+esc(a.n):''}${a.aiV?'｜當時 AI：'+esc(a.aiV):''} <button class=lk onclick="exUndo('${T.id}','${x.key}')">改</button></div>`;if(!(r&&r.v===true))return'';return a?`<div class=h>${ckMD(a.d)} ${EX_KN[a.k]||'已處理'}${a.n?'：'+esc(a.n):''}${a.aiV?'｜當時 AI：'+esc(a.aiV):''}（條件不成立後自動解除） <button class=lk onclick="exUndo('${T.id}','${x.key}')">改</button></div>`:`<div>${exBtns(T.id,x.key)}</div>`})()}</div>`}).join('')}
   ${exTrigHtml(T)}<div class=h style="margin-top:4px">自動判斷只看公開資料與你記的交易，僅供參考，不是投資建議。</div></div>`}
 

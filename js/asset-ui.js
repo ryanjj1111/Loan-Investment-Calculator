@@ -31,7 +31,7 @@ function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)s
  if(stWs()!='as')return;
  const z=asSum(S),all=asVsBm(S),act=asVsBm(S,'a'),bm=esc(bmC(S));let loan='💰 信貸：結算填了現金後顯示 A／C';
  try{const r=settle(S,curEff());if(r)loan=`💰 信貸：A <b class="${asC(r.af)}">${asM(r.af)}</b>｜C <b class="${asC(r.ao)}">${asM(r.ao)}</b>`}catch(e){}
- $('asTop').innerHTML=fold('top','💼 損益總覽',`持股市值 ${W2(z.mv)} 萬｜未實現損益 ${asM(z.ub)}`,`<div class=h>和券商 App 的「預估損益」是同一個數字：用券商成本，未實現損益已扣賣出手續費與證交稅</div><div class=ast>
+ $('asTop').innerHTML=fold('top','💼 損益總覽'+tipI('未實現損益和券商 App 的「預估損益」是同一個數字：用券商成本，已扣預估賣出手續費與證交稅。','損益總覽'),`持股市值 ${W2(z.mv)} 萬｜未實現損益 ${asM(z.ub)}`,`<div class=ast>
   <div class=c><small>持股市值</small><b>${W2(z.mv)} 萬</b><small>${z.miss.length?`<span class=wn>${z.miss.length} 檔沒有現價</span>`:'成本 '+W2(z.cb)+' 萬'}</small></div>
   <div class=c><small>未實現損益</small><b class="${asC(z.ub)}">${asM(z.ub)}</b><small>${asPct(z.cb?z.ub/z.cb*100:null)}</small></div>
   <div class=c><small>已實現與股利</small><b class="${asC(z.realB+z.div)}">${asM(z.realB+z.div)}</b><small>賣出損益與配息</small></div>
@@ -40,7 +40,7 @@ function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)s
   <div class=asl>撥款後損益 <b class="${asC(z.tot)}">${asM(z.tot)}</b>（${all.days<182.6?'期間報酬 '+asPct(all.ret):'年化 '+asPct(all.xr)}）</div>
   ${(()=>{const s=asPostSplit(S);return s.n1&&s.n0?`<div class=asl>其中：撥款後有買賣的 ${s.n1} 檔 <b class="${asC(s.v1)}">${asM(s.v1)}</b>｜撥款前持股（之後沒有再買賣）${s.n0} 檔 <b class="${asC(s.v0)}">${asM(s.v0)}</b>${s.miss?' <span class=h>（'+s.miss+' 檔需現價）</span>':''}</div>`:''})()}
   <div class=asl>和 ${bm} 比：如果撥款日的持股和之後每一筆買賣，都改成同一天、同金額買賣 ${bm}<div>・全部：${asBmTxt(all)}</div><div>・主動：${asBmTxt(act)}</div></div>
-  <div class=asl>${loan} <button class=lk onclick="setWs('loan')">看信貸 ›</button></div>`:`<div class=asl style="margin-top:8px"><button class=lk onclick="asPostSet(1)">📅 顯示撥款後績效</button> <span class=h>（有用信貸投資時，看撥款日之後的損益和 vs ${bm}）</span></div>`}
+  <div class=asl>${loan} <button class=lk onclick="setWs('loan')">看信貸 ›</button></div>`:`<div class=asl style="margin-top:8px"><button class=lk onclick="asPostSet(1)">📅 顯示撥款後績效</button> ${tipI('有用信貸投資時，看撥款日之後的損益和 vs '+bm+'。','撥款後績效')}</div>`}
   <div class=asl>現價：${pxStatus()} <button class=lk onclick="pxRefresh()">🔄 更新</button></div>`);
  const fx=$('asFix');if(fx)fx.innerHTML=typeof ckTodoHtml=='function'?ckTodoHtml():'';try{$('asAl').innerHTML=asTmrHtml()}catch(e){console.error(e);const A=stAlerts(S);$('asAl').innerHTML=A.length?`<div class=stal>${fold('al',`⚠️ 提醒（${A.length}）`,esc(A[0].t).slice(0,24)+'…',`${A.slice(0,4).map(asAlRow).join('')}`)}</div>`:''}
  // 配置
@@ -50,7 +50,7 @@ function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)s
   <div class=asl><span class=dot style="background:#3b82f6"></span>被動 ${(z.p.mv/tot*100).toFixed(0)}%　<span class=dot style="background:#f59e0b"></span>主動 ${(z.a.mv/tot*100).toFixed(0)}%${cash!=null?`　<span class=dot style="background:#94a3b8"></span>現金 ${(cash/tot*100).toFixed(0)}%`:''}${W>0?`<br><span class=h>目標：被動 ${((+S.Wp||0)/W*100).toFixed(0)}%｜主動 ${((+S.Wa||0)/W*100).toFixed(0)}%｜現金 ${((+S.Wc||0)/W*100).toFixed(0)}%</span>`:''}</div>
   <div class=asl>現金 ${CS.v==null?'<span class=h>還沒填</span>':`現在約 <b>主動 ${CS.a.toFixed(1)} 萬｜被動 ${CS.p.toFixed(1)} 萬</b> <span class="${CS.old?'wn':'h'}">（上次填 ${esc(asD(CS.d))}：主動 ${(+CS.L.a).toFixed(1)}、被動 ${(+CS.L.p).toFixed(1)} 萬${CS.est?'；之後的買賣、配息已自動加減，買進在交易當天就先扣':''}${CS.old?'；超過 30 天沒更新':''}）</span>`}
    <div class=h style="margin-top:4px">更新餘額（照交割帳戶今天的餘額填）：主動 <input type=number step=any value="${S.cur&&S.cur.ca!=null?S.cur.ca:''}" placeholder="${CS.L&&CS.L.src=='snap'?CS.L.a:''}" onchange="asCashSet('ca',this.value)" style="width:76px"> 萬　被動 <input type=number step=any value="${S.cur&&S.cur.cp!=null?S.cur.cp:''}" placeholder="${CS.L&&CS.L.src=='snap'?CS.L.p:''}" onchange="asCashSet('cp',this.value)" style="width:76px"> 萬</div>
-   ${CS.legacy?`<div class=wn>舊資料只有現金合計 ${CS.L.t} 萬，先全部算在主動帳戶；請分成主動、被動兩格各填一次。</div>`:''}<div class=h>和「💰 信貸 → 📋 結算」這一期的現金是同一組欄位；兩格合計就是信貸頁的「追蹤帳戶現金合計」。</div></div>
+   ${CS.legacy?`<div class=wn>舊資料只有現金合計 ${CS.L.t} 萬，先全部算在主動帳戶；請分成主動、被動兩格各填一次。</div>`:''}${tipI('和「💰 信貸 → 📋 結算」這一期的現金是同一組欄位；兩格合計就是信貸頁的「追蹤帳戶現金合計」。','帳戶現金')}</div>
   ${G.length?`<div class=asl>族群（占主動）：${G.map(g=>`<span class="${g.p>g.cap?'wn':''}">${esc(g.g)} ${g.p.toFixed(0)}%${g.p>g.cap?'（上限 '+g.cap+'%）':''}</span>`).join('、')}</div>`:''}`):'';
  if($('asRisk')){const H=asHeatCap(S);$('asRisk').innerHTML=fold('risk','🛡️ 風險',H.tot!=null?`壓力虧損 ${W2(H.tot)}／剩 ${W2(H.cap)} 萬${H.over?' ⚠️':''}`:`主動停損合計 ${W2(H.R.tot)} 萬`,asRiskHtml())}
  asFoldInv();
@@ -143,7 +143,7 @@ function asStockHtml(c,ac){const r=asRows(S).find(o=>o.c==c&&o.ac==ac)||{c,ac,q:
    ${st?`<details><summary class=h>${esc(st.id)} 的規則</summary><div class=h style="white-space:pre-wrap;margin-top:4px">${st.screen?'選什麼：\n'+esc(st.screen)+'\n':''}${st.entry?'何時買：\n'+esc(st.entry)+'\n':''}${st.exit?'何時賣：\n'+esc(st.exit):''}</div></details>`:''}
    <div class=asbtn><button onclick="asRev('${T.id}','其他',1)">✅ 論點仍成立</button><button onclick="asRev('${T.id}','其他',0)">⚠️ 有疑慮</button><button onclick="asClose();setWs('st');stOpenTh('${T.id}')">完整論點 ›</button>${T.status=='hold'?`<button onclick="asConvOpen('${T.id}')">🔁 換策略</button>`:''}</div>
    ${rv.length?`<div class=h>最近檢查：${rv.map(v=>`${asD(v.date)} ${esc(v.kind)} ${+v.ok?'✅':'⚠️'}${v.note?' '+esc(v.note):''}`).join('｜')}</div>`:''}</div>`}
- else if(ac=='a'){const L=(S.strategies||[]).filter(s=>+s.on);th=`<div class=asth>這檔還沒有投資論點。選一個策略就會建立，原本的交易${r.iq?'和撥款前的期初持股':''}會一起歸入：<div class=chips>${L.map(s=>`<button onclick="asNewTh('${c}','${s.id}')">${esc(s.id+' '+s.name)}</button>`).join('')||'<span class=h>先到「🧭 策略」建立策略</span>'}${r.open?`<button onclick="asNewTh('${c}','${ST_U}')">不歸類</button>`:''}</div>${r.open?'<div class=h>進不了任何策略的持股選「不歸類」：只有停損價和重新評估日，不算策略績效。</div>':''}</div>`}
+ else if(ac=='a'){const L=(S.strategies||[]).filter(s=>+s.on);th=`<div class=asth>這檔還沒有投資論點。選一個策略就會建立，原本的交易${r.iq?'和撥款前的期初持股':''}會一起歸入：<div class=chips>${L.map(s=>`<button onclick="asNewTh('${c}','${s.id}')">${esc(s.id+' '+s.name)}</button>`).join('')||'<span class=h>先到「🧭 策略」建立策略</span>'}${r.open?`<button onclick="asNewTh('${c}','${ST_U}')">不歸類</button>${tipI('進不了任何策略的持股選「不歸類」：只有停損價和重新評估日，不算策略績效。','不歸類')}`:''}</div></div>`}
  const tot=r.open&&r.un!=null?r.un+r.real+r.div:(!r.open?r.real+r.div:null);
  const tl=(S.trades||[]).map((x,i)=>({x,i})).filter(o=>cU(o.x.n)==c&&(o.x.ac=='a'?'a':'p')==ac).sort((a,b)=>(b.x.dt||'')>(a.x.dt||'')?1:(b.x.dt||'')<(a.x.dt||'')?-1:b.i-a.i);
  const ini=hasInit(S)?(S.init||[]).filter(z=>(z.ac=='a'?'a':'p')==ac&&cU(z.n)==c&&(+z.q||0)>0):[];
@@ -179,8 +179,7 @@ function asTradeHtml(){const a=AT;return`<div class=ovh><button onclick="asBack(
  <div class=g>${a.k=='div'?`<label>每股配息(元)${asAtIn('dps','number')}</label><label>發放日${asAtIn('pdt','date')}</label>`:`<label>股數${asAtIn('q','number','股數')}</label><label>成交價(元)${asAtIn('px','number','成交價')}</label>`}</div>
  <div class=h id=atFee></div><div id=atTh></div>
  <label>備註（選填）${asAtIn('note','','')}</label>
- <div class=asbtn><button class=pri onclick="asTradeSave()">儲存</button><button onclick="asBack()">取消</button>${a.i!=null?`<button onclick="asTradeDel()">刪除這筆</button>`:''}</div>
- <div class=h>手續費與證交稅依信貸頁「稅費與手續費」自動計算；要改成成交回報的實際金額，到下方「📒 交易紀錄」按 ✎。</div>`}
+ <div class=asbtn><button class=pri onclick="asTradeSave()">儲存</button><button onclick="asBack()">取消</button>${a.i!=null?`<button onclick="asTradeDel()">刪除這筆</button>`:''}${tipI('手續費與證交稅依信貸頁「稅費與手續費」自動計算；要改成成交回報的實際金額，到下方「📒 交易紀錄」按 ✎。','手續費')}</div>`}
 window.asBack=()=>{const f=AT&&AT.from;AT=null;if(f)asStock(f.c,f.ac);else asClose()};
 window.asAtSet=(f,v,re)=>{AT[f]=v;if(f=='k'){AT.rs=''}if(f=='sid'&&!AT.stopEd)AT.stop='';if(re&&(f=='k'||f=='ac')){const h=$('asOvB').scrollTop;$('asOvB').innerHTML=asTradeHtml();$('asOvB').scrollTop=h}asTh();asPrev()};
 window.asAtPick=c=>{AT.c=c;const h=holdings(S).find(z=>cU(z.n)==c);AT.ac=h?h.ac:(/^00/.test(c)?'p':'a');if(!AT.px){const v=num((S.px||{})[c])??(typeof PXL!='undefined'&&PXL[c]?PXL[c].v:null);if(v!=null)AT.px=String(v)}$('asOvB').innerHTML=asTradeHtml();asTh();asPrev()};
@@ -285,9 +284,9 @@ function asRiskHtml(){const H=asHeatCap(S),R=H.R,L=H.L;let lv='',lq=null;
  const TG=(S.theses||[]).filter(T=>T.status=='hold'&&typeof exTrig=='function').map(T=>({T,o:exTrig(T).filter(o=>!o.hit&&o.gap!=null&&Math.abs(o.gap)<=5)[0]})).filter(x=>x.o).sort((a,b)=>Math.abs(a.o.gap)-Math.abs(b.o.gap));
  const top=R.L.slice(0,3).map(x=>`${esc(x.c)} ${esc(nameOf(x.c)||'')} ${W2(x.v)}`).join('、'),es=asExitStat(S);
  const head=H.tot!=null?`<div class=asl>壓力虧損（只算信貸資金）：<b class="${H.over?'bad':H.tot>H.cap*0.75?'wn':''}">${W2(H.tot)} 萬</b>／剩下的虧損額度 <b>${W2(H.cap)} 萬</b>${H.over?' <span class=bad>超過：先降風險再加碼</span>':' ✓'}
-   <div class=h>＝ 主動停損合計 ${W2(R.tot)} 萬 × 信貸占比 ${(H.q*100).toFixed(0)}%（${W2(H.act)} 萬）＋ 信貸資金裡的被動 ${W2(H.pas)} 萬 × 跌 <input type=number step=any value="${num(S.stressP)??25}" onchange="S.stressP=this.value===''?25:+this.value;save();asCalc()" style="width:52px"> %（${W2(H.ps)} 萬）</div></div>`
+   <div class=h>${tipI(`壓力虧損＝主動停損合計 ${W2(R.tot)} 萬 × 信貸占比 ${(H.q*100).toFixed(0)}%（${W2(H.act)} 萬）＋ 信貸資金裡的被動 ${W2(H.pas)} 萬 × 被動壓力跌幅（${W2(H.ps)} 萬）。`,'壓力虧損怎麼算')} 被動壓力跌幅 <input type=number step=any value="${num(S.stressP)??25}" onchange="S.stressP=this.value===''?25:+this.value;save();asCalc()" style="width:52px"> %</div></div>`
   :`<div class=asl>壓力虧損：<span class=h>要先在「💰 信貸 → 📋 結算」填現金，才算得出信貸占比和剩下的虧損額度</span></div>`;
- return`${head}<div class=asl>主動部位停損同時觸發（含撥款前持股）：<b>${W2(R.tot)} 萬</b>${R.pct!=null?`，占主動資本 ${R.pct.toFixed(1)}% <span class=h>（分母 ${W2(R.base)} 萬＝${esc(R.baseSrc)}）</span>`:''}${R.broken?` <span class=bad>${R.broken} 檔已跌破停損還沒賣</span>`:''}${R.noStop?` <span class=wn>${R.noStop} 檔沒設停損</span>`:''}
+ return`${head}<div class=asl>主動部位停損同時觸發（含撥款前持股）：<b>${W2(R.tot)} 萬</b>${R.pct!=null?`，占主動資本 ${R.pct.toFixed(1)}% ${tipI(`分母 ${W2(R.base)} 萬＝${R.baseSrc}`,'占主動資本')}`:''}${R.broken?` <span class=bad>${R.broken} 檔已跌破停損還沒賣</span>`:''}${R.noStop?` <span class=wn>${R.noStop} 檔沒設停損</span>`:''}
    ${top?`<div class=h>最大的三檔：${top} 萬</div>`:''}
    ${R.L.length?`<details><summary class=h>逐檔（${R.L.length} 檔）</summary>${R.L.map(x=>`<div class=rkl>${esc(x.c)} ${esc(nameOf(x.c)||'')}：${W2(x.v)} 萬 <span class=h>${esc(x.how)}</span></div>`).join('')}</details>`:''}</div>
   ${lq?`<div class=asl>月付金保留：現金${S.lossTo&&S.lossTo!='__cash'?'＋'+esc(S.lossTo):''} ${W2(lq.lo)} 萬，可付 <b class="${lr&&lr.on&&lq.m<+lr.th?'bad':''}">${isFinite(lq.m)?lq.m.toFixed(1):'—'} 個月</b>月付金（${Math.round(lq.pay).toLocaleString()} 元／月${lr&&lr.on?'，門檻 '+lr.th+' 個月':''}）</div>`:''}
@@ -310,7 +309,7 @@ function asTrendDraw(){const el=$('asTrend');if(!el)return;const T=asTrend(S),F=
  const val=(p,k)=>k=='base0'?T.base0:p[k];let lo=Infinity,hi=-Infinity;for(const x of SER)for(const p of P){const v=val(p,x.k);if(v!=null){lo=Math.min(lo,v);hi=Math.max(hi,v)}}
  const chip=(k,v,l)=>`<button class="${(k=='trR'?rg:vw)==v?'on':''}" onclick="S.${k}='${v}';save();asTrendDraw()">${l}</button>`;
  const head=`<div class=chips style="margin:4px 0">${chip('trV','as','資產')}${chip('trV','nw','淨資產')}<span style="width:8px"></span>${chip('trR','1m','1 個月')}${chip('trR','3m','3 個月')}${chip('trR','ytd','今年')}${chip('trR','all','全部')}</div>`;
- const lg=`<div class=trlg>${ALL.map(x=>`<span onclick="asTrTog('${x.k}')" style="cursor:pointer;${hid.has(x.k)?'opacity:.35;text-decoration:line-through':''}"><i style="border-color:${x.c}${x.dash?';border-top-style:dashed':''}"></i>${esc(x.n)}</span>`).join('')}${vw=='as'?'<span><b style="color:#f59e0b">●</b> 有買賣</span>':''}<span class=h>點圖例開關線條；單位：萬</span></div>`;
+ const lg=`<div class=trlg>${ALL.map(x=>`<span onclick="asTrTog('${x.k}')" style="cursor:pointer;${hid.has(x.k)?'opacity:.35;text-decoration:line-through':''}"><i style="border-color:${x.c}${x.dash?';border-top-style:dashed':''}"></i>${esc(x.n)}</span>`).join('')}${vw=='as'?'<span><b style="color:#f59e0b">●</b> 有買賣</span>':''}<span class=h>單位：萬 ${tipI('點下面的圖例可以開關線條；手指在圖上拖動，看每天的數字與當天的交易。\n\n每天收盤價來自網站的收盤價檔。'+(T.hasCash?'現金用你最近一次填的金額，依之後的買賣與配息推算。':'還沒填現金，所以只有持股市值。')+(vw=='nw'?'\n真實淨資產＝持股＋現金－剩餘本金－累計已繳月付金－開辦費－淨入金－外部費用（和結算相同）。':''),'資產趨勢')}</span></div>`;
  if(!isFinite(lo)){el.innerHTML=F(head+`<div class=h>${vw=='nw'?'真實淨資產要先在結算填現金。':'線條都關掉了，點下面的圖例打開。'}</div>`+lg);return}
  const pad=(hi-lo)*0.08||hi*0.02||1;lo-=pad;hi+=pad;const W=340,H=180,L=32,Rr=40,Tp=8,B=18,x=i=>L+(W-L-Rr)*i/(P.length-1),y=v=>Tp+(H-Tp-B)*(1-(v-lo)/(hi-lo));
  const path=k=>{let d='',on=0;P.forEach((p,i)=>{const v=val(p,k);if(v==null){on=0;return}d+=(on?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1);on=1});return d};
@@ -327,8 +326,8 @@ function asTrendDraw(){const el=$('asTrend');if(!el)return;const T=asTrend(S),F=
    <line id=trCur x1=0 x2=0 y1="${Tp}" y2="${H-B}" stroke="var(--mut)" stroke-width=".7" visibility=hidden />
   </svg>${lg}
   <div class=trrd id=trRd><span class=h>手指在圖上拖動，看每天的數字與交易</span></div>
-  <div class=asl>這段期間（持股、時間加權，扣掉買賣金額）：報酬 <b class="${asC(tw)}">${asPct(tw)}</b>｜最大回撤 <b>${(mdd*100).toFixed(1)}%</b>｜目前離高點 <b>${((b0.twr/pk-1)*100).toFixed(1)}%</b></div>
-  <div class=h>每天收盤價來自網站的收盤價檔。${T.hasCash?'現金用你最近一次填的金額，依之後的買賣與配息推算。':'還沒填現金，所以只有持股市值。'}${vw=='nw'?'真實淨資產＝持股＋現金－剩餘本金－累計已繳月付金－開辦費－淨入金－外部費用（和結算相同）。':''}${T.miss?` 有 ${T.miss} 天缺部分收盤價，沒有畫。`:''}</div>`)}
+  <div class=asl>這段期間（持股、時間加權，扣掉買賣金額）：報酬 <b class="${asC(tw)}">${asPct(tw)}</b>｜最大回撤 <b>${(mdd*100).toFixed(1)}%</b>｜目前離高點 <b>${((b0.twr/pk-1)*100).toFixed(1)}%</b></div>${T.miss?`
+  <div class=h>有 ${T.miss} 天缺部分收盤價，沒有畫。</div>`:''}`)}
 window.asTrTog=k=>{const h=new Set(String(S.trHide||'').split(',').filter(Boolean));h.has(k)?h.delete(k):h.add(k);S.trHide=[...h].join(',');save();asTrendDraw()};
 window.asTrHov=e=>{if(!TRD)return;const sv=e.currentTarget,r=sv.getBoundingClientRect(),X=(e.clientX-r.left)/r.width*TRD.W,{P,L,Rr,W}=TRD;let i=Math.round((X-L)/(W-L-Rr)*(P.length-1));i=Math.max(0,Math.min(P.length-1,i));const p=P[i];
  const ln=sv.querySelector('#trCur');if(ln){ln.setAttribute('x1',TRD.x(i));ln.setAttribute('x2',TRD.x(i));ln.setAttribute('visibility','visible')}
@@ -391,10 +390,10 @@ function asTmrHtml(){const R=asTmr();asTmrLog(R);const D=R.D,cm=asTmrCheck(),mon
  const row2=x=>`<div class=tmr><b>${esc(x.c)} ${esc(nameOf(x.c))}</b>：${esc(x.o.what)} ${x.o.ap?'約 ':''}${f2(x.o.px)}（距現價 ${x.o.gap>=0?'+':''}${x.o.gap.toFixed(1)}%）→ ${esc(x.o.act||'照規則')}${x.q?`｜${x.q.toLocaleString()} 股`:''}</div>`;
  const sec=(n,t,L,f,max)=>L.length?`<div class=sub>${n} ${t}（${L.length}）</div>${L.slice(0,max||99).map(f).join('')}${L.length>(max||99)?`<div class=h>還有 ${L.length-max} 則：<button class=lk onclick="setWs('st')">看全部 ›</button></div>`:''}`:'';
  const none=!R.act.length&&!R.near.length&&!R.watch.length;
- const ord=R.orders.length?`<div class=sub>🧾 明天開盤要下的單（收盤確認、隔天開盤執行）</div>${R.orders.map(o=>`<div class=tmr>${o.side=='賣'?'🔻':'🔺'} <b>${o.side} ${esc(o.c)} ${esc(nameOf(o.c))} ${o.q.toLocaleString()} 股</b>${o.px!=null?`｜參考價 ${f2(o.px)}`:''}<div class=h>${esc(o.why)}</div></div>`).join('')}`:'';
+ const ord=R.orders.length?`<div class=sub>🧾 明天開盤要下的單</div>${R.orders.map(o=>`<div class=tmr>${o.side=='賣'?'🔻':'🔺'} <b>${o.side} ${esc(o.c)} ${esc(nameOf(o.c))} ${o.q.toLocaleString()} 股</b>${o.px!=null?`｜參考價 ${f2(o.px)}`:''}<div class=h>${esc(o.why)}</div></div>`).join('')}`:'';
  const cap=`<div class=sub>💰 還能買多少</div><div class=tmr>壓力虧損剩餘額度 ${R.room!=null?`<b>${W2(R.room)} 萬</b>`:'—（先在結算填現金）'}${R.cand.length?'':'｜目前沒有「✅ 可以買／加碼」的論點'}</div>${R.cand.map(x=>`<div class=tmr>${esc(x.c)} ${esc(nameOf(x.c))}（${esc(x.T.id)}）：最多 <b>${x.q.toLocaleString()} 股</b>（受限於${esc(x.by)}；停損 ${f2(x.stop)}）${x.bq>0?` <button onclick="asTradeOpen({k:'buy',c:'${x.c}',ac:'a',q:${x.bq}})">＋記交易${x.bn?`（第 ${x.bn} 批 ${x.bq.toLocaleString()} 股）`:`（${x.bq.toLocaleString()} 股）`}</button>`:''}</div>`).join('')}`;
  const ck=cm?`<div class=h style="margin-top:6px">📋 ${asD(cm.d)} 的計畫（${asD(cm.nx)} 執行）：${cm.n} 項，照做 ${cm.done}${cm.dec?`、寫了不照做／不適用 ${cm.dec}`:''}${cm.miss.length?`、<span class=wn>沒做也沒寫原因 ${cm.miss.length}（${cm.miss.map(o=>o.c).join('、')}）</span>`:''}</div>`:'';
  const body=`${st}${none?'<div class=ok style="margin:6px 0">✅ 明天沒有要做的事。</div>':''}${sec('🔴','要動作',R.act,row1)}${sec('🟠','接近觸發（明天收盤碰到就成立）',R.near,row2,6)}${sec('🟡','要注意',R.watch,x=>`<div class=tmr>${x.d?asD(x.d)+' ':''}${esc(x.t)}${x.a?asAlBtns(x.a):''}</div>`,6)}${ord}${cap}${ck}
- <div class=asbtn style="margin-top:6px"><button class=aiq onclick="aiOpen({q:'pre'})">🤖 盤前問 AI</button><span class=h>附上這張清單，只請 AI 查隔夜消息有沒有改變任何一項</span></div>`;
+ <div class=asbtn style="margin-top:6px"><button class=aiq onclick="aiOpen({q:'pre'})">🤖 盤前問 AI</button></div>`;
  const sum=none?'明天沒有要做的事':[R.act.length?`要動作 ${R.act.length}`:'',R.near.length?`接近 ${R.near.length}`:'',R.watch.length?`注意 ${R.watch.length}`:''].filter(Boolean).join('｜');
  return`<div class=stal>${fold('tmr',`📅 明天要做的事${D.final?'':' <span class=wn>暫定</span>'}`,sum,body)}</div>`}

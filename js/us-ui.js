@@ -78,7 +78,7 @@ function usViewHtml(T,fx,AL,W){const al=usAlloc(T),om=typeof ORDM!='undefined'?O
  const sel=(v,f,L)=>`<select onchange="${f}(this.value)">${L.map(([k,l])=>`<option value="${k}" ${v==k?'selected':''}>${l}</option>`).join('')}</select>`;
  let h=usTrendHtml(T,fx);
  const ccy=`<span class="seg sm usccy" onclick="event.stopPropagation()">${['USD','TWD'].map(k=>`<button class="${USC==k?'on':''}" onclick="usSetC('${k}')">${k}</button>`).join('')}</span>`;
- h+=`<div class=p>${fold('us_top','💼 損益總覽'+ccy,`持股市值 ${usMn(T.mvC,fx)}${T.plBase?'｜未實現損益 '+usSg(T.plC,fx):''}`,`<div class=h>未實現損益＝持股市值 − 券商成本；沒有填成本的只算市值。</div><div class=ast>
+ h+=`<div class=p>${fold('us_top','💼 損益總覽'+tipI('未實現損益＝持股市值 − 券商成本；沒有填成本的只算市值。','損益總覽')+ccy,`持股市值 ${usMn(T.mvC,fx)}${T.plBase?'｜未實現損益 '+usSg(T.plC,fx):''}`,`<div class=ast>
    <div class=c><small>持股市值</small><b>${usMn(T.mvC,fx)}</b><small>${T.noCost?`<span class=wn>${T.noCost} 筆沒填成本</span>`:'成本 '+usMn(T.costC,fx)}</small></div>
    <div class=c><small>未實現損益</small><b class="${usCl(T.plBase?T.plC:null)}">${T.plBase?usSg(T.plC,fx):'—'}</b><small>${T.plBase?usPc(T.plp)+(T.noCost?`（成本 ${usMn(T.costC,fx)}）`:''):'沒有填成本'}</small></div>
    <div class=c><small>現金（USD）</small><b>${usU(T.cashC)}</b><small>${fx&&T.cashC?'約 '+W2(T.cashC/100*fx.v)+' 萬新台幣':'美元現金'}</small></div>
@@ -89,20 +89,20 @@ function usViewHtml(T,fx,AL,W){const al=usAlloc(T),om=typeof ORDM!='undefined'?O
   ${al.byTag.length?`<div class=asl>主題：${al.byTag.map(x=>`${esc(x.tag)} ${x.p.toFixed(0)}%`).join('、')}</div>`:''}
   <div class=asbar><span style="width:${al.stockP}%;background:#6366f1" title="持股"></span><span style="width:${al.cashP}%;background:#94a3b8" title="現金"></span></div>
   <div class=asl><span class=dot style="background:#6366f1"></span>持股 ${al.stockP.toFixed(0)}%　<span class=dot style="background:#94a3b8"></span>現金 ${al.cashP.toFixed(0)}%</div>
-  <div class=g style="margin-top:6px"><label>單日漲跌提醒（%）<input type=number step=any inputmode=decimal value="${usWOpt(S.us).mv}" onchange="usWSet('mv',this.value)"></label><label>單一持股上限（占美股 %）<input type=number step=any inputmode=decimal value="${usWOpt(S.us).cap}" onchange="usWSet('cap',this.value)"></label></div><div class=h>超過就會標在那一檔，也會出現在「今日」；只是提醒，不會自動做任何事。</div>`);
+  <div class=g style="margin-top:6px"><label>單日漲跌提醒（%）<input type=number step=any inputmode=decimal value="${usWOpt(S.us).mv}" onchange="usWSet('mv',this.value)"></label><label>單一持股上限（占美股 %）${tipI('單日漲跌或單一持股占比超過這兩個門檻，就會標在那一檔，也會出現在「今日」；只是提醒，不會自動做任何事。','提醒門檻')}<input type=number step=any inputmode=decimal value="${usWOpt(S.us).cap}" onchange="usWSet('cap',this.value)"></label></div>`);
  h+=usSec('acct','🏦 帳戶（'+T.accts.length+'）',T.accts.map(a=>esc(a.name||a.id)).join('、').slice(0,40),`${USUNDO?`<div class=stal style="margin-bottom:8px">剛才貼上更新了 ${esc(USUNDO.names)}。<button onclick="usUndo()">↩ 復原這次貼上</button></div>`:''}${T.accts.length>1?`<div class=asgs style="margin-top:4px">${ordTog('ua')}</div>`:''}
   ${T.accts.map(a=>{const d=a.upd?usDays(a.upd,TODAY):null;return`<div class=asr data-ok="${esc(a.id)}" onclick="${om=='ua'?'':`usAcct('${esc(a.id)}')`}"><div class=a1><span><b>${esc(a.name||a.id)}</b> <small class=h>${a.mode=='ledger'?'帳本':'快照'}・${a.rows.length} 檔</small></span>${om=='ua'?ordBtn('ua',a.id):`<b>${usMn(a.valC,fx)}</b>`}</div>
    <div class=a2><span>未實現損益 ${a.plBase?`<b class="${usCl(a.plC)}">${usSg(a.plC,fx)}（${usPc(a.plp)}）</b>`:'<span class=h>沒有填成本</span>'}</span><span class="${d!=null&&d>90?'wn':''}">${a.upd?'上次更新 '+esc(usD(a.upd))+(d>90?'・建議核對':''):'還沒更新過'}</span></div></div>`}).join('')}
-  <div class=asbtn><button onclick="usPaste()">📥 貼上 AI 整理的截圖</button><button onclick="usAcct()">＋新增帳戶</button></div><div class=h>點一個帳戶改持股、成本與現金；或把券商庫存截圖交給 AI 整理後貼回來，一次更新整個帳戶。</div>`);
+  <div class=asbtn><button onclick="usPaste()">📥 貼上 AI 整理的截圖</button><button onclick="usAcct()">＋新增帳戶</button></div>`);
  const row=(r,aid)=>{const key=aid?aid+'|'+r.n:r.n,fl=aid?[]:usFlags(r.n,W);return`<div class=asr data-ok="${esc(key)}" onclick="${om=='us'?'':`usStock('${esc(r.n)}')`}"><div class=a1><span><b>${esc(r.n)}</b> ${esc((S.us.attr||{})[r.n]&&S.us.attr[r.n].name||'')}</span>${om=='us'?ordBtn('us',key):`<span class="${usCl(r.plC)}">${r.plC!=null?usSg(r.plC,fx)+' <small>'+usPc(r.plp)+'</small>':'<small class=h>沒填成本</small>'}</span>`}</div>
    <div class=a2><span>${usQt(r.q)} 股${(aid?r.cC!=null:r.avg!=null)?'｜均 '+(aid?r.cC/100/r.q:r.avg).toLocaleString('en-US',{maximumFractionDigits:2}):''}</span><span>${r.px==null?'<span class=wn>沒有現價</span>':'現 '+r.px.toLocaleString('en-US',{maximumFractionDigits:4})+' <small>'+(r.src=='m'?'手填 ':'收盤 ')+esc(usD(r.pxd))+'</small>'}</span></div>
    <div class=a2><span>市值 ${usMn(r.mvC,fx)}${!aid&&r.w!=null?'｜占比 '+r.w.toFixed(1)+'%':''}</span><span></span></div>
-   ${!aid&&r.parts.length>1?`<div class=a2><span class=h>${r.parts.map(p=>esc(p.name||p.id)+' '+usQt(p.q)).join('、')}${r.allCost?'':'（有帳戶沒填成本，均價與損益只算有填的）'}</span></div>`:''}
+   ${!aid&&r.parts.length>1?`<div class=a2><span class=h>${r.parts.map(p=>esc(p.name||p.id)+' '+usQt(p.q)).join('、')}</span>${r.allCost?'':tipI('有帳戶沒填成本，均價與損益只算有填的。','均價與損益')}</div>`:''}
    ${fl.length?`<div class="a2 wn">${fl.join('　')}</div>`:''}</div>`};
  const byA=USG=='a';
- h+=usSec('list','📦 持股（'+T.rows.length+'）',T.rows.slice().sort((a,b)=>(b.mvC||0)-(a.mvC||0)).slice(0,4).map(r=>esc(r.n)).join('、'),`<div class=asgs style="margin-top:4px"><label>分組 ${sel(USG,'usSetG',[['m','不分組'],['a','帳戶']])}</label><label>排序 ${sel(USS,'usSetSo',[['mv','市值'],['pl','損益 %'],['w','占比'],['my','自訂']])}</label>${USS=='my'?ordTog('us'):''}</div>
+ h+=usSec('list','📦 持股（'+T.rows.length+'）'+tipI('點一檔改現價、名稱與主題。S&P 500、Nasdaq-100 與常見 ETF 每個美股交易日收盤後自動更新；不在範圍內的要手填。','美股持股'),T.rows.slice().sort((a,b)=>(b.mvC||0)-(a.mvC||0)).slice(0,4).map(r=>esc(r.n)).join('、'),`<div class=asgs style="margin-top:4px"><label>分組 ${sel(USG,'usSetG',[['m','不分組'],['a','帳戶']])}</label><label>排序 ${sel(USS,'usSetSo',[['mv','市值'],['pl','損益 %'],['w','占比'],['my','自訂']])}</label>${USS=='my'?ordTog('us'):''}</div>
   ${T.rows.length?(!byA?T.rows.slice().sort((a,b)=>so(a,b,r=>r.n)).map(r=>row(r)).join(''):T.accts.map(a=>`<div class=asgh><span>${esc(a.name||a.id)}</span><span>${usMn(a.mvC,fx)}${a.cashC?'　現金 '+usMn(a.cashC,fx):''}</span></div>`+(a.rows.length?a.rows.slice().sort((x,y)=>so(x,y,r=>a.id+'|'+r.n)).map(r=>row(r,a.id)).join(''):'<div class=h>沒有持股</div>')).join('')):'<div class=h style="margin-top:6px">還沒有持股。</div>'}
-  <div class=h style="margin-top:4px">點一檔改現價、名稱與主題。S&P 500、Nasdaq-100 與常見 ETF 每個美股交易日收盤後自動更新；不在範圍內的要手填。</div>`);
+`);
  return h+`<div class=p>${usFoot()}</div>`}
 
 // ---------- 📈 資產趨勢（照台股的畫法；金額，不是報酬率：快照模式不知道哪一天投入多少錢）
@@ -124,7 +124,7 @@ function usTrendHtml(T,fx){const o=usTrO(),tw=USC=='TWD'&&fx,ALL0=usHistGet(),sr
   :[{k:'v',n:'帳戶總值（持股＋現金）',c:'#10b981',g:h=>h.usd},{k:'m',n:'持股市值',c:'#3b82f6',g:h=>h.mv}].concat(P.some(h=>h.cash>0)?[{k:'c',n:'現金',c:'#94a3b8',dash:'4 3',g:h=>h.cash}]:[]);
  const SER=ALL.filter(x=>!o.hid.has(x.k)),val=(h,s)=>cv(h,s.g(h));
  const logD=new Set((S.us.log||[]).map(x=>x.dt));
- const lg=`<div class=trlg>${ALL.map(x=>`<span onclick="usTrTog('${x.k}')" style="cursor:pointer;${o.hid.has(x.k)?'opacity:.35;text-decoration:line-through':''}"><i style="border-color:${x.c}${x.dash?';border-top-style:dashed':''}"></i>${esc(x.n)}</span>`).join('')}${o.v=='tot'?'<span><b style="color:#f59e0b">●</b> 有更新部位</span>':''}<span class=h>點圖例開關線條；單位：${unit}</span></div>`;
+ const lg=`<div class=trlg>${ALL.map(x=>`<span onclick="usTrTog('${x.k}')" style="cursor:pointer;${o.hid.has(x.k)?'opacity:.35;text-decoration:line-through':''}"><i style="border-color:${x.c}${x.dash?';border-top-style:dashed':''}"></i>${esc(x.n)}</span>`).join('')}${o.v=='tot'?'<span><b style="color:#f59e0b">●</b> 有更新部位</span>':''}<span class=h>單位：${unit} ${tipI('點下面的圖例可以開關線條；手指在圖上拖動，看每天的數字。','資產趨勢')}</span></div>`;
  let lo=Infinity,hi=-Infinity;for(const s of SER)for(const h of P){const v=val(h,s);if(v!=null){lo=Math.min(lo,v);hi=Math.max(hi,v)}}
  if(!isFinite(lo))return F(head+`<div class=h>${o.v=='acct'?'各帳戶的線從這一版上線後才開始記，過幾天就會有。':'線條都關掉了，點下面的圖例打開。'}</div>`+lg+src);
  const pad=(hi-lo)*0.08||hi*0.02||1;lo-=pad;hi+=pad;const W=340,H=180,L=34,Rr=40,Tp=8,B=18,x=i=>L+(W-L-Rr)*i/(P.length-1),y=v=>Tp+(H-Tp-B)*(1-(v-lo)/(hi-lo));
@@ -143,15 +143,13 @@ function usTrendHtml(T,fx){const o=usTrO(),tw=USC=='TWD'&&fx,ALL0=usHistGet(),sr
    <line id=usTrCur x1=0 x2=0 y1="${Tp}" y2="${H-B}" stroke="var(--mut)" stroke-width=".7" visibility=hidden />
   </svg>${lg}
   <div class=trrd id=usTrRd><span class=h>手指在圖上拖動，看每天的數字</span></div>
-  <div class=asl>這段期間帳戶總值 <b class="${asC(dv)}">${dv>=0?'+':'−'}${full(Math.abs(dv))}</b> <span class=h>（含新投入的錢，例如認股入帳；不是報酬率）</span></div>
-  <div class=h>每個有價格更新的日子記一點，從開始使用美股那天起累積。${tw?'新台幣用當天的匯率換算。':''}</div>${src}`)}
+  <div class=asl>這段期間帳戶總值 <b class="${asC(dv)}">${dv>=0?'+':'−'}${full(Math.abs(dv))}</b> ${tipI('含新投入的錢（例如認股入帳），不是報酬率。\n每個有價格更新的日子記一點，從開始使用美股那天起累積。'+(tw?'新台幣用當天的匯率換算。':''),'這段期間')}</div>${src}`)}
 window.usTrHov=e=>{if(!USTRD)return;const sv=e.currentTarget,r=sv.getBoundingClientRect(),X=(e.clientX-r.left)/r.width*USTRD.W,{P,L,Rr,W}=USTRD;let i=Math.round((X-L)/(W-L-Rr)*(P.length-1));i=Math.max(0,Math.min(P.length-1,i));const h=P[i];
  const ln=sv.querySelector('#usTrCur');if(ln){ln.setAttribute('x1',USTRD.x(i));ln.setAttribute('x2',USTRD.x(i));ln.setAttribute('visibility','visible')}
  const lg=(S.us.log||[]).filter(x=>x.dt==h.d).map(x=>esc(usAcN(x.acct))+'：'+esc(x.t)).slice(0,4).join('；');
  $('usTrRd').innerHTML=`<b>${esc(usD(h.d))}</b>　${USTRD.SER.map(s=>{const v=USTRD.val(h,s);return v==null?'':`${esc(s.n.replace(/（.*）/,''))} ${USTRD.full(v)}`}).filter(Boolean).join('｜')}${lg?`<div class=h>${lg}</div>`:''}`};
 function usFoot(){const L=(S.us.log||[]).slice(0,30);return`${L.length?`<details><summary>🕘 部位變動紀錄（最近 ${L.length} 筆）</summary><div class=h style="font-size:12px">${L.map(x=>`${esc(usD(x.dt))} ${esc(usAcN(x.acct))}：${esc(x.t)}`).join('<br>')}</div></details>`:''}
- <div class=h style="margin-top:6px">未實現損益＝持股市值 − 券商成本，賣掉的部分和領到的現金股利不在裡面。新台幣金額用目前匯率換算，看不出匯率造成的損益。現價不是即時的。美股數字不進信貸計算。所有數字僅供參考，不是投資建議，也不能當報稅依據。</div>
- <div class=asl><button class=lk onclick="usHide()">隱藏美股（資料保留）</button></div>`}
+ <div class=asl><button class=lk onclick="usHide()">隱藏美股（資料保留）</button>${tipI('未實現損益＝持股市值 − 券商成本，賣掉的部分和領到的現金股利不在裡面。新台幣金額用目前匯率換算，看不出匯率造成的損益。現價不是即時的。美股數字不進信貸計算。所有數字僅供參考，不是投資建議，也不能當報稅依據。','美股的數字')}</div>`}
 const usAcN=id=>{const a=(S.us.accts||[]).find(x=>x.id==id);return a?(a.name||id):id};
 window.usHide=()=>{if(!confirm('隱藏美股？資料會留在設定檔裡，之後可以在頁面最下方按「顯示美股」打開。'))return;S.us.on=false;save();avSet('today')};
 window.usStart=()=>{if(S.us&&Array.isArray(S.us.accts)){S.us.on=true;save();avSet('us');return}usAcct()};
@@ -217,12 +215,12 @@ function allViewHtml(T,fx){let grp={};try{grp=stExposure(S).grp||{}}catch(e){}co
  const V=usAllView({p:z.p.mv,a:z.a.mv,cash},T,fx,rem),CO={p:'#3b82f6',a:'#f59e0b',c:'#94a3b8',us:'#6366f1',uc:'#c4b5fd',TWD:'#0ea5e9',USD:'#6366f1'},pc=p=>p>=10||p==0?p.toFixed(0):p.toFixed(1);
  const bar=L=>`<div class=asbar>${L.map(s=>s.v>0?`<span style="width:${s.p}%;background:${CO[s.k]}" title="${s.l||s.k}"${s.go?` onclick="avSet('${s.go}')"`:''}></span>`:'').join('')}</div>`;
  return`<div class=p><b>🌐 全資產（新台幣）</b><div class=allb>${W2(V.tot)} 萬</div>
-  <div class=h>不含信貸計算；信貸數字請看 💰 信貸。${V.noFx?'<span class=wn>沒有匯率，美股還沒算進來。</span>':''}${z.miss.length?`<span class=wn>台股有 ${z.miss.length} 檔沒有現價。</span>`:''}${T.miss.length?`<span class=wn>美股有 ${T.miss.length} 檔沒有現價，沒算進來。</span>`:''}${V.cashNull?'台股帳戶現金還沒填。':''}</div>
+  <div class=h>${tipI('不含信貸計算；信貸數字請看 💰 信貸。','全資產')}${V.noFx?'<span class=wn>沒有匯率，美股還沒算進來。</span>':''}${z.miss.length?`<span class=wn>台股有 ${z.miss.length} 檔沒有現價。</span>`:''}${T.miss.length?`<span class=wn>美股有 ${T.miss.length} 檔沒有現價，沒算進來。</span>`:''}${V.cashNull?'台股帳戶現金還沒填。':''}</div>
   <div class=sub>配置</div>${bar(V.segs)}
   ${V.segs.filter(s=>s.v>0).map(s=>`<div class="asl alll" onclick="avSet('${s.go}')"><span><span class=dot style="background:${CO[s.k]}"></span>${s.l}</span><span>${W2(s.v)} 萬　<b>${pc(s.p)}%</b></span></div>`).join('')}
   <div class=sub>幣別曝險</div>${bar(V.ccy)}
   <div class=asl><span class=dot style="background:${CO.TWD}"></span>新台幣 ${pc(V.ccy[0].p)}%　<span class=dot style="background:${CO.USD}"></span>美元 ${pc(V.ccy[1].p)}%</div>
-  ${V.loan?`<div class=asl>信貸餘額 ÷ 全資產（參考）：<b>${V.loan.p.toFixed(1)}%</b> <span class=h>剩餘本金 ${W2(V.loan.rem)} 萬。只是參考，信貸的風險判斷只看 💰 信貸。</span></div>`:''}</div>
+  ${V.loan?`<div class=asl>信貸餘額 ÷ 全資產（參考）：<b>${V.loan.p.toFixed(1)}%</b> <span class=h>剩餘本金 ${W2(V.loan.rem)} 萬</span>${tipI('只是參考，信貸的風險判斷只看 💰 信貸。','信貸餘額 ÷ 全資產')}</div>`:''}</div>
  <div class=p><div class="asl alll" onclick="avSet('tw')"><b>🇹🇼 台股</b><button class=lk>看台股 ›</button></div>
   <div class=asl>持股市值 <b>${W2(z.mv)} 萬</b>｜未實現損益 <b class="${asC(z.ub)}">${asM(z.ub)}</b>${z.cb?`（${asPct(z.ub/z.cb*100)}）`:''}${cash!=null?`｜現金 ${W2(cash)} 萬`:''}</div><div class=h>現價：${typeof pxStatus=='function'?pxStatus():''}</div></div>
  <div class=p><div class="asl alll" onclick="avSet('us')"><b>🇺🇸 美股</b><button class=lk>看美股 ›</button></div>
@@ -231,15 +229,15 @@ function allViewHtml(T,fx){let grp={};try{grp=stExposure(S).grp||{}}catch(e){}co
  ${usThemeHtml(grp,T,fx,V.tot)}
  <div class=p><b>💱 匯率（1 美元換新台幣）</b><div class=asl>目前用 <b>${usFxTxt(fx)}</b> <button class=lk onclick="usFxLoad(1)">🔄 重抓</button></div>
   <div class=g><label>手填匯率<input id=usFxV type=number step=any inputmode=decimal value="${S.us.fxManual?S.us.fxManual.v:''}" placeholder="例如 32.1"></label><label>日期<input id=usFxD type=date value="${S.us.fxManual&&S.us.fxManual.d?esc(S.us.fxManual.d):TODAY}"></label></div>
-  <div class=asbtn><button onclick="usFxSet()">存手填匯率</button></div><div class=h>自動匯率是臺灣銀行美金即期買入與賣出的中價，每個營業日傍晚更新；抓不到時用備援來源並標示。自動和手填取日期比較新的；手填欄清空再存＝不用手填。</div></div>`}
+  <div class=asbtn><button onclick="usFxSet()">存手填匯率</button>${tipI('自動匯率是臺灣銀行美金即期買入與賣出的中價，每個營業日傍晚更新；抓不到時用備援來源並標示。\n自動和手填取日期比較新的；手填欄清空再存＝不用手填。','匯率')}</div></div>`}
 window.usWSet=(k,v)=>{v=usNum(v);if(v==null||v<=0||v>100){toast('請填 0～100 之間的數字',0);asCalc();return}S.us.watch=Object.assign({},S.us.watch,{[k]:v});save();asCalc()};
 
 // ---------- 跨市場主題集中度（總覽）
 function usThemeHtml(grp,T,fx,tot){const L=usThemes(grp,T,fx,tot);if(!L.length)return'';const un=L.find(x=>x.g==US_NOTAG);
- return`<div class=p><b>🧭 跨市場主題集中度</b><div class=h>台股主動持股的主題＋美股各檔的主題，名稱相同的加在一起，占全資產的比例。被動 ETF 與現金不算。</div>
+ return`<div class=p><b>🧭 跨市場主題集中度</b>${tipI('台股主動持股的主題＋美股各檔的主題，名稱相同的加在一起，占全資產的比例。被動 ETF 與現金不算。沒填主題的美股合成一格。','跨市場主題集中度')}
   ${L.slice(0,8).map(x=>`<div class="asl alll" style="cursor:default"><span>${esc(x.g)}</span><span>${W2(x.v)} 萬　<b>${x.p.toFixed(x.p>=10?0:1)}%</b></span></div><div class=asbar style="margin:2px 0 6px"><span style="width:${Math.min(100,x.tw/tot*100)}%;background:#f59e0b" title="台股"></span><span style="width:${Math.min(100,x.us/tot*100)}%;background:#6366f1" title="美股"></span></div>`).join('')}
   <div class=asl><span class=dot style="background:#f59e0b"></span>台股　<span class=dot style="background:#6366f1"></span>美股${L.length>8?`　<span class=h>另有 ${L.length-8} 個主題</span>`:''}</div>
-  ${un?`<div class=h>沒填主題的美股合成「${US_NOTAG}」一格。想細分的話，到「美股」點那一檔填主題（用和台股一樣的名稱才會加在一起）。</div>`:''}${!fx?'<div class=wn>沒有匯率，美股還沒算進來。</div>':''}</div>`}
+  ${!fx?'<div class=wn>沒有匯率，美股還沒算進來。</div>':''}</div>`}
 
 // ---------- 貼上 AI 整理的截圖（投資帳本 v1 的 positions）：預覽差異 → 整個帳戶覆寫 → 可以復原
 const US_PASTE_TIP=n=>`請把這張券商庫存截圖整理成下面的 JSON，只輸出 JSON：

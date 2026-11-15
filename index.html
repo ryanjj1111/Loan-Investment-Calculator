@@ -10,7 +10,12 @@ h2{text-align:center;font-size:17px;margin:6px 0}
 .cd{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
 .c{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center;position:relative}
 .c b{display:block;font-size:14px;margin-top:3px}.c small{color:var(--mut);font-size:11px}
-.ib{cursor:pointer;color:var(--acc);font-size:11px;margin-left:3px;user-select:none}
+.ib{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:10px;cursor:pointer;color:var(--mut,#64748b);font-size:13px;font-weight:400;margin-left:4px;vertical-align:middle;user-select:none;-webkit-tap-highlight-color:transparent}@media(hover:hover){.ib:hover{color:var(--acc)}}
+.tipov{position:fixed;inset:0;background:rgba(15,23,42,.35);display:none;align-items:flex-end;justify-content:center;z-index:9999;padding:16px}
+.tipbx{background:#fff;border-radius:16px;max-width:460px;width:100%;max-height:70vh;overflow:auto;padding:14px 16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.18);margin-bottom:max(8px,env(safe-area-inset-bottom))}
+.tiph{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}.tiph b{font-size:15px}.tipx{width:36px;height:36px;border:0;background:#f1f5f9;border-radius:18px;font-size:15px;cursor:pointer}
+.tipc{font-size:14px;line-height:1.65;color:#334155;white-space:pre-line}
+@media(min-width:700px){.tipov{align-items:center}}
 .ix{font-size:10.5px;color:#334155;background:#eef2ff;border-radius:6px;padding:4px 6px;margin-top:4px;text-align:left;line-height:1.5}
 .bad{color:var(--bad)}.ok{color:var(--ok)}.wn{color:var(--warn)}
 .hl{border-radius:8px;padding:7px 9px;font-size:12.5px;font-weight:700;margin-top:6px}
@@ -167,7 +172,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 </div>
 
 <div class="tabs pro lw"><button id="tbS" onclick="tab('S')">📋 結算</button><button id="tbR" onclick="tab('R')">🛡️ 風險</button><button id="tbY" onclick="tab('Y')">📅 還款明細</button><button id="tbF" onclick="tab('F')">⚙️ 設定</button></div>
-<div class="h pro lw" style="margin:-2px 2px 6px">平常：📋 結算（每月或有買賣後）→ 🛡️ 風險看虧損上限；📅 還款明細看每月本金與利息；⚙️ 設定只在信貸條件或配置改變時調整。</div>
+<div class="h pro lw" style="margin:-8px 4px 0;text-align:right;line-height:1"><span class="ib" role="button" tabindex="0" data-tn="四個分頁怎麼用" data-tt="平常：📋 結算（每月或有買賣後）→ 🛡️ 風險看虧損上限；📅 還款明細看每月本金與利息；⚙️ 設定只在信貸條件或配置改變時調整。">ⓘ</span></div>
 
 <div id="pgF" class="lw">
  <div class="p" id="ctl"></div>
@@ -175,32 +180,26 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 </div>
 
 <div id="pgY" class="lw">
- <div class="p"><b>📅 年度明細（萬元，信貸年度）</b> <span class=h>點一年看每個月的本金與利息</span><div class="w"><table><thead><tr><th>年</th><th>期間</th><th>信貸月付</th><th>本金</th><th>利息</th><th>信貸餘額</th><th>A 面額</th><th>B 定投收益</th><th>C 機會成本</th></tr></thead><tbody id="tb"></tbody></table></div>
- <div class="h">淨效益來自「最新預測」：有結算紀錄時從最新一次實際結算往後推，沒有時用目前設定從撥款日推。</div></div>
+ <div class="p"><b>📅 年度明細（萬元，信貸年度）</b><span class="ib" role="button" tabindex="0" data-tn="年度明細" data-tt="點一年看每個月的本金與利息。&#10;淨效益來自「最新預測」：有結算紀錄時從最新一次實際結算往後推，沒有時用目前設定從撥款日推。">ⓘ</span><div class="w"><table><thead><tr><th>年</th><th>期間</th><th>信貸月付</th><th>本金</th><th>利息</th><th>信貸餘額</th><th>A 面額</th><th>B 定投收益</th><th>C 機會成本</th></tr></thead><tbody id="tb"></tbody></table></div></div>
 
- <div class="p"><b>🧾 回填 Excel：信貸本金餘額（各月 15 日，元）</b>
-  <div class="w"><table><thead><tr><th>月份</th><th>已繳期數</th><th>信貸本金餘額</th></tr></thead><tbody id="liab"></tbody></table></div>
-  <div class="h">依「結算月份」起列 12 個月。實際數字以銀行對帳單為準，有差異請在結算區填「剩餘本金(覆寫)」。</div></div>
+ <div class="p"><b>🧾 回填 Excel：信貸本金餘額（各月 15 日，元）</b><span class="ib" role="button" tabindex="0" data-tn="信貸本金餘額" data-tt="依「結算月份」起列 12 個月。實際數字以銀行對帳單為準，有差異請在結算區填「剩餘本金(覆寫)」。">ⓘ</span>
+  <div class="w"><table><thead><tr><th>月份</th><th>已繳期數</th><th>信貸本金餘額</th></tr></thead><tbody id="liab"></tbody></table></div></div>
 </div>
 
 <div id="pgR" class="lw">
- <div class="p"><b>🧯 虧損上限（停損）</b>
-  <div class="h" style="margin:4px 0">設定這筆借款最多能接受虧多少。虧損＝A 面額為負的金額（借錢投資比「完全不借」少了多少錢）。用掉一定比例時，依下方「應對規則」①②③ 提醒；觸發後要不要買回由你自己判斷。</div>
+ <div class="p"><b>🧯 虧損上限（停損）</b> <span class="ib" role="button" tabindex="0" data-tn="虧損上限" data-tt="設定這筆借款最多能接受虧多少。虧損＝A 面額為負的金額（借錢投資比「完全不借」少了多少錢）。用掉一定比例時，依下方「應對規則」①②③ 提醒；觸發後要不要買回由你自己判斷。">ⓘ</span>
   <div class="g" id="slIn"></div>
   <div class="h" id="slHint" style="margin-top:4px"></div>
   <div class="cd" id="slOut"></div>
  </div>
- <div class="p"><b>🛡️ 壓力情境</b>
-  <div class="h" style="margin:4px 0">模擬壞事發生時會怎樣：市場下跌、配息縮水、升息、收入中斷或減薪、突發支出。家庭每月現金不夠付「固定支出＋信貸月付」時，依序動用：口袋緩衝 → 帳戶現金 → 被動 → 主動 → 撥款前原有持股（＝被迫賣股，含交易成本）。從最新一次結算（沒有時從撥款日）往後推。</div>
+ <div class="p"><b>🛡️ 壓力情境</b> <span class="ib" role="button" tabindex="0" data-tn="壓力情境" data-tt="模擬壞事發生時會怎樣：市場下跌、配息縮水、升息、收入中斷或減薪、突發支出。家庭每月現金不夠付「固定支出＋信貸月付」時，依序動用：口袋緩衝 → 帳戶現金 → 被動 → 主動 → 撥款前原有持股（＝被迫賣股，含交易成本）。從最新一次結算（沒有時從撥款日）往後推。">ⓘ</span>
   <div class="g" id="pkw"></div>
   <div class="sub">選擇情境（點選後可修改下方參數）</div><div class="chips" id="scChips"></div>
   <div id="scEd"></div>
  </div>
- <div class="p"><b>📊 情境比較</b> <span class="h">（表格可左右滑動，點表頭切換情境）</span><div class="w" style="margin-top:4px"><table class="sct" id="scT"></table></div>
-  <div class="h" style="margin-top:4px">紅底欄＝目前選定的情境，也會以紅色虛線畫在上方圖表。最大回撤：帳戶總值（含撥款前原有部位）從高點的最大跌幅，括號內為真實淨資產最多少掉的金額。被迫賣股：為了付生活費與月付而賣出的股票金額。可撐月數：帳戶現金＋被動＋原有被動＋口袋緩衝 ÷（固定支出＋月付）。</div></div>
+ <div class="p"><b>📊 情境比較</b> <span class="ib" role="button" tabindex="0" data-tn="情境比較" data-tt="紅底欄＝目前選定的情境，也會以紅色虛線畫在上方圖表。&#10;最大回撤：帳戶總值（含撥款前原有部位）從高點的最大跌幅，括號內為真實淨資產最多少掉的金額。&#10;被迫賣股：為了付生活費與月付而賣出的股票金額。&#10;可撐月數：帳戶現金＋被動＋原有被動＋口袋緩衝 ÷（固定支出＋月付）。&#10;點表頭可以切換情境。">ⓘ</span><div class="w" style="margin-top:4px"><table class="sct" id="scT"></table></div></div>
  <div class="p"><b>🧯 安全邊際（以選定情境的其他條件計算）</b><div class="cd" id="scM"></div></div>
- <div class="p"><b>📏 應對規則</b>
-  <div class="h" style="margin:4px 0">每條規則可開關、改門檻、改你自己的應對動作。「目前」用最新一次結算判斷（還沒結算時用計畫值，部分規則需結算後才能判斷）；「情境」為選定情境中第一次觸發的月份。結算頁儲存前也會列出觸發的規則。</div>
+ <div class="p"><b>📏 應對規則</b> <span class="ib" role="button" tabindex="0" data-tn="應對規則" data-tt="每條規則可開關、改門檻、改你自己的應對動作。「目前」用最新一次結算判斷（還沒結算時用計畫值，部分規則需結算後才能判斷）；「情境」為選定情境中第一次觸發的月份。結算頁儲存前也會列出觸發的規則。">ⓘ</span>
   <div id="rulesEd"></div>
   <div class="g" id="rbw" style="margin-top:6px"></div></div>
 </div>
@@ -215,11 +214,10 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
   <div class="st">② 結果與儲存</div>
   <div class="cd" id="sres"></div>
   <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button onclick="snap()">💾 儲存本次結算</button><button onclick="freshCur()">＋開新一期</button></div>
-  <div class="h" style="margin-top:6px">真實淨資產＝(股票＋現金)−剩餘本金−累計已繳月付金−開辦費(口袋付)−淨入金−外部費用。Alpha＝真實淨資產−「沒借錢估計值」（撥款前股票×(1＋0050同期報酬)＋撥款前現金）。</div>
-  <details id="ldW" style="margin-top:8px"><summary>出入金紀錄（口袋轉入、提領、外部費用時才需要）</summary>
+  <div class="h" style="margin-top:6px">真實淨資產、Alpha 怎麼算 <span class="ib" role="button" tabindex="0" data-tn="真實淨資產與 Alpha" data-tt="真實淨資產＝(股票＋現金)−剩餘本金−累計已繳月付金−開辦費(口袋付)−淨入金−外部費用。&#10;Alpha＝真實淨資產−「沒借錢估計值」（撥款前股票×(1＋0050同期報酬)＋撥款前現金）。">ⓘ</span></div>
+  <details id="ldW" style="margin-top:8px"><summary>出入金紀錄（口袋轉入、提領、外部費用時才需要）<span class="ib" role="button" tabindex="0" data-tn="出入金紀錄" data-tt="金額單位萬元，跨期累計。入金：從口袋轉進追蹤帳戶的新資金。出金：從追蹤帳戶提領出去。外部費用：用口袋支付、與這筆投資相關的成本（例如股利所得稅、若用口袋提前還款）。">ⓘ</span></summary>
   <div class="row r-lg h"><span>日期</span><span>類型</span><span>金額</span><span>備註</span><span></span></div>
-  <div id="ledger"></div><button onclick="addRow('ledger')">＋新增一筆</button>
-  <div class="h">金額單位萬元，跨期累計。入金：從口袋轉進追蹤帳戶的新資金。出金：從追蹤帳戶提領出去。外部費用：用口袋支付、與這筆投資相關的成本（例如股利所得稅、若用口袋提前還款）。</div></details>
+  <div id="ledger"></div><button onclick="addRow('ledger')">＋新增一筆</button></details>
  </div>
  <div class="p"><div style="display:flex;justify-content:space-between;align-items:center"><b>📚 歷次結算</b><button onclick="expCsv()">⬇️ 匯出 CSV</button></div>
   <div class="w"><table><thead><tr><th>日期</th><th>被動</th><th>主動</th><th>現金</th><th>股息</th><th>剩餘本金</th><th>真實淨資產</th><th>Alpha面額</th><th>Alpha機會</th><th>XIRR</th><th>被動/主動/0050</th><th>備註</th><th></th></tr></thead><tbody id="snaps"></tbody></table></div></div>
@@ -239,35 +237,30 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
  <div class="p" id="asInv"><div class="ash"><b class="fhx" id="asInvT" onclick="foldT('inv')">▾ 📦 持股</b><div class="asgs" id="asGrp"></div><label class="ck"><input type="checkbox" id="asClosed" onchange="asShowClosed(this.checked)">顯示已出清</label></div><div class="chips asflt" id="asFlt"></div>
   <div id="asList"></div>
   <div class="asbtn"><button onclick="pxRefresh()">🔄 更新現價</button><button onclick="setWs('loan');tab('S')">🎯 去結算</button></div>
-  <div class="h" style="margin-top:4px">點一檔股票看當初為什麼買、損益拆解與每一筆交易。</div></div>
- <div class="p"><details class="trw" id="trWrap"><summary>📒 交易紀錄 <span class="h" id="trHead"></span></summary>
-  <div class="h" style="margin:4px 0">撥款後的每一筆買進、賣出與配息（金額單位：元）。同一天的交易歸在一組；手續費與證交稅依試算頁「稅費與手續費」自動計算，點「✎」可改成成交回報上的實際金額、改日期或加備註。結算時「本期淨買進」會自動加總兩次結算之間的交易。</div>
+</div>
+ <div class="p"><details class="trw" id="trWrap"><summary>📒 交易紀錄 <span class="ib" role="button" tabindex="0" data-tn="交易紀錄" data-tt="撥款後的每一筆買進、賣出與配息（金額單位：元）。同一天的交易歸在一組；手續費與證交稅依試算頁「稅費與手續費」自動計算，點「✎」可改成成交回報上的實際金額、改日期或加備註。結算時「本期淨買進」會自動加總兩次結算之間的交易。">ⓘ</span> <span class="h" id="trHead"></span></summary>
   <div id="trd"></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px"><input type="date" id="trNewD" style="width:auto"><button onclick="addTr(document.getElementById('trNewD').value)">＋新增這天的交易</button></div>
   <div class="h" id="trSum2"></div>
  </details></div>
- <div class="p"><details id="asHoldD"><summary>📋 持股明細表（逐檔修改現價、看成本與配置目標）</summary>
-  <div class="h" style="margin:4px 0">股數＝期初持股＋交易紀錄。現價會自動帶入每個交易日的收盤價，也可以在這裡手動修改；手動修改的會標示「手填」。</div><div class="w"><table class="trh" id="trh"></table></div><div id="trMoreB" style="margin-top:4px"></div><div class="h" id="mvLine"></div><div class="h" id="trSum"></div>
-  <div class="h">股票名稱：證交所、櫃買中心開放資料（2026-11-03，上市＋上櫃股票與 ETF 共 2,375 檔）；找不到的可在「✎」自訂名稱。</div></details></div>
+ <div class="p"><details id="asHoldD"><summary>📋 持股明細表 <span class="ib" role="button" tabindex="0" data-tn="持股明細表" data-tt="逐檔修改現價、看成本與配置目標。&#10;股數＝期初持股＋交易紀錄。現價會自動帶入每個交易日的收盤價，也可以在這裡手動修改；手動修改的會標示「手填」。&#10;股票名稱：證交所、櫃買中心開放資料（2026-11-03，上市＋上櫃股票與 ETF 共 2,375 檔）；找不到的可在「✎」自訂名稱。">ⓘ</span></summary><div class="w"><table class="trh" id="trh"></table></div><div id="trMoreB" style="margin-top:4px"></div><div class="h" id="mvLine"></div><div class="h" id="trSum"></div></details></div>
  <div id="usView"></div>
  <div id="allView"></div>
 </div>
 
 <div id="pgST" class="stw">
- <div class="p"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;flex-wrap:wrap"><b>🧭 策略</b><span class="h">策略庫、績效與所有論點；每一檔的論點也可以在「📊 資產」點股票查看</span></div>
+ <div class="p"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;flex-wrap:wrap"><b>🧭 策略</b></div>
   <div id="stAl" style="margin-top:6px"></div></div>
  <div class="tabs" id="stTabs"></div>
- <div id="st_th"><div class="p"><div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap"><div class="chips" id="stChips"></div><button onclick="stAddTh()">＋新增論點</button></div>
-  <div class="h">一檔股票的一次布局＝一個論點。交易紀錄選了論點，績效就會算到這個論點與它的策略；沒選的歸「未分類」。</div><div id="stList"></div></div></div>
+ <div id="st_th"><div class="p"><div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap"><div class="chips" id="stChips"></div><button onclick="stAddTh()">＋新增論點</button><span class="ib" role="button" tabindex="0" data-tn="論點" data-tt="一檔股票的一次布局＝一個論點。交易紀錄選了論點，績效就會算到這個論點與它的策略；沒選的歸「未分類」。">ⓘ</span></div><div id="stList"></div></div></div>
  <div id="st_lib"><div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center" id="stTplW"></div>
-  <div class="h" style="margin:4px 0">改了內容後，小地方可以「儲存為小修正」；邏輯或規則改變請「建立新版本」並寫原因，舊版本會保留，原本的論點仍跟隨舊版本。</div><div id="stLib"></div></div></div>
- <div id="st_perf"><div class="p" id="stPerfTop"></div><div class="p"><b>依策略</b><div class="w"><table id="stPerfT" class="stt"></table></div>
-  <div class="h" style="margin-top:4px">進行／出場：論點數。勝率、賺賠比只算已出場的論點（賺賠比＝平均賺的報酬率 ÷ 平均賠的報酬率）。超額＝報酬率減去「同樣的錢、同樣的時間點買賣基準 ETF」的報酬率（含基準 ETF 配息）。最大回撤：用各次結算當時填的現價與今天的現價取樣，合計報酬率從高點最多回落幾個百分點。照規則＝已出場且有填「有沒有照規則做」的論點中，填「是」的比例。</div></div>
-  <div class="p"><b>依論點</b><div class="w"><table id="stThT" class="stt"></table></div><div class="h" style="margin-top:4px">持有未滿 6 個月顯示期間報酬（未年化）。點一列可打開該論點。</div></div></div>
+  <div class="h" style="margin:4px 0">小修正與新版本 <span class="ib" role="button" tabindex="0" data-tn="小修正與新版本" data-tt="改了內容後，小地方可以「儲存為小修正」；邏輯或規則改變請「建立新版本」並寫原因，舊版本會保留，原本的論點仍跟隨舊版本。">ⓘ</span></div><div id="stLib"></div></div></div>
+ <div id="st_perf"><div class="p" id="stPerfTop"></div><div class="p"><b>依策略</b> <span id="stPerfTip"></span><div class="w"><table id="stPerfT" class="stt"></table></div></div>
+  <div class="p"><b>依論點</b> <span class="ib" role="button" tabindex="0" data-tn="依論點" data-tt="持有未滿 6 個月顯示期間報酬（未年化）。點一列可打開該論點。">ⓘ</span><div class="w"><table id="stThT" class="stt"></table></div></div></div>
 </div>
 
 <div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button><button class="pro" onclick="msOpen()">🗓️ 月結</button><button class="pro" id="usAddB" onclick="usStart()">🇺🇸 ＋新增美股帳戶</button><button onclick="location.href='v20261114/index.html'" title="美股整合前的版本，資料和這裡是同一份">🕘 開啟 11/14 的舊版</button></div>
-<div class="h" style="margin-top:6px">資料只存在這個瀏覽器。每次修改或結算後，請按「⬇️ 匯出設定檔」存到雲端硬碟或電腦；換手機、換電腦時用「⬆️ 匯入」還原。「🕘 開啟 11/14 的舊版」是美股整合前的版本，和這裡共用同一份資料，可以隨時打開對照；按手機的上一頁回到新版。<span id="bkS"></span><br>本工具僅供試算，非投資或稅務建議。</div><div id="iosHint" class="stal" style="display:none"></div></div>
+<div class="h" style="margin-top:6px"><span class="ib" role="button" tabindex="0" data-tn="資料與備份" data-tt="資料只存在這個瀏覽器。每次修改或結算後，請按「⬇️ 匯出設定檔」存到雲端硬碟或電腦；換手機、換電腦時用「⬆️ 匯入」還原。&#10;「🕘 開啟 11/14 的舊版」是美股整合前的版本，和這裡共用同一份資料，可以隨時打開對照；按手機的上一頁回到新版。">ⓘ</span><span id="bkS"></span><br>本工具僅供試算，非投資或稅務建議。</div><div id="iosHint" class="stal" style="display:none"></div></div>
 
 <div id="toast"><span id="toastT"></span><button onclick="undo()">復原</button></div>
 
@@ -441,26 +434,27 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button><button onclick="usAsk()">🤖 問 AI</button></div>
 <div class="asfab asw" id="twFab"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261115f"></script>
-<script src="data/stocks.js?v=20261115f"></script>
-<script src="js/engine.js?v=20261115f"></script>
-<script src="js/ui.js?v=20261115f"></script>
-<script src="js/strategy-engine.js?v=20261115f"></script>
-<script src="js/asset-engine.js?v=20261115f"></script>
-<script src="js/us-engine.js?v=20261115f"></script>
-<script src="js/prices.js?v=20261115f"></script>
-<script src="js/check.js?v=20261115f"></script>
-<script src="js/outlook.js?v=20261115f"></script>
-<script src="js/strategy-ui.js?v=20261115f"></script>
-<script src="js/order.js?v=20261115f"></script>
-<script src="js/asset-ui.js?v=20261115f"></script>
-<script src="js/us-ui.js?v=20261115f"></script>
-<script src="js/eval.js?v=20261115f"></script>
-<script src="js/ai-import.js?v=20261115f"></script>
-<script src="js/ai-ask.js?v=20261115f"></script>
-<script src="js/back.js?v=20261115f"></script>
-<script src="js/watch.js?v=20261115f"></script>
-<script src="js/season.js?v=20261115f"></script>
-<script src="js/month.js?v=20261115f"></script>
-<script src="js/main.js?v=20261115f"></script>
+<script src="data/etf-ref.js?v=20261115g"></script>
+<script src="data/stocks.js?v=20261115g"></script>
+<script src="js/tip.js?v=20261115g"></script>
+<script src="js/engine.js?v=20261115g"></script>
+<script src="js/ui.js?v=20261115g"></script>
+<script src="js/strategy-engine.js?v=20261115g"></script>
+<script src="js/asset-engine.js?v=20261115g"></script>
+<script src="js/us-engine.js?v=20261115g"></script>
+<script src="js/prices.js?v=20261115g"></script>
+<script src="js/check.js?v=20261115g"></script>
+<script src="js/outlook.js?v=20261115g"></script>
+<script src="js/strategy-ui.js?v=20261115g"></script>
+<script src="js/order.js?v=20261115g"></script>
+<script src="js/asset-ui.js?v=20261115g"></script>
+<script src="js/us-ui.js?v=20261115g"></script>
+<script src="js/eval.js?v=20261115g"></script>
+<script src="js/ai-import.js?v=20261115g"></script>
+<script src="js/ai-ask.js?v=20261115g"></script>
+<script src="js/back.js?v=20261115g"></script>
+<script src="js/watch.js?v=20261115g"></script>
+<script src="js/season.js?v=20261115g"></script>
+<script src="js/month.js?v=20261115g"></script>
+<script src="js/main.js?v=20261115g"></script>
 </body></html>
