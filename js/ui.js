@@ -33,7 +33,7 @@ const INFO={
  sly:'剩餘額度 ÷ 目前在股市裡的信貸資金。已結算時，信貸資金部位＝帳戶股票市值 ×（帳戶總值−沒借錢估計值）÷ 帳戶總值；未結算時用試算值。還沒投入的現金不受股市影響，不計入；你選的停損轉入標的也視為低風險、不計入（依交易紀錄的持股計算：有填現價用現價，否則用成本）。',
  slx:'規則 ② 的減碼金額：賣到「剩下的信貸股票部位就算再跌你設定的 %，虧損也不會超過上限」為止，先賣主動、不夠再賣被動，轉入你選的低風險標的。',
  slc:'假設現在把信貸資金的股票部位全部賣出：(a) 轉入你選的標的持有到期（用試算頁設定的報酬率，不含買回）；(b) 全部賣出並提前清償（綁約內計違約金）。與「不動作」的期末 A 比較。',
- lev:'左：信貸剩餘本金 ÷ 追蹤帳戶總值（股票＋現金），越高槓桿越重。右：帳戶現金＋被動部位可支應幾個月的「固定支出＋信貸月付」，低於應對規則「安全存量不足」的門檻時亮紅燈。',
+ lev:'槓桿：信貸剩餘本金 ÷ 追蹤帳戶總值（股票＋現金），越高槓桿越重。可撐：帳戶現金＋被動部位可支應幾個月的「固定支出＋信貸月付」，低於應對規則「安全存量不足」的門檻時亮紅燈。',
  lev0:'信貸剩餘本金 ÷ 追蹤帳戶總值（股票＋現金）。越高代表槓桿越重，下跌時的影響越大。',
  em:'帳戶現金＋被動部位，可支應幾個月的「固定支出＋信貸月付」。低於應對規則「安全存量不足」的門檻時亮紅燈。',
  sdrop:'假設選定情境開始那個月股市下跌、而且到期都「不回升」（收入衝擊、升息、配息縮水等其他條件照選定情境），在不被迫賣股、且期末真實淨資產不低於撥款前的條件下，最多能承受的跌幅。',
@@ -45,7 +45,7 @@ const INFO={
  real:'追蹤帳戶（股票＋現金）扣掉信貸剩餘本金、已繳月付、開辦費、淨入金與外部費用後的淨值，並與撥款前比較。',
  nle:'假設沒有借錢：逐檔明細時＝期初股數 × 各檔現價＋期初持股的配息＋撥款前現金；直接填總額時＝撥款前股票照同期對照基準 ETF 漲跌＋撥款前現金。Alpha 就是真實淨資產減去這個值。',
  perfP:'這次結算時點的被動、主動部位撥款以來時間加權報酬，與對照基準 ETF 同期報酬比較。'};
-const CARDS=[['health','健康燈號'],['alpha','實際績效'],['perf','被動／主動 vs 基準'],['fc','預測期末淨效益'],['be','划算門檻'],['risk','距離停損線'],['dep','建倉進度'],['cf','月現金流'],['lev','槓桿與安全存量'],['early','提前清償比較'],['mn','預測最低真實淨資產']];
+const CARDS=[['health','健康燈號'],['alpha','實際績效'],['risk','距離停損線'],['cf','月現金流'],['dep','建倉進度'],['perf','被動／主動 vs 基準'],['lev','槓桿・可撐月數'],['fc','期末淨效益'],['be','划算門檻'],['early','提前清償'],['mn','最低真實淨資產']];
 const LINES=[['l_plan','原始計畫','#94a3b8','dash'],['l_af','A 面額（比不投資）','#7c3aed','line'],['l_b','B 定投收益','#ea580c','line'],['l_ao','C 機會成本＝A−B（比定投）','#7c3aed','dash'],['l_sc','壓力情境','#dc2626','dash'],['l_sl','停損線','#b91c1c','line'],['l_pt','實際結算','#16a34a','dot']];
 const RULES={loss1:['虧損上限 ①','已用掉虧損上限的(%)'],loss2:['虧損上限 ②（主動減半）','已用掉虧損上限的(%)'],loss3:['虧損上限 ③（主動全出）','已用掉虧損上限的(%)'],loss4:['虧損上限 ④（被動也出）','已用掉虧損上限的(%)'],rebuy:['買回時機','基準 ETF 收盤站上幾日均線（120＝半年線）'],dd:['帳戶回撤','帳戶總值從高點回落達(%)'],cash:['安全存量不足','現金＋被動可撐月數低於(月)'],liq:['月付金保留','現金＋低風險標的可付信貸月付金的月數低於(月)'],lev:['槓桿過高','信貸餘額÷帳戶總值高於(%)'],cneg:['機會成本連續為負','C 連續為負達(次結算；情境以季計)'],xirr:['XIRR 低於信貸成本','連續低於信貸成本達(次結算)'],dip:['逢低加碼時機','基準 ETF 從近期高點回落達(%)'],rate:['利率上升','信貸利率達到(%)']};
 const SCF=[['市場',[['st','開始於撥款後第幾個月'],['dr','股市跌幅(%)：股票 ETF 與原有持股'],['dn','下跌期間(月)'],['rc','回升期間(月，0＝不回升)'],['ba','主動跌幅倍數'],['bb','債券 ETF 跌幅倍數'],['dc','壓力期間配息縮水(%)']]],['利率',[['ru','升息(百分點，從開始月起)']]],['收入與支出',[['il','收入中斷(月)'],['ic','減薪(%)'],['icm','減薪持續(月，0＝到期末)'],['sh','突發支出(萬，開始月一次)'],['fu','固定支出增加(元/月)']]]];
@@ -257,7 +257,8 @@ let tmr;function upd(){save();clearTimeout(tmr);tmr=setTimeout(calc,60)}
 const hasSettle=()=>(S.snaps||[]).some(s=>settle(S,s));
 function autoPlan(){if(!hasSettle()||!S.plan||!S.plan.af||!S.plan.re){const r=project(S,planInit(S));S.plan={d:(S.plan&&S.plan.d&&hasSettle())?S.plan.d:new Date().toISOString().slice(0,10),af:r.map(x=>Math.round(x.af)),re:r.map(x=>Math.round(x.real))};save()}}
 window.resetPlan=()=>{if(confirm('以目前設定覆蓋「原始計畫」線？')){S.plan=null;autoPlan();calc()}};
-const cd=(k,t,v,c)=>`<div class=c><small>${t}${k&&INFO[k]?`<span class=ib data-i="${k}">ⓘ</span>`:''}</small><b class="${c||''}">${v}</b>${info.has(k)?`<div class=ix>${INFO[k]}</div>`:''}</div>`;
+const cd=(k,t,v,c,ex)=>`<div class=c><small>${t}${ex?tipI(ex+(k&&INFO[k]?'\n\n'+String(INFO[k]).replace(/<br\s*\/?>/g,'\n').replace(/<[^>]*>/g,''):''),String(t).replace(/<[^>]*>/g,'')):k&&INFO[k]?`<span class=ib data-i="${k}">ⓘ</span>`:''}</small><b class="${c||''}">${v}</b></div>`;
+const abc=(r,u)=>`<span class=abc>${r.map(([l,v])=>`<span><i>${l}</i>${v}${u||''}</span>`).join('')}</span>`;
 const sg=v=>(v>=0?'+':'')+W2(v);
 // 結算日沒有固定時，自動跟著今天（2026-11-10）；手動改日期或載入舊結算時固定
 function curAuto(){if(S.cur&&!S.cur.dtFix&&S.cur.dt!==TODAY){S.cur.dt=TODAY;S.cur.m=TODAY.slice(0,7)}}
@@ -300,20 +301,20 @@ function calc(){
  const ss=sortedSnaps(),tw=twr(S,ss.map(o=>o.s)),lastTw=tw.length?tw[tw.length-1]:null;
  const ec=earlyCmp(S);
  const C={};
- if(L){const r=L.r;C.alpha=cd('alpha','實際績效（'+sDate(L.s).slice(5).replace('-','/')+' 結算）',sg(r.af)+'｜'+sg(r.af-r.ao)+'｜'+sg(r.ao)+' 萬<br><small>A 面額｜B 定投收益｜C＝A−B 機會成本<br>'+(()=>{const t=xirrT(r);return t.l+' '+t.v+(t.ann?' vs 信貸成本 '+aprE.toFixed(2)+'%':'（滿 6 個月後顯示年化）')})()+'</small>',r.ao<0?'bad':'ok');
-  if(lastTw){const s5=r.sbOk?r.sb:null;C.perf=cd('perf','被動／主動 vs '+bmC(S)+'（撥款以來）',P1(lastTw.rp)+' / '+P1(lastTw.ra)+' / '+(s5!=null?P1(s5):'—')+(s5!=null?`<br><small>超額：被動 ${P1(lastTw.rp-s5)}｜主動 ${P1(lastTw.ra-s5)}</small>`:'<br><small>請填 0050 還原價或報酬</small>'))}}
+ if(L){const r=L.r;C.alpha=cd('alpha','實際績效',abc([['A 面額',sg(r.af)],['B 定投',sg(r.af-r.ao)],['C 機會',sg(r.ao)]],' 萬')+'<small>'+sDate(L.s).slice(5).replace('-','/')+' 結算<br>'+(()=>{const t=xirrT(r);return t.l+' '+t.v+(t.ann?' vs 信貸成本 '+aprE.toFixed(2)+'%':'（滿 6 個月後顯示年化）')})()+'</small>',r.ao<0?'bad':'ok');
+  if(lastTw){const s5=r.sbOk?r.sb:null;C.perf=cd('perf','被動／主動 vs '+bmC(S),P1(lastTw.rp)+' / '+P1(lastTw.ra)+' / '+(s5!=null?P1(s5):'—')+(s5!=null?`<br><small>撥款以來｜超額：被動 ${P1(lastTw.rp-s5)}｜主動 ${P1(lastTw.ra-s5)}</small>`:'<br><small>撥款以來｜請填 0050 還原價或報酬</small>'))}}
  if((S.trades||[]).some(x=>x.dt&&x.k!='div')){const nb=netBuy(S,null,'9999-12-31'),pp=+S.Wp||0,pa=+S.Wa||0,pc=v=>v>0?' ('+(v*100).toFixed(0)+'%)':'',lt=(S.trades||[]).map(x=>x.dt||'').sort().pop();
-  C.dep=cd('dep','建倉進度（交易紀錄）','被動 '+nb.p.toFixed(1)+'／'+pp.toFixed(0)+' 萬'+pc(pp?nb.p/pp:0)+'<br>主動 '+nb.a.toFixed(1)+'／'+pa.toFixed(0)+' 萬'+pc(pa?nb.a/pa:0)+'<br><small>合計 '+((pp+pa)?((nb.p+nb.a)/(pp+pa)*100).toFixed(0):'—')+'%｜最近一筆 '+lt+'</small>')}
- C.fc=cd('fc','預測期末淨效益（'+t2ym(S,H)+'）',W(end.af)+'｜'+W(end.af-end.ao)+'｜'+W(end.ao)+' 萬<br><small>A 面額｜B 定投收益｜C＝A−B 機會成本</small>',end.ao<0?'bad':'ok');
+  C.dep=cd('dep','建倉進度','被動 '+nb.p.toFixed(1)+'／'+pp.toFixed(0)+' 萬'+pc(pp?nb.p/pp:0)+'<br>主動 '+nb.a.toFixed(1)+'／'+pa.toFixed(0)+' 萬'+pc(pa?nb.a/pa:0)+'<br><small>合計 '+((pp+pa)?((nb.p+nb.a)/(pp+pa)*100).toFixed(0):'—')+'%｜最近一筆 '+lt+'</small>')}
+ C.fc=cd('fc','期末淨效益',abc([['A 面額',W(end.af)],['B 定投',W(end.af-end.ao)],['C 機會',W(end.ao)]],' 萬')+'<small>'+t2ym(S,H)+' 預測</small>',end.ao<0?'bad':'ok');
  {const mg=asm-bT,v_=[0,bA,bT,asm],lo=Math.min(...v_),hi=Math.max(...v_)*1.12+0.5,ps=v=>Math.max(2,Math.min(98,(v-lo)/(hi-lo)*100)),tx=p=>p<30?'0':p>70?'-100%':'-50%',gc=mg>=0?'#16a34a':'#dc2626';
   const pA=ps(bA),pT=ps(bT),pS=ps(asm),near=Math.abs(pT-pA)<24;
   const gauge=`<div class=gg><div class=gl></div><span class=gm style="left:${pA}%;background:#94a3b8"></span><span class=gm style="left:${pT}%;background:#7c3aed"></span><span class="gm ga" style="left:${pS}%;border-bottom-color:${gc}"></span><span class=gt style="left:${pS}%;top:-16px;transform:translateX(${tx(pS)});color:${gc}">你的假設 ${asm.toFixed(1)}%</span><span class=gt style="left:${pA}%;top:19px;transform:translateX(${tx(pA)})">不投資線 ${bA.toFixed(1)}%</span><span class=gt style="left:${pT}%;top:34px;transform:translateX(${tx(pT)});color:#7c3aed">定期定額線 ${bT.toFixed(1)}%</span></div>`;
-  C.be=cd('be','划算門檻（每年含息報酬）','至少 '+bT.toFixed(1)+'%'+gauge+'<small style="display:block;text-align:left;font-weight:400;line-height:1.5">你的投資每年至少要賺 '+bT.toFixed(1)+'%（含配息），借錢才比「不借錢、每月定期定額」划算。你目前假設 '+asm.toFixed(1)+'%，'+(mg>=0?'安全空間 '+mg.toFixed(1)+' 個百分點。':'低於門檻 '+(-mg).toFixed(1)+' 個百分點，借錢不如定期定額。')+'</small>',mg>=2?'ok':mg>=0?'wn':'bad')}
- C.early=cd('early','提前清償比較（第 '+ec.te+' 期，'+t2ym(S,ec.te)+'）',ec.na?'不適用':(ec.diff>=0?'持有多 '+W2(ec.diff)+' 萬':'提前還多 '+W2(-ec.diff)+' 萬')+(ec.na?'':`<br><small>價格報酬低於 ${ec.th==null?'—':ec.th.toFixed(2)+'%'} 時提前還較划算</small>`),ec.na?'':(ec.diff>=0?'ok':'wn'));
- C.cf=cd('cf','月現金流（首期 '+t2ym(S,f1.t)+' / 最低）',same?R(f1.base)+' 元<br><small>每月相同</small>':R(f1.base)+' / '+R(wf.base)+' 元<br><small>最低在 '+t2ym(S,wf.t)+'</small>',wf&&wf.base<0?'bad':'ok');
- C.mn=cd('mn','預測最低真實淨資產',mn?W(mn.real)+' 萬 ('+t2ym(S,mn.t)+')':'—',mn&&mn.real<init?'bad':'ok');
- {const l1=rule(S,'loss1'),l3=rule(S,'loss3');C.risk=cd('risk','距離停損線（'+sSrc+'）',B>0?(SL.rb<=0?'已超過虧損上限':'剩 '+W(SL.rb)+' 萬'+(SL.Y!=null?'（≈再跌 '+SL.Y.toFixed(1)+'%）':''))+'<br><small>已用 '+SL.used.toFixed(0)+'%｜上限 '+W(B)+' 萬'+(SL.Y==null?'｜尚未投入股市':'')+'</small>':'未設定虧損上限',!(B>0)?'':(l3.on&&SL.used>=l3.th)||SL.rb<=0?'bad':(l1.on&&SL.used>=l1.th?'wn':'ok'))}
-  const cR=rule(S,'cash');C.lev=cd('lev','槓桿與安全存量'+(L?'':'（計畫）'),lev.toFixed(1)+'%｜'+(isFinite(emM)?emM.toFixed(1):'—')+' 個月<br><small>信貸餘額÷帳戶總值｜現金＋被動可撐月數'+(cR.on?'（門檻 '+cR.th+' 個月）':'')+'</small>',cR.on&&emM<cR.th?'bad':'');
+  C.be=cd('be','划算門檻','至少 '+bT.toFixed(1)+'%'+gauge,mg>=2?'ok':mg>=0?'wn':'bad','每年含息報酬。你的投資每年至少要賺 '+bT.toFixed(1)+'%（含配息），借錢才比「不借錢、每月定期定額」划算。你目前假設 '+asm.toFixed(1)+'%，'+(mg>=0?'安全空間 '+mg.toFixed(1)+' 個百分點。':'低於門檻 '+(-mg).toFixed(1)+' 個百分點，借錢不如定期定額。'))}
+ C.early=cd('early','提前清償',ec.na?'不適用':(ec.diff>=0?'持有多 '+W2(ec.diff)+' 萬':'提前還多 '+W2(-ec.diff)+' 萬')+(ec.na?'':`<br><small>第 ${ec.te} 期・${t2ym(S,ec.te)}｜價格報酬低於 ${ec.th==null?'—':ec.th.toFixed(2)+'%'} 時提前還較划算</small>`),ec.na?'':(ec.diff>=0?'ok':'wn'));
+ C.cf=cd('cf','月現金流',same?R(f1.base)+' 元<br><small>首期 '+t2ym(S,f1.t)+'・每月相同</small>':R(f1.base)+' / '+R(wf.base)+' 元<br><small>首期 '+t2ym(S,f1.t)+' / 最低在 '+t2ym(S,wf.t)+'</small>',wf&&wf.base<0?'bad':'ok');
+ C.mn=cd('mn','最低真實淨資產',mn?W(mn.real)+' 萬<br><small>'+t2ym(S,mn.t)+' 預測</small>':'—',mn&&mn.real<init?'bad':'ok');
+ {const l1=rule(S,'loss1'),l3=rule(S,'loss3');C.risk=cd('risk','距離停損線',B>0?(SL.rb<=0?'已超過虧損上限':'剩 '+W(SL.rb)+' 萬'+(SL.Y!=null?'（≈再跌 '+SL.Y.toFixed(1)+'%）':''))+'<br><small>已用 '+SL.used.toFixed(0)+'%｜上限 '+W(B)+' 萬'+(SL.Y==null?'｜尚未投入股市':'')+'<br>'+sSrc+'</small>':'未設定虧損上限',!(B>0)?'':(l3.on&&SL.used>=l3.th)||SL.rb<=0?'bad':(l1.on&&SL.used>=l1.th?'wn':'ok'))}
+  const cR=rule(S,'cash');C.lev=cd('lev','槓桿・可撐月數',abc([['槓桿',lev.toFixed(1)+'%'],['可撐',(isFinite(emM)?emM.toFixed(1):'—')+' 個月']])+'<small>'+(L?'':'計畫｜')+(cR.on?'門檻 '+cR.th+' 個月':'')+'</small>',cR.on&&emM<cR.th?'bad':'');
  const setL=ss.map(o=>settle(S,o.s)).filter(Boolean),tNow=L?L.r.ts:Math.max(1,ym2t(S,TODAY.slice(0,7))),RN=ruleNow(setL,L?L.s:S.cur,emM,lev,aprE,tNow,sAf);
  $('cards').innerHTML=CARDS.filter(([k])=>k!='health'&&(!isS()||SIMPLE_CARDS.includes(k))).map(([k])=>(!hd[k]&&C[k])||'').join('');{const cs=$('cards').children;if(cs.length%2)cs[cs.length-1].style.gridColumn='span 2'}
  // 健康燈號
