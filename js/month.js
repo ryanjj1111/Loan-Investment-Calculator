@@ -30,7 +30,7 @@ function msSteps(){const m=msCur()||{done:{},start:TODAY},st=m.start,on=typeof u
  L.push({k:'cash',t:'交割帳戶現金',auto:!!(S.cashD&&S.cashD>=st)});
  L.push({k:'div',t:'配息與配股',auto:dv?dv.length==0:null,dv});
  L.push({k:'data',t:'營收、財報與前瞻資料',auto:null});
- if(on)L.push({k:'us',t:'美股核對',auto:(S.us.accts||[]).length>0&&S.us.accts.every(a=>a.upd&&a.upd>=st)});
+ if(on&&(S.us.accts||[]).length)L.push({k:'us',t:'美股核對',auto:(S.us.accts||[]).length>0&&S.us.accts.every(a=>a.upd&&a.upd>=st)});
  L.push({k:'settle',t:'結算',auto:lastSnap>=st,lastSnap});
  L.push({k:'review',t:'月底復盤（問 AI，可略過）',auto:null});
  L.push({k:'backup',t:'匯出備份',auto:!!(ls('lcx')&&new Date(ls('lcx')).toLocaleDateString('sv-SE')>=st&&ls('lch')==sig())});

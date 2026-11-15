@@ -26,8 +26,10 @@ const avViews=()=>avOn()?['today','all','tw','us']:['today','tw'];
 const avCur=()=>avViews().includes(AV)?AV:'today';
 function avApply(){try{document.body.dataset.av=avCur()}catch(e){}}
 window.avSet=v=>{AV=v;ls('lcav',v);avApply();asCalc();scrollTo(0,0)};
+// 美股預設開啟：還沒有 us 的設定檔（新的、重置後、舊的）直接建一個空的；按過「隱藏美股」（on:false）的不動
+function usEnsure(){if(typeof S!='undefined'&&S&&!S.us)S.us=usDef()}
 // asCalc() 每次畫完資產頁之後呼叫
-function avAfter(){avApply();const v=avCur(),n=$('avNav');if(!n)return;if(typeof msAfter=='function')msAfter();if(typeof wlAfter=='function')wlAfter();
+function avAfter(){usEnsure();avApply();const v=avCur(),n=$('avNav');if(!n)return;if(typeof msAfter=='function')msAfter();if(typeof wlAfter=='function')wlAfter();
  n.innerHTML=avViews().map(k=>`<button class="${k==v?'on':''}" onclick="avSet('${k}')">${AV_N[k]}</button>`).join('');
  const b=$('usAddB');if(b){const has=typeof S!='undefined'&&S&&S.us&&Array.isArray(S.us.accts);b.style.display=avOn()?'none':'';b.textContent=has?'🇺🇸 顯示美股':'🇺🇸 ＋新增美股帳戶'}
  const td=$('usToday'),uv=$('usView'),av=$('allView');
@@ -73,7 +75,7 @@ const usOrdIx=k=>{const i=(S.us.ord||[]).indexOf(k);return i<0?1e6:i};
 // 每一檔的標示（和台股持股列上的 ⚠️ 一樣）：超過占比上限、財報日、單日大漲跌
 const usFlags=(n,W)=>(W||[]).filter(w=>w.n==n&&(w.k=='cap'||w.k=='earn'||w.k=='earnDone'||w.k=='move')).map(w=>w.k=='cap'?`⚠️ 占比 ${w.w.toFixed(0)}%，超過上限 ${usWOpt(S.us).cap}%`:w.k=='earn'?`📅 ${esc(usD(w.d))} 財報${w.days==0?'（今天）':w.days==1?'（明天）':''}`:w.k=='earnDone'?`📝 ${esc(usD(w.d))} 已公布財報`:`${w.chg>=0?'📈':'📉'} 單日 ${w.chg>=0?'+':''}${w.chg.toFixed(1)}%`);
 function usViewHtml(T,fx,AL,W){const al=usAlloc(T),om=typeof ORDM!='undefined'?ORDM:'';
- if(!T.accts.length)return`<div class=p><b>🇺🇸 美股</b><div class=asl>還沒有帳戶。按下面的「＋更新部位」新增第一個帳戶（例如海外券商、複委託各一個）。</div>${usFoot()}</div>`;
+ if(!T.accts.length)return`<div class=p><b>🇺🇸 美股</b><div class=asl>還沒有帳戶。每個券商帳戶（例如海外券商、複委託）各建一個。</div><div class=asbtn><button class=pri onclick="usAcct()">＋新增帳戶</button></div>${usFoot()}</div>`;
  const so=(a,b,key)=>USS=='my'?usOrdIx(key(a))-usOrdIx(key(b))||(b.mvC??-1)-(a.mvC??-1):USS=='pl'?(b.plp??-1e9)-(a.plp??-1e9):USS=='w'?(b.w??-1)-(a.w??-1):(b.mvC??-1)-(a.mvC??-1);
  const sel=(v,f,L)=>`<select onchange="${f}(this.value)">${L.map(([k,l])=>`<option value="${k}" ${v==k?'selected':''}>${l}</option>`).join('')}</select>`;
  let h=usTrendHtml(T,fx);
@@ -215,17 +217,17 @@ function allViewHtml(T,fx){let grp={};try{grp=stExposure(S).grp||{}}catch(e){}co
  const V=usAllView({p:z.p.mv,a:z.a.mv,cash},T,fx,rem),CO={p:'#3b82f6',a:'#f59e0b',c:'#94a3b8',us:'#6366f1',uc:'#c4b5fd',TWD:'#0ea5e9',USD:'#6366f1'},pc=p=>p>=10||p==0?p.toFixed(0):p.toFixed(1);
  const bar=L=>`<div class=asbar>${L.map(s=>s.v>0?`<span style="width:${s.p}%;background:${CO[s.k]}" title="${s.l||s.k}"${s.go?` onclick="avSet('${s.go}')"`:''}></span>`:'').join('')}</div>`;
  return`<div class=p><b>🌐 全資產（新台幣）</b>${tipI('不含信貸計算；信貸數字請看 💰 信貸。','全資產')}<div class=allb>${W2(V.tot)} 萬</div>
-  ${(V.noFx||z.miss.length||T.miss.length||V.cashNull)?'<div class=h>':''}${V.noFx?'<span class=wn>沒有匯率，美股還沒算進來。</span>':''}${z.miss.length?`<span class=wn>台股有 ${z.miss.length} 檔沒有現價。</span>`:''}${T.miss.length?`<span class=wn>美股有 ${T.miss.length} 檔沒有現價，沒算進來。</span>`:''}${V.cashNull?'台股帳戶現金還沒填。':''}${(V.noFx||z.miss.length||T.miss.length||V.cashNull)?'</div>':''}
-  <div class=sub>配置</div>${bar(V.segs)}
+  ${(V.noFx||z.miss.length||T.miss.length||(V.cashNull&&V.tot>0))?'<div class=h>':''}${V.noFx?'<span class=wn>沒有匯率，美股還沒算進來。</span>':''}${z.miss.length?`<span class=wn>台股有 ${z.miss.length} 檔沒有現價。</span>`:''}${T.miss.length?`<span class=wn>美股有 ${T.miss.length} 檔沒有現價，沒算進來。</span>`:''}${V.cashNull&&V.tot>0?'台股帳戶現金還沒填。':''}${(V.noFx||z.miss.length||T.miss.length||(V.cashNull&&V.tot>0))?'</div>':''}
+  ${V.tot>0?`<div class=sub>配置</div>${bar(V.segs)}
   ${V.segs.filter(s=>s.v>0).map(s=>`<div class="asl alll" onclick="avSet('${s.go}')"><span><span class=dot style="background:${CO[s.k]}"></span>${s.l}</span><span>${W2(s.v)} 萬　<b>${pc(s.p)}%</b></span></div>`).join('')}
   <div class=sub>幣別曝險</div>${bar(V.ccy)}
-  <div class=asl><span class=dot style="background:${CO.TWD}"></span>新台幣 ${pc(V.ccy[0].p)}%　<span class=dot style="background:${CO.USD}"></span>美元 ${pc(V.ccy[1].p)}%</div>
+  <div class=asl><span class=dot style="background:${CO.TWD}"></span>新台幣 ${pc(V.ccy[0].p)}%　<span class=dot style="background:${CO.USD}"></span>美元 ${pc(V.ccy[1].p)}%</div>`:`<div class=asl>還沒有資料。台股到「台股」記交易或填持股；美股到「美股」新增帳戶。</div>`}
   ${V.loan?`<div class="asl h">剩餘貸款本金 ${W2(V.loan.rem)} 萬</div>`:''}</div>
  <div class=p><div class="asl alll" onclick="avSet('tw')"><b>🇹🇼 台股</b><button class=lk>看台股 ›</button></div>
   <div class=asl>持股市值 <b>${W2(z.mv)} 萬</b>｜未實現損益 <b class="${asC(z.ub)}">${asM(z.ub)}</b>${z.cb?`（${asPct(z.ub/z.cb*100)}）`:''}${cash!=null?`｜現金 ${W2(cash)} 萬`:''}</div><div class=h>現價：${typeof pxStatus=='function'?pxStatus():''}</div></div>
  <div class=p><div class="asl alll" onclick="avSet('us')"><b>🇺🇸 美股</b><button class=lk>看美股 ›</button></div>
-  <div class=asl>帳戶總值 <b>${usU(T.valC)}</b>${fx?`（約 ${W2(T.valC/100*fx.v)} 萬）`:''}｜未實現損益 ${T.plBase?`<b class="${usCl(T.plC)}">${(T.plC>=0?'+':'')+usU(T.plC)}（${usPc(T.plp)}）</b>`:'<span class=h>沒有填成本</span>'}｜現金 ${usU(T.cashC)}</div>
-  <div class=h>${usPxLine(T)}</div></div>
+  ${!(S.us.accts||[]).length?`<div class=asl>還沒有美股帳戶 <button class=lk onclick="event.stopPropagation();usAcct()">＋新增帳戶 ›</button></div></div>`:`<div class=asl>帳戶總值 <b>${usU(T.valC)}</b>${fx?`（約 ${W2(T.valC/100*fx.v)} 萬）`:''}｜未實現損益 ${T.plBase?`<b class="${usCl(T.plC)}">${(T.plC>=0?'+':'')+usU(T.plC)}（${usPc(T.plp)}）</b>`:'<span class=h>沒有填成本</span>'}｜現金 ${usU(T.cashC)}</div>
+  <div class=h>${usPxLine(T)}</div></div>`}
  ${usThemeHtml(grp,T,fx,V.tot)}
  <div class=p><b>💱 匯率（1 美元換新台幣）</b><div class=asl>目前用 <b>${usFxTxt(fx)}</b> <button class=lk onclick="usFxLoad(1)">🔄 重抓</button></div>
   <div class=g><label>手填匯率<input id=usFxV type=number step=any inputmode=decimal value="${S.us.fxManual?S.us.fxManual.v:''}" placeholder="例如 32.1"></label><label>日期<input id=usFxD type=date value="${S.us.fxManual&&S.us.fxManual.d?esc(S.us.fxManual.d):TODAY}"></label></div>
