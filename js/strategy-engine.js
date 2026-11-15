@@ -69,7 +69,7 @@ function stRun(S,code,events,opt){opt=opt||{};const asOf=opt.asOf||events.reduce
 
 // 論點的事件：期初持股（選擇納入時）＋歸屬此論點的交易＋沒歸類的配息依股數比例分配
 // 策略起算：撥款前就有的持股，在建立論點那天（或自己填的起算日）才歸到策略，
-// 策略的損益、持有天數、vs 0050、均價都從起算日的收盤價開始算；實際帳戶損益看資產頁的「📦 我的庫存」
+// 策略的損益、持有天數、vs 0050、均價都從起算日的收盤價開始算；實際帳戶損益看資產頁的「💼 損益總覽」
 function stBaseClose(S,c,d){const K=typeof ckAdjF=='function'?ckAdjF(c,d):1;if(typeof PXH!='undefined'&&PXH[d]&&num(PXH[d][c])!=null)return{v:+(num(PXH[d][c])*K).toFixed(2),fix:1};
  const pd=(S.pxd||{})[c],v=num((S.px||{})[c]);if(v!=null&&pd==d)return{v,fix:1};if(v!=null&&d>=TODAY&&(!pd||pd<=d))return{v,fix:0};return null}
 function stBase(S,T){if(!+T.useInit||!hasInit(S))return null;const d=T.baseD||T.created;if(!d||!S.dd||d<=S.dd)return null;
