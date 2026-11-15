@@ -78,7 +78,7 @@ function bkDaily(){try{if(!S||!S.ui)return;if(ls('lcrpd')!=TODAY&&typeof rpSave=
  if(navigator.storage&&navigator.storage.persist&&ls('lcper')!='1')navigator.storage.persist().then(ok=>{if(ok)ls('lcper','1')}).catch(()=>{})}catch(e){}}
 // 在月結精靈以外按「儲存結算」：存完直接跳匯出
 (()=>{if(typeof window.snap!='function')return;const f=window.snap;window.snap=function(){const n0=JSON.stringify(S.snaps||[]),r=f.apply(this,arguments);
-  if(JSON.stringify(S.snaps||[])!=n0&&!$('msBody')&&typeof expMenu=='function')setTimeout(()=>{expMenu();toast('已儲存結算：順手匯出備份',0)},300);return r}})();
+  if(JSON.stringify(S.snaps||[])!=n0&&!($('msBody')&&$('asOv').style.display=='flex')&&typeof expMenu=='function')setTimeout(()=>{expMenu();toast('已儲存結算：順手匯出備份',0)},300);return r}})();
 // 提示訊息點一下就關掉
 (()=>{const t=$('toast');if(t)t.addEventListener('click',e=>{if(e.target.tagName!='BUTTON')t.style.display='none'})})();
 setTimeout(bkDaily,1500);
