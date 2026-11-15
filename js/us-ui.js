@@ -27,7 +27,7 @@ const avCur=()=>avViews().includes(AV)?AV:'today';
 function avApply(){try{document.body.dataset.av=avCur()}catch(e){}}
 window.avSet=v=>{AV=v;ls('lcav',v);avApply();asCalc();scrollTo(0,0)};
 // asCalc() 每次畫完資產頁之後呼叫
-function avAfter(){avApply();const v=avCur(),n=$('avNav');if(!n)return;
+function avAfter(){avApply();const v=avCur(),n=$('avNav');if(!n)return;if(typeof msAfter=='function')msAfter();
  n.innerHTML=avViews().map(k=>`<button class="${k==v?'on':''}" onclick="avSet('${k}')">${AV_N[k]}</button>`).join('');
  const b=$('usAddB');if(b){const has=typeof S!='undefined'&&S&&S.us&&Array.isArray(S.us.accts);b.style.display=avOn()?'none':'';b.textContent=has?'🇺🇸 顯示美股':'🇺🇸 ＋新增美股帳戶'}
  const td=$('usToday'),uv=$('usView'),av=$('allView');
@@ -190,11 +190,11 @@ function usHistHtml(fx){const L=usHistGet();if(L.length<2)return'';const tw=USC=
   <div class=h>含新投入的金額（例如認股入帳），不是報酬率。最低 ${f(mn)}、最高 ${f(mx)}，共 ${L.length} 個日期。</div></div>`}
 
 // ---------- 跨市場主題集中度（總覽）
-function usThemeHtml(grp,T,fx,tot){const L=usThemes(grp,T,fx,tot);if(!L.length)return'';const un=L.find(x=>x.g=='美股未標籤');
+function usThemeHtml(grp,T,fx,tot){const L=usThemes(grp,T,fx,tot);if(!L.length)return'';const un=L.find(x=>x.g==US_NOTAG);
  return`<div class=p><b>🧭 跨市場主題集中度</b><div class=h>台股主動持股的主題＋美股各檔的主題，名稱相同的加在一起，占全資產的比例。被動 ETF 與現金不算。</div>
   ${L.slice(0,8).map(x=>`<div class="asl alll" style="cursor:default"><span>${esc(x.g)}</span><span>${W2(x.v)} 萬　<b>${x.p.toFixed(x.p>=10?0:1)}%</b></span></div><div class=asbar style="margin:2px 0 6px"><span style="width:${Math.min(100,x.tw/tot*100)}%;background:#f59e0b" title="台股"></span><span style="width:${Math.min(100,x.us/tot*100)}%;background:#6366f1" title="美股"></span></div>`).join('')}
   <div class=asl><span class=dot style="background:#f59e0b"></span>台股　<span class=dot style="background:#6366f1"></span>美股${L.length>8?`　<span class=h>另有 ${L.length-8} 個主題</span>`:''}</div>
-  ${un?`<div class=wn>美股有 ${W2(un.v)} 萬還沒標主題：到「美股」點那一檔填主題（用和台股一樣的名稱才會加在一起）。</div>`:''}${!fx?'<div class=wn>沒有匯率，美股還沒算進來。</div>':''}</div>`}
+  ${un?`<div class=h>沒填主題的美股合成「${US_NOTAG}」一格。想細分的話，到「美股」點那一檔填主題（用和台股一樣的名稱才會加在一起）。</div>`:''}${!fx?'<div class=wn>沒有匯率，美股還沒算進來。</div>':''}</div>`}
 
 // ---------- 貼上 AI 整理的截圖（投資帳本 v1 的 positions）：預覽差異 → 整個帳戶覆寫 → 可以復原
 const US_PASTE_TIP=n=>`請把這張券商庫存截圖整理成下面的 JSON，只輸出 JSON：
@@ -240,7 +240,7 @@ function usPasteHook(j,txt){if(!j||!Array.isArray(j.positions)||!j.positions.len
 // ---------- 🤖 問 AI（美股）：App 整理部位與日曆，AI 上網查資料。只產生要貼給 AI 的文字，不匯回任何資料
 function usAskText(){const q=USQ,us=S.us,au=usAu(),T=usCalc(us,au),fx=usFxNow(),W=usWatch(us,T,au,USDT.ev,USDT.mac,TODAY),al=usAlloc(T),R0=T.rows.filter(r=>r.mvC>0).sort((a,b)=>b.mvC-a.mvC);
  const line=r=>`- ${r.n}${r.name?' '+r.name:''}${r.tag?'（'+r.tag+'）':''}：占美股持股 ${r.w.toFixed(0)}%${r.plp!=null?`，帳面 ${usPc(r.plp)}`:''}${q.amt?`，${usQt(r.q)} 股、市值 ${usU(r.mvC)}${r.avg!=null?'、均價 '+r.avg.toFixed(2):''}`:''}`;
- let th='';try{const z=asSum(S),CS=asCash(),V=usAllView({p:z.p.mv,a:z.a.mv,cash:CS.v!=null?Math.max(0,CS.v*1e4):null},T,fx,null),L=usThemes(stExposure(S).grp||{},T,fx,V.tot).filter(x=>x.g!='美股未標籤').slice(0,5);
+ let th='';try{const z=asSum(S),CS=asCash(),V=usAllView({p:z.p.mv,a:z.a.mv,cash:CS.v!=null?Math.max(0,CS.v*1e4):null},T,fx,null),L=usThemes(stExposure(S).grp||{},T,fx,V.tot).slice(0,5);
   if(L.length)th='\n【跨市場主題】（台股主動＋美股，占全資產）\n'+L.map(x=>`- ${x.g} ${x.p.toFixed(0)}%（台股 ${(x.tw/V.tot*100).toFixed(0)}%＋美股 ${(x.us/V.tot*100).toFixed(0)}%）`).join('\n')+(V.usd>0?`\n美元資產占全資產 ${V.ccy[1].p.toFixed(0)}%`:'')}catch(e){}
  const cal=W.filter(w=>w.k=='earn'||w.k=='earnDone'||w.k=='macro').map(w=>'- '+w.t).join('\n'),mv=W.filter(w=>w.k=='move').map(w=>'- '+w.t).join('\n');
  if(q.q=='earn'){const r=T.rows.find(x=>x.n==q.n)||R0[0];if(!r)return'還沒有美股持股。';const e=((USDT.ev&&USDT.ev.earn)||{})[r.n];
@@ -275,6 +275,10 @@ ${cal?`\n【接下來的事件】\n${cal}\n`:''}${mv?`\n【最近單日大漲跌
 5. 你最不確定的一點。
 
 【回答格式】繁體中文、適合手機閱讀、600 字以內。第一行先寫結論：「本週沒有需要處理的事」或「有 N 件事要看」。`}
+// 給「🤖 AI 討論」的月底復盤、自由提問附的一段美股摘要（ai-ask.js 呼叫；沒有美股資料回傳空字串）
+function usAskBrief(amt){if(!avOn())return'';const au=usAu(),T=usCalc(S.us,au),fx=usFxNow(),R0=T.rows.filter(r=>r.mvC>0).sort((a,b)=>b.mvC-a.mvC);if(!R0.length)return'';let share='';
+ try{const z=asSum(S),CS=asCash(),V=usAllView({p:z.p.mv,a:z.a.mv,cash:CS.v!=null?Math.max(0,CS.v*1e4):null},T,fx,null);if(V.usd>0)share=`美元資產占全資產 ${V.ccy[1].p.toFixed(0)}%。`}catch(e){}
+ return`【美股部位】（不進信貸計算；現價 ${au?au.d+' 收盤':'手填'}）${share}\n`+R0.map(r=>`- ${r.n}${r.name?' '+r.name:''}：占美股持股 ${r.w.toFixed(0)}%${r.plp!=null?`，帳面 ${usPc(r.plp)}`:''}${amt?`，市值 ${usU(r.mvC)}`:''}`).join('\n')+(T.cashC>0&&T.valC>0?`\n- 美元現金占美股帳戶 ${(T.cashC/T.valC*100).toFixed(0)}%`:'')}
 window.usAsk=(q,n)=>{if(q)USQ.q=q;if(n)USQ.n=usCode(n);asOvOpen(usAskHtml())};
 function usAskHtml(){const q=USQ,R0=usCalc(S.us,usAu()).rows;if(q.q=='earn'&&!R0.some(r=>r.n==q.n)&&R0[0])q.n=R0[0].n;const t=usAskText();
  return`<div class=ovh><button onclick="asClose()">✕</button><b>🤖 問 AI（美股）</b></div>

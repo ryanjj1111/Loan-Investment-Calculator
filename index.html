@@ -112,10 +112,15 @@ button.lk{border:0;background:none;color:var(--pri);padding:0 2px;font-size:12px
 .asal{border:1px solid #fca5a5;background:#fef2f2;color:#991b1b;border-radius:8px;padding:7px 9px;margin:8px 0;font-size:12.5px;line-height:1.6}.aspc{cursor:pointer}.aspa{display:inline-block;transition:transform .15s}.aspc.on .aspa{transform:rotate(90deg)}.aspd{display:none;text-align:left;font-size:11.5px;margin-top:4px;border-top:1px dashed var(--line);padding-top:3px}.aspc.on .aspd{display:block}.aspd b{font-size:12px!important}
 .aidf{border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:8px 0;font-size:12.5px}.aidf:empty{display:none}.aidl{margin-top:3px}.aidok{color:var(--ok)}.aih{margin:0 0 4px 22px}.asck .aiq{font-size:12.5px;padding:3px 8px}
 .avn{margin:0 0 10px}.avn button{padding:8px 4px;font-size:14px;font-weight:700}
-body[data-av=today] #pgA>:not(#avNav):not(#asAl):not(#asFix):not(#usToday),body[data-av=tw] #pgA>#asAl,body[data-av=tw] #pgA>#asFix,body[data-av=tw] #pgA>#usToday,body[data-av=tw] #pgA>#usView,body[data-av=tw] #pgA>#allView,body[data-av=us] #pgA>:not(#avNav):not(#usView),body[data-av=all] #pgA>:not(#avNav):not(#allView){display:none}
+body[data-av=today] #pgA>:not(#avNav):not(#asAl):not(#asFix):not(#usToday):not(#msToday),body[data-av=tw] #pgA>#asAl,body[data-av=tw] #pgA>#asFix,body[data-av=tw] #pgA>#usToday,body[data-av=tw] #pgA>#msToday,body[data-av=tw] #pgA>#usView,body[data-av=tw] #pgA>#allView,body[data-av=us] #pgA>:not(#avNav):not(#usView),body[data-av=all] #pgA>:not(#avNav):not(#allView){display:none}
 body[data-av=us] #twFab,body[data-av=all] #twFab,body:not([data-av=us]) #usFab{display:none}
 .usr{display:grid;grid-template-columns:1.1fr 1fr 1.2fr 1fr 34px;gap:4px;margin:3px 0;align-items:center}.usr input{padding:6px 4px;min-width:0;width:100%}.usr button{padding:5px 0}.usr.h span{padding-left:4px}
 .allb{font-size:26px;font-weight:800;margin:4px 0}.alll{display:flex;justify-content:space-between;gap:8px;cursor:pointer}
+.trc1>.trl,.trc1>.sug,.trc1>.h:empty{display:none}.trs{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;cursor:pointer;font-size:13px}.trs .trq{margin-left:auto;font-variant-numeric:tabular-nums}.trs .tre1{color:var(--mut)}
+.trk{font-size:11.5px;font-weight:700;border-radius:4px;padding:0 5px;background:#e2e8f0}.trk.k-buy{background:#fee2e2;color:#b91c1c}.trk.k-sell{background:#dcfce7;color:#15803d}.trk.k-div,.trk.k-sdiv{background:#fef3c7;color:#92400e}
+.mss{opacity:.92}.mss.ok1{background:#f8fafc}.mss.nx{border-color:var(--pri);box-shadow:0 0 0 1px var(--pri);opacity:1}.msh{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.msr{display:grid;grid-template-columns:1fr auto 84px;gap:6px;align-items:center;padding:4px 0;border-top:1px dashed var(--line);font-size:13px}.msr input{padding:5px;width:100%;min-width:0}.msr.df{background:#fffbeb}.msr button{padding:4px 8px}
+@media(max-width:640px){#stPerfT thead{display:none}#stPerfT,#stPerfT tbody{display:block}#stPerfT tr{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;border:1px solid var(--line);border-radius:8px;padding:8px;margin:6px 0}#stPerfT tr.nt{display:block;border:0;padding:0 4px;margin:-2px 0 6px}#stPerfT td{display:flex;justify-content:space-between;gap:6px;border:0;padding:1px 0;text-align:right}#stPerfT td::before{content:attr(data-l);color:var(--mut);font-weight:400}#stPerfT td:first-child{grid-column:1/-1;font-weight:700;font-size:13px}#stPerfT td:first-child::before{content:''}#stPerfT tr.nt td{display:block}#stPerfT tr.nt td::before{content:''}}
 .asfab{position:fixed;left:0;right:0;bottom:0;z-index:7;display:flex;gap:8px;justify-content:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);box-shadow:0 -2px 8px #0001}.asfab button{flex:1;max-width:220px;padding:10px 8px;font-size:14px}
 body.ws-as{padding-bottom:64px}body.ws-as #toast{bottom:76px}button.pri{background:var(--pri);color:#fff;border-color:var(--pri);font-weight:700}
 .ov{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:60;display:none;align-items:flex-start;justify-content:center;padding:16px 8px;overflow:auto}
@@ -223,6 +228,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
  <div class="p" id="asTop"></div>
  <div id="asAl"></div>
  <div id="asFix"></div>
+ <div id="msToday"></div>
  <div id="usToday"></div>
  <div class="p" id="asAlloc"></div>
  <div class="p" id="asRisk"></div>
@@ -256,7 +262,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
   <div class="p"><b>依論點</b><div class="w"><table id="stThT" class="stt"></table></div><div class="h" style="margin-top:4px">持有未滿 6 個月顯示期間報酬（未年化）。點一列可打開該論點。</div></div></div>
 </div>
 
-<div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button><button class="pro" id="usAddB" onclick="usStart()">🇺🇸 ＋新增美股帳戶</button><button onclick="location.href='v20261114/index.html'" title="美股整合前的版本，資料和這裡是同一份">🕘 開啟 11/14 的舊版</button></div>
+<div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button><button class="pro" onclick="msOpen()">🗓️ 月結</button><button class="pro" id="usAddB" onclick="usStart()">🇺🇸 ＋新增美股帳戶</button><button onclick="location.href='v20261114/index.html'" title="美股整合前的版本，資料和這裡是同一份">🕘 開啟 11/14 的舊版</button></div>
 <div class="h" style="margin-top:6px">資料只存在這個瀏覽器。每次修改或結算後，請按「⬇️ 匯出設定檔」存到雲端硬碟或電腦；換手機、換電腦時用「⬆️ 匯入」還原。「🕘 開啟 11/14 的舊版」是美股整合前的版本，和這裡共用同一份資料，可以隨時打開對照；按手機的上一頁回到新版。<span id="bkS"></span><br>本工具僅供試算，非投資或稅務建議。</div><div id="iosHint" class="stal" style="display:none"></div></div>
 
 <div id="toast"><span id="toastT"></span><button onclick="undo()">復原</button></div>
@@ -423,22 +429,23 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button><button onclick="usAsk()">🤖 問 AI</button></div>
 <div class="asfab asw" id="twFab"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261115a"></script>
-<script src="data/stocks.js?v=20261115a"></script>
-<script src="js/engine.js?v=20261115a"></script>
-<script src="js/ui.js?v=20261115a"></script>
-<script src="js/strategy-engine.js?v=20261115a"></script>
-<script src="js/asset-engine.js?v=20261115a"></script>
-<script src="js/us-engine.js?v=20261115a"></script>
-<script src="js/prices.js?v=20261115a"></script>
-<script src="js/check.js?v=20261115a"></script>
-<script src="js/outlook.js?v=20261115a"></script>
-<script src="js/strategy-ui.js?v=20261115a"></script>
-<script src="js/asset-ui.js?v=20261115a"></script>
-<script src="js/us-ui.js?v=20261115a"></script>
-<script src="js/eval.js?v=20261115a"></script>
-<script src="js/ai-import.js?v=20261115a"></script>
-<script src="js/ai-ask.js?v=20261115a"></script>
-<script src="js/back.js?v=20261115a"></script>
-<script src="js/main.js?v=20261115a"></script>
+<script src="data/etf-ref.js?v=20261115b"></script>
+<script src="data/stocks.js?v=20261115b"></script>
+<script src="js/engine.js?v=20261115b"></script>
+<script src="js/ui.js?v=20261115b"></script>
+<script src="js/strategy-engine.js?v=20261115b"></script>
+<script src="js/asset-engine.js?v=20261115b"></script>
+<script src="js/us-engine.js?v=20261115b"></script>
+<script src="js/prices.js?v=20261115b"></script>
+<script src="js/check.js?v=20261115b"></script>
+<script src="js/outlook.js?v=20261115b"></script>
+<script src="js/strategy-ui.js?v=20261115b"></script>
+<script src="js/asset-ui.js?v=20261115b"></script>
+<script src="js/us-ui.js?v=20261115b"></script>
+<script src="js/eval.js?v=20261115b"></script>
+<script src="js/ai-import.js?v=20261115b"></script>
+<script src="js/ai-ask.js?v=20261115b"></script>
+<script src="js/back.js?v=20261115b"></script>
+<script src="js/month.js?v=20261115b"></script>
+<script src="js/main.js?v=20261115b"></script>
 </body></html>
