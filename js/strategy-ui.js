@@ -109,7 +109,7 @@ function stCalc(){if(!$('pgST'))return;if(stSync(S))save();const A=stAlerts(S),b
  (S.trades||[]).forEach((x,i)=>{const s=$('ths'+i);if(s){const o=!x.thesisId&&x.ac=='a'&&(S.theses||[]).find(T=>T.status!='exit'&&cU(T.code)==cU(x.n)&&cU(x.n));s.innerHTML=o?`<button class=ths onclick="stAssign(${i},'${o.id}')">歸入 ${o.id}？</button>`:''}
   const q=$('tq'+i);if(q){let t='';if(x.ac=='a'&&x.k=='buy'&&x.dt==TODAY&&cU(x.n)){const E=stExposure(S),c=cU(x.n),p=E.tot>0?(E.by[c]||0)/E.tot*100:0,cap=stCapStock(S,c);t=`買進後 ${c} ${nameOf(c)} 占主動部位 ${p.toFixed(1)}%（個股上限 ${cap}%）`+(p>cap?' ⚠️ 超過上限':'');for(const g of(S.tags||{})[c]||[]){const gp=(E.grp[g]||0)/E.tot*100,gc=stCapGroup(S,g);t+=`｜族群「${g}」${gp.toFixed(1)}%（上限 ${gc}%）${gp>gc?' ⚠️':''}`}}q.innerText=t;q.className='h'+(t.includes('⚠️')?' wn':'')}});
  if(stWs()!='st')return;
- $('stAl').innerHTML=A.length?`<div class=stal><b>⚠️ 提醒（${A.length}）</b>${A.map(a=>typeof asAlRow=='function'?asAlRow(a):`<div>· ${esc(a.t)}</div>`).join('')}</div>`:'<div class="h ok">✅ 目前沒有需要處理的提醒。</div>';
+ $('stAl').innerHTML=A.length?`<div class=stal><b>⚠️ 提醒（${A.length}）</b>${typeof ssAlHtml=='function'?ssAlHtml(A):A.map(a=>typeof asAlRow=='function'?asAlRow(a):`<div>· ${esc(a.t)}</div>`).join('')}</div>`:'<div class="h ok">✅ 目前沒有需要處理的提醒。</div>';
  const cnt={all:0};ST_STATUS.forEach(([k])=>cnt[k]=0);for(const T of S.theses||[]){cnt.all++;cnt[T.status]=(cnt[T.status]||0)+1;
   const el=document.querySelector(`details[data-th="${T.id}"]`);if(el)el.style.display=stFilter=='all'||T.status==stFilter?'':'none';
   const p=stPerf(S,T),st=stStrat(S,T.sid),c=cU(T.code),tg=((S.tags||{})[c]||[]).join('、');
