@@ -62,6 +62,7 @@ function evCard(c,st){const r=evCheck(c,st),b=evBuy(c,st),ic={ok:'✅',wait:'⏳
 function evRender(){const L=evOn(),c0=EV.codes[0];let h=`<div class=ovh><button onclick="asClose()">✕</button><div><b>🔍 評估</b></div></div>
  <div class=h>App 先用策略規則判斷；判斷不了的再問 AI。不建論點、不記交易。</div>
  <div class=chips><button class="${EV.mode=='stock'?'pri':''}" onclick="evSet('mode','stock')">從股票</button><button class="${EV.mode=='strat'?'pri':''}" onclick="evSet('mode','strat')">從策略找股票</button></div>`;
+ if(!evOn().length){asOvOpen(h+stEmptyHtml());return}
  if(typeof wlHtml=='function'&&(EV.mode=='strat'||!EV.codes.length))h+=wlHtml();
  if(EV.mode=='stock'){h+=evCodeIn();
   if(EV.codes.length){const M=evMatrix(c0),fit=M.filter(x=>x.fit),no=M.filter(x=>!x.fit);if(!EV.sid||!L.some(s=>s.id==EV.sid))EV.sid=(fit[0]||M[0]||{st:{}}).st.id||'';
