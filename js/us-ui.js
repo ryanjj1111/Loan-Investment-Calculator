@@ -107,7 +107,7 @@ function usViewHtml(T,fx,AL,W){const al=usAlloc(T),noA=!T.accts.length,om=typeof
 let USTR={r:ls('lcutr')||'all',i:null};
 window.usTrSet=(k,v)=>{if(k=='r'){USTR.r=v;ls('lcutr',v);USTR.i=null}asCalc()};
 window.usTrTog=k=>{const h=new Set(String(ls('lcuth')||'').split(',').filter(Boolean));h.has(k)?h.delete(k):h.add(k);ls('lcuth',[...h].join(','));asCalc()};
-window.usTrHov=e=>{const sv=e.currentTarget,r=sv.getBoundingClientRect(),n=+sv.dataset.n;if(n<2)return;const x=(e.clientX-r.left)/r.width*340,i=Math.max(0,Math.min(n-1,Math.round((x-6)/(340-12)*(n-1))));if(i!==USTR.i){USTR.i=i;asCalc()}};
+window.usTrHov=(sv,cx)=>{const r=sv.getBoundingClientRect(),n=+sv.dataset.n;if(n<2||cx==null)return;const x=(cx-r.left)/r.width*340,i=Math.max(0,Math.min(n-1,Math.round((x-6)/(340-12)*(n-1))));if(i!==USTR.i){USTR.i=i;asCalc()}};
 function usTrendHtml(T,fx){let L=usHistGet();const all=L.length,tw=USC=='TWD'&&fx,f=v=>v==null?'—':tw?'NT$'+R(v):usU(v*100);
  if(USTR.r!='all'){const d=new Date(Date.parse(TODAY)-(USTR.r=='1'?31:92)*864e5).toISOString().slice(0,10);L=L.filter(h=>h.d>=d)}
  const cv=(h,v)=>v==null?null:tw?v*(h.fx||fx.v):v,hide=new Set(String(ls('lcuth')||'').split(',').filter(Boolean)),CO=['#6366f1','#0ea5e9','#94a3b8','#f59e0b','#10b981','#ec4899','#8b5cf6','#14b8a6'];
@@ -118,7 +118,7 @@ function usTrendHtml(T,fx){let L=usHistGet();const all=L.length,tw=USC=='TWD'&&f
  const i=USTR.i!=null&&USTR.i<L.length?USTR.i:L.length-1,hp=L[i];
  const path=s=>{let d='',pen=0;s.V.forEach((v,k)=>{if(v==null){pen=0;return}d+=(pen?'L':'M')+x(k).toFixed(1)+' '+y(v).toFixed(1);pen=1});return d};
  return usSec('tr','📈 資產趨勢',sum,`<div class=chips style="margin:4px 0">${SR.map(s=>`<button class="thc${hide.has(s.k)?'':' on'}" style="border-color:${s.co}" onclick="usTrTog('${s.k}')"><span class=dot style="background:${hide.has(s.k)?'#cbd5e1':s.co}"></span>${esc(s.l)}</button>`).join('')}</div>
-  <svg viewBox="0 0 ${W} ${H}" data-n="${L.length}" style="width:100%;height:auto;display:block;touch-action:pan-y" onmousemove="usTrHov(event)" onclick="usTrHov(event)" ontouchstart="usTrHov(event.touches[0]?Object.assign(event.touches[0],{currentTarget:this}):event)">
+  <svg viewBox="0 0 ${W} ${H}" data-n="${L.length}" style="width:100%;height:auto;display:block;touch-action:pan-y" onclick="usTrHov(this,event.clientX)" ontouchstart="usTrHov(this,event.touches[0]&&event.touches[0].clientX)">
    <line x1="${x(i).toFixed(1)}" x2="${x(i).toFixed(1)}" y1="0" y2="${H}" stroke="#cbd5e1" stroke-width="1"/>
    ${on.map(s=>`<path d="${path(s)}" fill="none" stroke="${s.co}" stroke-width="${s.k=='v'?2.2:1.5}" stroke-linejoin="round"/>${s.V[i]!=null?`<circle cx="${x(i).toFixed(1)}" cy="${y(s.V[i]).toFixed(1)}" r="3" fill="${s.co}"/>`:''}`).join('')}</svg>
   <div class=asl style="display:flex;justify-content:space-between"><span class=h>${esc(usD(L[0].d))}</span><b>${esc(hp.d)}</b><span class=h>${esc(usD(last.d))}</span></div>

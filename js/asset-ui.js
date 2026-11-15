@@ -26,7 +26,7 @@ let FOLD={};try{FOLD=JSON.parse(localStorage.getItem('lcfold')||'{}')||{}}catch(
 const asFolded=k=>!!FOLD[k];
 function fold(k,title,sum,body){const c=asFolded(k);return`<div class=fh onclick="foldT('${k}')"><b>${c?'▸':'▾'} ${title}</b><span class=h>${c?sum||'':''}</span></div>${c?'':body}`}
 window.foldT=k=>{FOLD[k]=FOLD[k]?0:1;try{localStorage.setItem('lcfold',JSON.stringify(FOLD))}catch(e){}if(k=='inv')asFoldInv();else asCalc()};
-function asFoldInv(){const p=$('asInv');if(p){p.classList.toggle('fd',asFolded('inv'));const b=$('asInvT');if(b)b.textContent=(asFolded('inv')?'▸':'▾')+' 📦 庫存'}}
+function asFoldInv(){const p=$('asInv');if(p){p.classList.toggle('fd',asFolded('inv'));const b=$('asInvT');if(b)b.textContent=(asFolded('inv')?'▸':'▾')+' 📦 持股'}}
 function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)sp.innerHTML='現價：'+(typeof pxStatus=='function'?pxStatus():'')+` <button class=lk onclick="setWs('as');if(typeof avSet=='function')avSet('tw')">到資產頁看持股 ›</button>`;
  if(stWs()!='as')return;
  const z=asSum(S),all=asVsBm(S),act=asVsBm(S,'a'),bm=esc(bmC(S));let loan='💰 信貸：結算填了現金後顯示 A／C';
@@ -35,7 +35,7 @@ function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)s
   <div class=c><small>持股市值</small><b>${W2(z.mv)} 萬</b><small>${z.miss.length?`<span class=wn>${z.miss.length} 檔沒有現價</span>`:'成本 '+W2(z.cb)+' 萬'}</small></div>
   <div class=c><small>未實現損益</small><b class="${asC(z.ub)}">${asM(z.ub)}</b><small>${asPct(z.cb?z.ub/z.cb*100:null)}</small></div>
   <div class=c><small>已實現與股利</small><b class="${asC(z.realB+z.div)}">${asM(z.realB+z.div)}</b><small>賣出損益與配息</small></div>
-  <div class=c><small>總損益</small><b class="${asC(z.totB)}">${asM(z.totB)}</b><small>${z.noC0?`<span class=wn>${z.noC0} 檔沒填成本</span>`:'未實現損益＋已實現＋股利'}</small></div></div>
+  <div class=c><small>總損益</small><b class="${asC(z.totB)}">${asM(z.totB)}</b><small>${z.noC0?`<span class=wn>${z.noC0} 檔沒填成本</span>`:'未實現損益＋已實現與股利'}</small></div></div>
   ${asPostOn()?`<div class=ash2 style="margin-top:10px">📅 撥款後績效 <span class=h>（${esc(asD(S.dd))} 起；撥款前持股以撥款日收盤價計，和信貸頁一致）</span> <button class=lk onclick="asPostSet(0)">隱藏</button></div>
   <div class=asl>撥款後損益 <b class="${asC(z.tot)}">${asM(z.tot)}</b>（${all.days<182.6?'期間報酬 '+asPct(all.ret):'年化 '+asPct(all.xr)}）</div>
   ${(()=>{const s=asPostSplit(S);return s.n1&&s.n0?`<div class=asl>其中：撥款後有買賣的 ${s.n1} 檔 <b class="${asC(s.v1)}">${asM(s.v1)}</b>｜撥款前持股（之後沒有再買賣）${s.n0} 檔 <b class="${asC(s.v0)}">${asM(s.v0)}</b>${s.miss?' <span class=h>（'+s.miss+' 檔需現價）</span>':''}</div>`:''})()}
@@ -153,7 +153,7 @@ function asStockHtml(c,ac){const r=asRows(S).find(o=>o.c==c&&o.ac==ac)||{c,ac,q:
  ${th}
  <div class=ast>
   <div class=c><small>股數｜均價</small><b>${R(r.q)}</b><small>${r.avgB!=null?'均 '+r.avgB.toFixed(2):'—'}｜成本 ${R(r.cb||0)}</small></div>
-  <div class=c><small>預估損益（跟 App 一樣）</small><b class="${asC(r.ub)}">${r.open&&r.ub!=null?asY(r.ub):'—'}</b><small>${asPct(r.ubp)}${r.est?'｜已扣賣出費用 '+R(r.est):''}</small></div>
+  <div class=c><small>未實現損益（和券商 App 一樣）</small><b class="${asC(r.ub)}">${r.open&&r.ub!=null?asY(r.ub):'—'}</b><small>${asPct(r.ubp)}${r.est?'｜已扣賣出費用 '+R(r.est):''}</small></div>
   <div class=c><small>已實現｜股利</small><b class="${asC((r.realB||0)+r.div)}">${asY((r.realB||0)+r.div)}</b><small>已實現 ${asY(r.realB||0)}｜股利 ${R(r.div)}</small></div>
   ${asPostOn()&&asHasPost(r)?(()=>{const z=r.iq>0?asPostSplit2(S,c,ac):null,sp=z&&z.tot!=null&&tot!=null&&Math.abs(z.tot-tot)<1&&z.p.q>0;
    return`<div class="c${sp?' aspc':''}"${sp?` onclick="this.classList.toggle('on')"`:''}><small>撥款後損益${sp?' <span class=aspa>▸</span>':''}</small><b class="${asC(tot)}">${asY(tot)}</b><small>${p&&p.ex!=null?'vs '+esc(bmC(S))+' '+(p.ex>=0?'+':'')+p.ex.toFixed(1)+' 個百分點':'從 '+esc(asD(S.dd))+' 起算'}</small>${sp?`<div class=aspd><div>撥款前持股 ${R(z.i.q)} 股（從 ${esc(asD(S.dd))} 收盤${z.i.px!=null?' '+f2(z.i.px):''}）<b class="${asC(z.i.pl)}">${asY(z.i.pl)}</b></div><div>撥款後買進 ${R(Math.round(z.p.q))} 股（從成交價）<b class="${asC(z.p.pl)}">${asY(z.p.pl)}</b></div></div>`:''}</div>`})():''}</div>
