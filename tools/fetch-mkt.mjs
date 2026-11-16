@@ -13,7 +13,7 @@ const rd=f=>{try{return JSON.parse(fs.readFileSync(f,'utf8'))}catch(e){return nu
 async function get(u,opt={},type='json'){for(let k=0;k<3;k++){try{const r=await fetch(u,{...opt,headers:{...UA,...(opt.headers||{})},signal:AbortSignal.timeout(60000)});
  if(r.ok){const b=Buffer.from(await r.arrayBuffer());const t=new TextDecoder(opt.enc||'utf-8').decode(b);return type=='json'?JSON.parse(t):t}console.log(`  HTTP ${r.status} ${u}`)}catch(e){console.log(`  失敗 ${u}：${e.message}`)}await sleep(3000*(k+1))}return null}
 
-const OUT='data/mkt/tw.json',old=rd(OUT)||{},out={...old,upd:stamp(),note:'公開資料。tx：台指期夜盤（盤後交易時段，tradeDate 是期交所的交易日，也就是夜盤結束後那個交易日）；margin：集中市場融資餘額（億元）。'};
+const OUT='data/mkt/tw.json',old=rd(OUT)||{},out={...old,upd:stamp(),note:'公開資料。tx：台指期夜盤（盤後交易時段；tradeDate 是期交所的交易日，也就是這場夜盤所屬的下一個交易日，例如週五晚上的夜盤是下週一；chg 相對前一個一般交易時段的結算價）；margin：集中市場融資餘額（億元）。'};
 const CAL=rd('data/mkt/holidays.json')||{};
 const twTrading=d=>{const w=new Date(d+'T00:00:00Z').getUTCDay();return w>0&&w<6&&!(CAL.tw||[]).includes(d)};
 // 台股交易日：以 data/px 已經有收盤的日期為準（只用來回補融資，不用來判斷今天開不開）
@@ -45,12 +45,14 @@ async function txCsv(){const d=twNow(),s=x=>x.toISOString().slice(0,10).replace(
  console.log('CSV 欄位：'+H.join('、'));
  const rows=L.slice(1).map(a=>({date:ymdIso(a[iD]),contract:a[iC],month:a[iM],session:a[iS]||'',open:nz(a[ix('開盤價')]),last:nz(a[iL]),chg:nz(a[iCh]),pct:nz(a[iP]),vol:nz(a[iV])||0}));
  const last=rows.filter(r=>/盤後/.test(r.session)).map(r=>r.date).sort().pop();const r=pickTX(rows.filter(x=>x.date==last));if(r)r.src='期交所每日行情下載';return r}
-async function tx(){let r=null;try{r=await txOpenApi()}catch(e){console.log('OpenAPI 解析失敗：'+e.message)}
- if(DEBUG)try{const c=await txCsv();console.log('CSV 結果：'+JSON.stringify(c))}catch(e){console.log('CSV 失敗：'+e.message)}
- if(!r)try{r=await txCsv()}catch(e){console.log('CSV 解析失敗：'+e.message)}
+// 2026-11-16 實測：網站 CSV 有最新一場夜盤（交易日寫成「下一個交易日」，例如週五晚上的夜盤寫 11/16）；
+// OpenAPI 要等日盤結束才更新，夜盤會晚一天，所以只當備援，而且交易日比現有的舊就不用
+async function tx(){let r=null;try{r=await txCsv()}catch(e){console.log('CSV 解析失敗：'+e.message)}
+ if(!r)try{r=await txOpenApi()}catch(e){console.log('OpenAPI 解析失敗：'+e.message)}
  if(!r){console.log('台指期夜盤：抓不到，保留上一次');return}
  // 期交所的夜盤屬於「下一個交易日」；有些來源寫的是開盤那一天，統一成下一個台股交易日
- if(r.tradeDate&&!twTrading(r.tradeDate)||(old.tx&&r.tradeDate<old.tx.tradeDate)){console.log('夜盤交易日不合理：'+r.tradeDate)}
+ if(old.tx&&r.tradeDate<old.tx.tradeDate){console.log(`夜盤交易日 ${r.tradeDate} 比現有的 ${old.tx.tradeDate} 舊，不覆蓋`);return}
+ if(r.tradeDate&&!twTrading(r.tradeDate))console.log('⚠️ 夜盤交易日不是台股交易日（休市日曆要更新？）：'+r.tradeDate);
  console.log(`台指期夜盤：${r.tradeDate} ${r.contract} ${r.c}（${r.chg>=0?'+':''}${r.chg}，${r.pct}%）來源：${r.src}`);out.tx=r}
 
 // ---------- 集中市場融資餘額（億元）
