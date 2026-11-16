@@ -1,0 +1,38 @@
+# 投資晨報用的台股市場面資料：台指期夜盤、集中市場融資餘額 → data/mkt/tw.json（公開資料，不含任何個人持股）
+# 美股指數與財報後盤後價格由「美股收盤價」流程一起抓（data/mkt/us.json）
+name: 市場面資料
+on:
+  schedule:
+    - cron: '45 21 * * 1-5'   # 台灣週二～週六 05:45（夜盤 05:00 結束）
+    - cron: '50 22 * * 1-5'   # 台灣週二～週六 06:50（重試）
+    - cron: '20 14 * * 1-5'   # 台灣週一～週五 22:20（融資餘額）
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths: ['tools/fetch-mkt.mjs', '.github/workflows/mkt.yml']
+permissions:
+  contents: write
+concurrency:
+  group: mkt-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 抓台指期夜盤與融資餘額
+        run: node tools/fetch-mkt.mjs
+        env:
+          MKT_DEBUG: ${{ github.event_name == 'push' && '1' || '' }}
+      - name: 存檔
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          git add -A data/mkt
+          if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
+          git commit -m "市場面資料 $(TZ=Asia/Taipei date +%F' '%H:%M) [skip ci]"
+          for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done; exit 1

@@ -88,8 +88,37 @@ def build_universe():
         print(f'範圍已更新：{len(allsym)} 檔')
     return allsym, u
 
+# ---------- 交易日曆（data/mkt/holidays.json）：正常盤官方收盤才算數
+# 美股 23/5（2026-12-06 起）：資料來源可能出現「下一個交易日、還沒收盤」的日線，只接受已經收盤的正常盤
+def _et_now():
+    from zoneinfo import ZoneInfo
+    return dt.datetime.now(ZoneInfo('America/New_York'))
+
+def _cal():
+    try:
+        with open(os.path.join(ROOT, 'data', 'mkt', 'holidays.json'), encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def us_trading(day, cal):
+    return day.weekday() < 5 and day.isoformat() not in set(cal.get('us') or [])
+
+def last_closed_us(now=None, cal=None):
+    # 最近一個「已經收盤」的正常盤交易日（美東日期）；收盤後 15 分鐘才算，避開還在整理的收盤資料
+    cal = cal if cal is not None else _cal(); now = now or _et_now(); day = now.date()
+    for _ in range(15):
+        if us_trading(day, cal):
+            if day < now.date():
+                return day.isoformat()
+            hh, mm = map(int, ((cal.get('usEarly') or {}).get(day.isoformat()) or '16:00').split(':'))
+            if now.hour * 60 + now.minute >= hh * 60 + mm + 15:
+                return day.isoformat()
+        day -= dt.timedelta(days=1)
+    return None
+
 # ---------- 價格來源轉接層：每個來源回傳 {代號: (日期, 收盤, 前一日收盤)}
-def src_yahoo(symbols):
+def src_yahoo(symbols, upto=None):
     import yfinance as yf
     out = {}
     ymap = {s.replace('.', '-'): s for s in symbols}
@@ -109,6 +138,8 @@ def src_yahoo(symbols):
                 c = (df[y]['Close'] if len(part) > 1 else df['Close']).dropna()
                 if hasattr(c, 'columns'):
                     c = c.iloc[:, 0]
+                if upto:  # 丟掉還沒收盤的日線（交易日晚於最近一個已收盤的正常盤）
+                    c = c[[i.strftime('%Y-%m-%d') <= upto for i in c.index]]
                 if len(c) == 0:
                     continue
                 d = c.index[-1].strftime('%Y-%m-%d')
@@ -121,9 +152,11 @@ def src_yahoo(symbols):
 SOURCES = [('Yahoo Finance（yfinance）', src_yahoo)]
 
 def fetch_prices(symbols):
+    exp = last_closed_us()
+    print(f'預期的交易日（最近一個已收盤的正常盤）：{exp}')
     for name, fn in SOURCES:
         try:
-            got = fn(symbols)
+            got = fn(symbols, exp)
         except Exception as e:
             print(f'{name} 失敗：{e}'); continue
         if not got:
@@ -140,7 +173,9 @@ def fetch_prices(symbols):
             print('價格沒有變動'); return True
         if old and old.get('d', '') > d:
             print('抓到的日期比現有的舊，不覆蓋'); return True
-        save('prices.json', {'d': d, 'upd': now_tw(), 'src': name, 'n': len(px), 'px': px, 'pv': pv})
+        if exp and d != exp:
+            print(f'⚠️ 資料的交易日 {d} 和預期 {exp} 不同（資料未更新）')
+        save('prices.json', {'d': d, 'tradeDate': d, 'session': 'regular', 'exp': exp, 'upd': now_tw(), 'src': name, 'n': len(px), 'px': px, 'pv': pv})
         print('已寫入 prices.json')
         return True
     return False
@@ -181,6 +216,61 @@ def fetch_events(symbols):
     print('已寫入 events.json')
     return True
 
+# ---------- 美股指數（S&P 500、那斯達克、費半、VIX）與財報後的盤後價格 → data/mkt/us.json
+IDX = {'SPX': '^GSPC', 'IXIC': '^IXIC', 'SOX': '^SOX', 'VIX': '^VIX'}
+
+def fetch_mkt_us():
+    import yfinance as yf
+    exp = last_closed_us(); cal = _cal()
+    out = {'upd': now_tw(), 'exp': exp, 'session': 'regular', 'src': 'Yahoo Finance（yfinance）日線', 'idx': {}}
+    df = yf.download(list(IDX.values()), period='15d', interval='1d', auto_adjust=False, group_by='ticker', progress=False)
+    days = set()
+    for k, y in IDX.items():
+        try:
+            c = df[y]['Close'].dropna()
+            c = c[[i.strftime('%Y-%m-%d') <= (exp or '9999') for i in c.index]]
+            if len(c) < 2:
+                continue
+            d = c.index[-1].strftime('%Y-%m-%d'); days.add(d)
+            out['idx'][k] = {'tradeDate': d, 'c': round(float(c.iloc[-1]), 2), 'pc': round(float(c.iloc[-2]), 2), 'pcDate': c.index[-2].strftime('%Y-%m-%d'),
+                             'pct': round((float(c.iloc[-1]) / float(c.iloc[-2]) - 1) * 100, 2)}
+        except Exception as e:
+            print(f'{k} 失敗：{e}')
+    out['tradeDate'] = max(days) if days else None
+    out['ok'] = bool(exp) and out['tradeDate'] == exp and len(out['idx']) == len(IDX)
+    print(f"指數：{ {k: v['tradeDate'] for k, v in out['idx'].items()} }，預期 {exp}，{'正常' if out['ok'] else '⚠️ 資料未更新'}")
+    # 財報剛公布（前一個交易日盤後）：整個範圍裡有公布的都抓延長時段最後價格，寫清楚基準（正常盤收盤）與美東時間
+    ev = (load('events.json') or {}).get('earn') or {}
+    post = [s for s, e in ev.items() if e.get('d') == exp and e.get('t') == 'post']
+    out['post'] = {}
+    if post and exp:
+        try:
+            ym = {s.replace('.', '-'): s for s in post}
+            h = yf.download(list(ym), period='5d', interval='5m', prepost=True, auto_adjust=False, group_by='ticker', progress=False)
+            from zoneinfo import ZoneInfo
+            for y, s in ym.items():
+                try:
+                    c = (h[y]['Close'] if len(ym) > 1 else h['Close']).dropna()
+                    c.index = c.index.tz_convert(ZoneInfo('America/New_York'))
+                    reg = c[[i.strftime('%Y-%m-%d') == exp and (i.hour, i.minute) < (16, 0) for i in c.index]]
+                    aft = c[[i.strftime('%Y-%m-%d') == exp and (i.hour, i.minute) >= (16, 0) for i in c.index]]
+                    base = (load('prices.json') or {}).get('px', {}).get(s) if (load('prices.json') or {}).get('d') == exp else None
+                    base = base or (float(reg.iloc[-1]) if len(reg) else None)
+                    if base and len(aft):
+                        t = aft.index[-1]
+                        out['post'][s] = {'tradeDate': exp, 'ref': round(base, 4), 'px': round(float(aft.iloc[-1]), 4), 'pct': round((float(aft.iloc[-1]) / base - 1) * 100, 2), 'et': t.strftime('%H:%M'), 'session': 'post'}
+                except Exception as e:
+                    print(f'{s} 盤後價格失敗：{e}')
+        except Exception as e:
+            print('盤後價格整段失敗：', e)
+    print(f'財報剛公布：{len(post)} 檔，抓到盤後價格 {len(out["post"])} 檔')
+    if not out['idx']:
+        print('指數都抓不到，不寫檔'); return False
+    os.makedirs(os.path.join(ROOT, 'data', 'mkt'), exist_ok=True)
+    with open(os.path.join(ROOT, 'data', 'mkt', 'us.json'), 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, separators=(',', ':')); f.write('\n')
+    return True
+
 if __name__ == '__main__':
     syms, _ = build_universe()
     if not syms:
@@ -190,5 +280,9 @@ if __name__ == '__main__':
         fetch_events(syms)
     except Exception as e:
         print('財報日整段失敗：', e)
+    try:
+        fetch_mkt_us()
+    except Exception as e:
+        print('美股指數整段失敗：', e)
     if not ok:
         print('這次沒有抓到價格（保留上一次的檔案）')

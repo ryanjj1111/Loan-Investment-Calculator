@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
   push:
     branches: ['claude/**']
-    paths: ['tools/fetch-us.py', '.github/workflows/us-prices.yml']
+    paths: ['tools/fetch-us.py', '.github/workflows/us-prices.yml', 'data/mkt/holidays.json']
 permissions:
   contents: write
 concurrency:
@@ -29,7 +29,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
-          git add -A data/us
+          git add -A data/us data/mkt/us.json
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
           git commit -m "美股收盤價 $(TZ=Asia/Taipei date +%F' '%H:%M) [skip ci]"
           for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done; exit 1
