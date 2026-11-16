@@ -42,7 +42,7 @@ function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)s
   <div class=asl>和 ${bm} 比：如果撥款日的持股和之後每一筆買賣，都改成同一天、同金額買賣 ${bm}<div>・全部：${asBmTxt(all)}</div><div>・主動：${asBmTxt(act)}</div></div>
   <div class=asl>${loan} <button class=lk onclick="setWs('loan')">看信貸 ›</button></div>`:`<div class=asl style="margin-top:8px"><button class=lk onclick="asPostSet(1)">📅 顯示撥款後績效</button> ${tipI('有用信貸投資時，看撥款日之後的損益和 vs '+bm+'。','撥款後績效')}</div>`}
   <div class=asl>現價：${pxStatus()} <button class=lk onclick="pxRefresh()">🔄 更新</button></div>`);
- const fx=$('asFix');if(fx)fx.innerHTML=typeof ckTodoHtml=='function'?ckTodoHtml():'';try{$('asAl').innerHTML=asTmrHtml()}catch(e){console.error(e);const A=stAlerts(S);$('asAl').innerHTML=A.length?`<div class=stal>${fold('al',`⚠️ 提醒（${A.length}）`,esc(A[0].t).slice(0,24)+'…',`${A.slice(0,4).map(asAlRow).join('')}`)}</div>`:''}
+ const fx=$('asFix');if(fx)fx.innerHTML=typeof ckTodoHtml=='function'?ckTodoHtml():'';try{$('asAl').innerHTML=asStaleHtml()+asTmrHtml()}catch(e){console.error(e);const A=stAlerts(S);$('asAl').innerHTML=A.length?`<div class=stal>${fold('al',`⚠️ 提醒（${A.length}）`,esc(A[0].t).slice(0,24)+'…',`${A.slice(0,4).map(asAlRow).join('')}`)}</div>`:''}
  // 配置
  const CS=asCash(),cash=CS.v!=null?Math.max(0,CS.v*1e4):null,tot=z.p.mv+z.a.mv+(cash||0),seg=(v,c,l)=>tot>0&&v>0?`<span style="width:${v/tot*100}%;background:${c}" title="${l}"></span>`:'';
  const W=(+S.Wp||0)+(+S.Wa||0)+(+S.Wc||0),G=asGroups(S);
@@ -337,11 +337,11 @@ window.asTrHov=e=>{if(!TRD)return;const sv=e.currentTarget,r=sv.getBoundingClien
 // 取代資產頁的「⚠️ 提醒」：同樣的資料，改成「明天做什麼」排列。用資料日期檢查，不用固定時間（網頁只能在打開時計算）。
 // 規則一律收盤確認、隔天開盤執行（和回測一致）；固定停損價也一樣。
 const asWd=d=>new Date(d+'T00:00:00Z').getUTCDay();
-const asPrevTd=d=>{let x=ckAddD(d,-1);while(asWd(x)==0||asWd(x)==6)x=ckAddD(x,-1);return x};
+const asPrevTd=d=>{let x=ckAddD(d,-1);for(let k=0;k<30&&(asWd(x)==0||asWd(x)==6||twHol(x));k++)x=ckAddD(x,-1);return x};
 const asNextTd=d=>{let x=ckAddD(d,1);while(asWd(x)==0||asWd(x)==6)x=ckAddD(x,1);return x};
 // 應該已經有收盤資料的交易日：平日 15:00 後是今天，否則是前一個交易日（國定假日無法判斷）
 const asHour=()=>typeof AS_HOUR!='undefined'?AS_HOUR:new Date().getHours();// 測試時可以固定
-function asExpTd(){const w=asWd(TODAY),h=asHour();return w>=1&&w<=5&&h>=15?TODAY:(w>=1&&w<=5?asPrevTd(TODAY):asPrevTd(asNextTd(TODAY)))}
+function asExpTd(){const w=asWd(TODAY),h=asHour();return w>=1&&w<=5&&!twHol(TODAY)&&h>=15?TODAY:(w>=1&&w<=5?asPrevTd(TODAY):asPrevTd(asNextTd(TODAY)))}
 function asDataStat(){const ex=asExpTd(),px=Object.entries(S.pxd||{}).filter(([c])=>(S.pxa||{})[c]).map(([,d])=>d).sort().pop()||'',ck=CK||{};
  const it=[['收盤價',px,1],['指標',ck.d||'',1],['法人',ck.dC||'',0],['融資',ck.dM||'',0]].map(([n,d,need])=>({n,d,need,ok:!!d&&d>=ex}));
  const final=it.filter(x=>x.need).every(x=>x.ok),w=asWd(TODAY),late=w>=1&&w<=5&&asHour()>=15&&px<TODAY;
@@ -383,6 +383,10 @@ function asTmrCheck(){const L=(S.tmrLog||[]).filter(x=>x.d<asExpTd()&&x.it.lengt
   if(tr)done++;else if(ak&&(ak.k=='skip'||ak.k=='na'))dec++;else if(!o.b)miss.push(o)}
  const sells=L.it.filter(o=>!o.b).length;return{d:L.d,nx,n:L.it.length,sells,done,dec,miss}}
 const asAlBtns=a=>{const m=asAlRow(a).match(/<button[\s\S]*<\/button>/);return m?' '+m[0]:''};
+// 自動資料過期警示：資料比應該要到的交易日舊（當天 19:00 前只看前一個交易日，因為當天的資料可能還在路上）
+function asStaleHtml(){const D=asDataStat(),ex=D.ex,ds=[D.it[0].d,D.d].filter(Boolean).sort(),old=ds[0]||'';if(!old)return'';
+ const due=ex<TODAY||asHour()>=19;if(!(old<ex&&due))return'';
+ return`<div class=stale>⚠️ 自動資料停在 <b>${asD(old)}</b>（應該要有 ${asD(ex)}）：均線、本益比、法人、觸發價和問 AI 的數字都是舊的。通常是 GitHub 排程延誤，「資料補跑」會自動補上；急用可以先手動填現價。</div>`}
 function asTmrHtml(){const R=asTmr();asTmrLog(R);const D=R.D,cm=asTmrCheck(),money=v=>v==null?'':`約 ${W2(v)} 萬`;
  const st=`<div class=tmst>${D.it.map(x=>`<span class="${x.ok?'ok':x.need?'wn':'h'}">${x.n} ${x.ok?'✓':'⏳'} ${x.d?asD(x.d):'—'}</span>`).join('')}<span class=h>月營收 ${esc(D.rM)}｜股權分散 ${D.bW?asD(D.bW):'—'} 週</span></div>${D.late?'<div class=wn>今天的資料還沒到，或今天休市；下面是用上一個交易日算的。</div>':D.final?'':`<div class=wn>檢核資料還是 ${asD(D.d)}：均線、法人類的判斷是<b>暫定</b>，資料到了會再變。</div>`}`;
  const row1=x=>`<div class=tmr><b>${esc(x.c)} ${esc(nameOf(x.c))}</b>（${esc(x.T.id)}）：${esc(x.lb)} → <b>${esc(x.act)}</b>${x.q?`｜${x.q.toLocaleString()} 股 ${money(x.amt)}`:''}${x.prov?' <span class=wn>暫定</span>':''}${x.why?`<div class=h>${esc(x.why)}</div>`:''}<div>${asAlBtns(x.a)}</div></div>`;

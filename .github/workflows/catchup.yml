@@ -1,0 +1,52 @@
+# 資料補跑：GitHub 排程可能延誤或整天沒跑（2026-11-14～16 就停過），這個流程檢查公開資料是不是最新，過期的就觸發對應的抓資料流程
+# 兩條路觸發、互為備援：① 下面的 GitHub 排程 ② 外部定時器（例如 cron-job.org）呼叫 workflow_dispatch（不靠 GitHub 排程）
+# 資料已是最新就什麼都不做，重複觸發沒有副作用。只讀公開資料，不含任何個人持股
+name: 資料補跑
+on:
+  schedule:
+    - cron: '7 8 * * 1-5'     # 台灣 16:07
+    - cron: '7 11 * * 1-5'    # 台灣 19:07
+    - cron: '47 14 * * 1-5'   # 台灣 22:47
+    - cron: '7 23 * * 1-5'    # 台灣週二～週六 07:07（晨報 07:30 之前）
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: catchup
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 檢查資料日期
+        run: node tools/catchup.mjs | tee /tmp/stale
+      - name: 觸發過期的流程
+        run: |
+          # 觸發後等它跑完（收盤價要先到，檢核資料才算得對）
+          run_wait(){
+            t0=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            gh workflow run "$1" --ref main || return 1
+            id=""; for i in 1 2 3 4 5 6; do sleep 10
+              id=$(gh run list -w "$1" -e workflow_dispatch -L 3 --json databaseId,createdAt -q "map(select(.createdAt>=\"$t0\"))|.[0].databaseId // empty")
+              [ -n "$id" ] && break; done
+            [ -n "$id" ] && gh run watch "$id" --exit-status >/dev/null && echo "✓ $1 完成" || echo "⚠️ $1 沒有成功"
+          }
+          if grep -qx prices.yml /tmp/stale; then
+            run_wait prices.yml
+            git fetch -q --depth 1 origin main && git checkout -q FETCH_HEAD -- data
+            node tools/catchup.mjs > /tmp/stale 2>/dev/null
+          fi
+          # 檢核資料要跑比較久，觸發就好，不等
+          for w in checks.yml mkt.yml us-prices.yml; do
+            if grep -qx "$w" /tmp/stale; then gh workflow run "$w" --ref main && echo "已觸發 $w"; fi
+          done
+          [ -s /tmp/stale ] || echo "資料都是最新，不用補跑"

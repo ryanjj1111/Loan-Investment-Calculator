@@ -42,4 +42,17 @@ run(`__S0=clone(S);AA_CTX={from:'eval',src0:'screen'};__P=aiPlan({format:'投資
 run(`S=clone(__S0);for(let k=0;k<5;k++)S.theses.push(stNewThesis(S,{code:'990'+k,sid:'S01',sver:1,status:'plan',created:'${TODAY}'}));__P=aiPlan({format:'投資帳本 v1',ai:'T',q:'eval',theses:[{code:'0050',strategy:'S01',why:'x'}]})`);
 {const ok=ctx.__P.th[0].err.some(e=>/上限/.test(e));console.log(`${ok?'✓':'✗'} 評估：規劃中論點已有 5 個 → 不能再建立`);if(!ok)bad++}
 run(`S=__S0;AA_CTX=null;for(const k in CKM)delete CKM[k]`);
+// 現價取比較新的（2026-11-16）：存的價格舊、網頁抓到新收盤 → 用新收盤；手填的比收盤新才用手填
+{const T=(cond,msg)=>{console.log(`${cond?'✓':'✗'} ${msg}`);if(!cond)bad++};
+ run(`__S0=clone(S);S.px=S.px||{};S.pxd=S.pxd||{};S.pxa=S.pxa||{};S.px['9999']=100;S.pxd['9999']='2026-11-10';S.pxa['9999']=1;PXL['9999']={v:110,d:'2026-11-12',src:'證交所'};`);
+ T(run(`pxNow('9999').v`)===110,'現價：存的價格（11/10）比網頁收盤（11/12）舊 → 用 11/12 收盤');
+ run(`S.px['9999']=105;S.pxd['9999']='2026-11-12';S.pxa['9999']=0;`);T(run(`pxNow('9999').v`)===110,'現價：同一天手填的盤中價 → 收盤價取代');
+ run(`S.px['9999']=120;S.pxd['9999']='2026-11-13';`);T(run(`pxNow('9999').v`)===120,'現價：手填的比收盤新 → 用手填的');
+ run(`S.px['2454']=1;S.pxd['2454']='2026-11-01';S.pxa['2454']=1;PXL['2454']={v:1234.5,d:'2026-11-12',src:'證交所'};for(const k in CKM)delete CKM[k];AA_CTX=null;aaInit({q:'eval',codes:['2454'],sid:'S01',from:'eval'})`);
+ {const t=run('aaText()');T(/現價 1,?234\.5（11\/12 收盤）/.test(t),'評估新股票：AI 文字的現價用最新收盤，不用存著的舊價格')}
+ run(`PXL['2454']={v:1234.5,d:'2026-11-11',src:'證交所'};S.px['2454']=1234.5;S.pxd['2454']='2026-11-11';for(const k in CKM)delete CKM[k]`);
+ {const t=run('aaText()');T(/現價 1,?234\.5（11\/11 收盤；⚠️ 不是最新，最近交易日是 11\/12）/.test(t),'現價過期時 AI 文字標「⚠️ 不是最新」')}
+ run(`AS_HOUR=16`);T(run(`pxStale('2026-11-11',18)`)===''&&run(`pxStale('2026-11-11')`)==='2026-11-12','過期判斷：16 點時收盤價要當天、檢核資料還不用');
+ run(`AS_HOUR=20;HOL={tw:['2026-11-11']}`);T(run(`twPrevTd('2026-11-12')`)==='2026-11-10'&&run(`pxStale('2026-11-10',18)`)==='2026-11-12','過期判斷：休市日（holidays.json）不算交易日');
+ run(`HOL=null;delete PXL['9999'];delete PXL['2454'];S=__S0;AA_CTX=null;for(const k in CKM)delete CKM[k]`)}
 if(bad){console.log(`\n${bad} 項不一致。刻意改了文字並確認正確後：node tools/test/ai-text-test.mjs --update`);process.exit(1)}

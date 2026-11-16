@@ -4,7 +4,7 @@
 
 const PX_BASE=['https://raw.githubusercontent.com/ryanjj1111/Loan-Investment-Calculator/main/data/','data/'];
 const PX_TWSE='https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY_ALL?response=json';
-let PXL={},PXU='',pxBusy=0,pxErr='',IND={};
+let PXL={},PXU='',pxBusy=0,pxErr='',IND={},HOL=null;
 // 產業別（證交所、櫃買中心月營收公開資料裡的「產業別」），新論點沒有族群標籤時自動帶入
 const indOf=c=>IND[cU(c)]||'';
 // 族群標籤空白時，族群自動用所屬主題、再來是產業別（stGrpOf），所以新論點不再自動寫入標籤
@@ -17,7 +17,9 @@ function pxPut(px,d,src){let n=0;for(const c in px){const v=num(px[c]);if(v==nul
 function pxCodes(){const s=new Set([bmC(S)]);for(const o of holdings(S))if(o.q>0)s.add(cU(o.n));for(const T of S.theses||[])if(cU(T.code))s.add(cU(T.code));return s}
 // 自動價格的日期不比手填的舊，就帶入（手填的會被當天或更新的收盤價取代）
 function pxApply(){let ch=0;S.px=S.px||{};S.pxd=S.pxd||{};S.pxa=S.pxa||{};
- for(const c of pxCodes()){const o=PXL[c];if(!o)continue;const d0=S.pxd[c]||'';if(d0&&o.d<d0)continue;if(num(S.px[c])===o.v&&d0==o.d&&S.pxa[c])continue;S.px[c]=o.v;S.pxd[c]=o.d;S.pxa[c]=o.src||1;ch++}
+ // 已經存過價格的股票也一起更新（以前持有、評估過的），不然會一直留著舊價格
+ const cs=pxCodes();for(const c in S.px)if(cU(c))cs.add(cU(c));
+ for(const c of cs){const o=PXL[c];if(!o)continue;const d0=S.pxd[c]||'';if(d0&&o.d<d0)continue;if(num(S.px[c])===o.v&&d0==o.d&&S.pxa[c])continue;S.px[c]=o.v;S.pxd[c]=o.d;S.pxa[c]=o.src||1;ch++}
  if(ch){save();calc();
   // 個股頁開著（不是在記交易）時，用新價格重畫
   if(typeof asCur!='undefined'&&asCur&&typeof AT!='undefined'&&!AT&&typeof asStock=='function'&&$('asOvB')){const b=$('asOvB'),h=b.scrollTop;asStock(asCur.c,asCur.ac);const b2=$('asOvB');if(b2)b2.scrollTop=h}}return ch}
@@ -35,6 +37,7 @@ async function pxTwse(){try{const r=await fetch(PX_TWSE,{cache:'no-cache'});if(!
   return d?pxPut(px,d,'證交所'):0}catch(e){return 0}}
 async function pxLoad(force){if(pxBusy)return;pxBusy=1;pxErr='';try{
  if(!Object.keys(IND).length){const ind=await pxGet('industry.json');if(ind)IND=ind.ind||{}}
+ if(!HOL){HOL=await pxGet('mkt/holidays.json')||{}}
  const j=await pxGet('prices.json');if(j){PXU=j.upd||'';for(const k of['tse','otc'])if(j[k]&&j[k].date)pxPut(j[k].px||{},j[k].date,k=='tse'?'證交所':'櫃買中心')}else pxErr='讀不到自動價格（離線，或網站還沒有價格資料）';
  // 收盤後（台灣時間 14:00 起的平日）如果還沒有今天的上市收盤價，直接向證交所抓一次（30 分鐘內不重複）
  const tw=pxTw(),today=tw.toISOString().slice(0,10),wd=tw.getUTCDay(),late=tw.getUTCHours()>=14,o=PXL[bmC(S)];
