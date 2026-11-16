@@ -26,6 +26,8 @@ jobs:
           node-version: 20
       - name: 抓台指期夜盤與融資餘額
         run: node tools/fetch-mkt.mjs
+        env:
+          MKT_DEBUG: ${{ github.event_name == 'push' && '1' || '' }}
       - name: 存檔
         run: |
           git config user.name "github-actions[bot]"

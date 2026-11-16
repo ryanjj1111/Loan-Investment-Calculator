@@ -22,7 +22,9 @@ function pxDays(){const L=fs.existsSync('data/px')?fs.readdirSync('data/px').fil
 
 // ---------- 台指期夜盤
 // 先試期交所 OpenAPI（每日行情，有交易時段欄位），抓不到再試網站的每日行情下載（CSV）
+const DEBUG=process.env.MKT_DEBUG;
 function pickTX(rows){// rows: {date,contract,month,session,last,chg,pct,vol}
+ if(DEBUG)console.log(rows.filter(r=>r.contract=='TX'&&!/\//.test(r.month)).map(r=>[r.date,r.month,r.session,'open',r.open,'last',r.last,'chg',r.chg,'vol',r.vol].join(' ')).join('\n'));
  const T=rows.filter(r=>r.contract=='TX'&&/盤後|After/i.test(r.session)&&!/\//.test(r.month)&&r.last!=null&&r.vol>0);
  if(!T.length)return null;T.sort((a,b)=>b.vol-a.vol);const r=T[0];
  const ref=r.chg!=null?r.last-r.chg:null,pct=r.pct!=null?r.pct:(ref?Math.round((r.chg/ref)*1e4)/100:null);
@@ -32,7 +34,7 @@ async function txOpenApi(){const j=await get('https://openapi.taifex.com.tw/v1/D
  const K=Object.keys(j[0]);console.log('OpenAPI 欄位：'+K.join('、'));
  const f=(o,...ks)=>{for(const k of ks){const m=K.find(x=>x.toLowerCase().replace(/[^a-z%]/g,'')==k.toLowerCase().replace(/[^a-z%]/g,''));if(m!=null&&o[m]!=null&&o[m]!=='')return o[m]}return null};
  const rows=j.map(o=>({date:ymdIso(f(o,'Date')),contract:String(f(o,'Contract')||'').trim(),month:String(f(o,'ContractMonth(Week)','ContractMonth')||'').trim(),session:String(f(o,'TradingSession')||''),
-  last:nz(f(o,'Last')),chg:nz(f(o,'Change')),pct:nz(f(o,'%','ChangePercent')),vol:nz(f(o,'Volume'))||0}));
+  open:nz(f(o,'Open')),last:nz(f(o,'Last')),chg:nz(f(o,'Change')),pct:nz(f(o,'%','ChangePercent')),vol:nz(f(o,'Volume'))||0}));
  const r=pickTX(rows);if(r)r.src='期交所 OpenAPI 每日行情';return r}
 async function txCsv(){const d=twNow(),s=x=>x.toISOString().slice(0,10).replace(/-/g,'/');const a=new Date(d.getTime()-6*864e5);
  const body=new URLSearchParams({down_type:'1',commodity_id:'TX',queryStartDate:s(a),queryEndDate:s(d)});
@@ -41,9 +43,10 @@ async function txCsv(){const d=twNow(),s=x=>x.toISOString().slice(0,10).replace(
  const L=t.trim().split(/\r?\n/).map(x=>x.split(',').map(y=>y.trim()));const H=L[0],ix=n=>H.findIndex(h=>h.includes(n));
  const iD=ix('交易日期'),iC=ix('契約'),iM=ix('到期月份'),iS=ix('交易時段'),iL=ix('收盤價'),iCh=ix('漲跌價'),iP=ix('漲跌%'),iV=ix('成交量');
  console.log('CSV 欄位：'+H.join('、'));
- const rows=L.slice(1).map(a=>({date:ymdIso(a[iD]),contract:a[iC],month:a[iM],session:a[iS]||'',last:nz(a[iL]),chg:nz(a[iCh]),pct:nz(a[iP]),vol:nz(a[iV])||0}));
+ const rows=L.slice(1).map(a=>({date:ymdIso(a[iD]),contract:a[iC],month:a[iM],session:a[iS]||'',open:nz(a[ix('開盤價')]),last:nz(a[iL]),chg:nz(a[iCh]),pct:nz(a[iP]),vol:nz(a[iV])||0}));
  const last=rows.filter(r=>/盤後/.test(r.session)).map(r=>r.date).sort().pop();const r=pickTX(rows.filter(x=>x.date==last));if(r)r.src='期交所每日行情下載';return r}
 async function tx(){let r=null;try{r=await txOpenApi()}catch(e){console.log('OpenAPI 解析失敗：'+e.message)}
+ if(DEBUG)try{const c=await txCsv();console.log('CSV 結果：'+JSON.stringify(c))}catch(e){console.log('CSV 失敗：'+e.message)}
  if(!r)try{r=await txCsv()}catch(e){console.log('CSV 解析失敗：'+e.message)}
  if(!r){console.log('台指期夜盤：抓不到，保留上一次');return}
  // 期交所的夜盤屬於「下一個交易日」；有些來源寫的是開盤那一天，統一成下一個台股交易日
