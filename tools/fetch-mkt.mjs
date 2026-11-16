@@ -1,0 +1,68 @@
+// 投資晨報用的台股市場面資料（公開資料，每個人都一樣，不含任何個人持股）→ data/mkt/tw.json
+//   台指期夜盤（期交所，盤後交易時段）：近月台指期的最後價格、漲跌、交易日
+//   集中市場融資餘額（證交所信用交易統計，億元）：保留最近 40 個交易日，算「近 10 日」變化用
+// 用法：node tools/fetch-mkt.mjs
+// 任何一段抓不到就保留上一次的那一段，不寫半套；交易日一律寫出來，晨報用它判斷資料新不新。
+import fs from 'node:fs';
+const UA={'User-Agent':'Mozilla/5.0 (compatible; Loan-Investment-Calculator data bot; +https://github.com/ryanjj1111/Loan-Investment-Calculator)'};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const nz=v=>{v=String(v??'').replace(/<[^>]*>/g,'').replace(/[,\s%+]/g,'');if(v===''||v=='-'||v=='--')return null;const x=+v;return isFinite(x)?x:null};
+const ymdIso=s=>{s=String(s).replace(/\D/g,'');return s.length==8?s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6):''};
+const twNow=()=>new Date(Date.now()+8*36e5),stamp=()=>twNow().toISOString().slice(0,16).replace('T',' ');
+const rd=f=>{try{return JSON.parse(fs.readFileSync(f,'utf8'))}catch(e){return null}};
+async function get(u,opt={},type='json'){for(let k=0;k<3;k++){try{const r=await fetch(u,{...opt,headers:{...UA,...(opt.headers||{})},signal:AbortSignal.timeout(60000)});
+ if(r.ok){const b=Buffer.from(await r.arrayBuffer());const t=new TextDecoder(opt.enc||'utf-8').decode(b);return type=='json'?JSON.parse(t):t}console.log(`  HTTP ${r.status} ${u}`)}catch(e){console.log(`  失敗 ${u}：${e.message}`)}await sleep(3000*(k+1))}return null}
+
+const OUT='data/mkt/tw.json',old=rd(OUT)||{},out={...old,upd:stamp(),note:'公開資料。tx：台指期夜盤（盤後交易時段，tradeDate 是期交所的交易日，也就是夜盤結束後那個交易日）；margin：集中市場融資餘額（億元）。'};
+const CAL=rd('data/mkt/holidays.json')||{};
+const twTrading=d=>{const w=new Date(d+'T00:00:00Z').getUTCDay();return w>0&&w<6&&!(CAL.tw||[]).includes(d)};
+// 台股交易日：以 data/px 已經有收盤的日期為準（只用來回補融資，不用來判斷今天開不開）
+function pxDays(){const L=fs.existsSync('data/px')?fs.readdirSync('data/px').filter(f=>/^\d{4}-\d{2}\.json$/.test(f)).sort().slice(-3):[];const D=[];
+ for(const f of L){const j=rd('data/px/'+f);if(j&&j.d)D.push(...Object.keys(j.d))}return [...new Set(D)].sort()}
+
+// ---------- 台指期夜盤
+// 先試期交所 OpenAPI（每日行情，有交易時段欄位），抓不到再試網站的每日行情下載（CSV）
+function pickTX(rows){// rows: {date,contract,month,session,last,chg,pct,vol}
+ const T=rows.filter(r=>r.contract=='TX'&&/盤後|After/i.test(r.session)&&!/\//.test(r.month)&&r.last!=null&&r.vol>0);
+ if(!T.length)return null;T.sort((a,b)=>b.vol-a.vol);const r=T[0];
+ const ref=r.chg!=null?r.last-r.chg:null,pct=r.pct!=null?r.pct:(ref?Math.round((r.chg/ref)*1e4)/100:null);
+ return{tradeDate:r.date,session:'night',contract:'TX '+r.month,c:r.last,chg:r.chg,pct,ref:ref!=null?Math.round(ref*100)/100:null,vol:r.vol}}
+async function txOpenApi(){const j=await get('https://openapi.taifex.com.tw/v1/DailyMarketReportFut',{headers:{Accept:'application/json'}});
+ if(!Array.isArray(j)||!j.length){console.log('期交所 OpenAPI 沒有資料');return null}
+ const K=Object.keys(j[0]);console.log('OpenAPI 欄位：'+K.join('、'));
+ const f=(o,...ks)=>{for(const k of ks){const m=K.find(x=>x.toLowerCase().replace(/[^a-z%]/g,'')==k.toLowerCase().replace(/[^a-z%]/g,''));if(m!=null&&o[m]!=null&&o[m]!=='')return o[m]}return null};
+ const rows=j.map(o=>({date:ymdIso(f(o,'Date')),contract:String(f(o,'Contract')||'').trim(),month:String(f(o,'ContractMonth(Week)','ContractMonth')||'').trim(),session:String(f(o,'TradingSession')||''),
+  last:nz(f(o,'Last')),chg:nz(f(o,'Change')),pct:nz(f(o,'%','ChangePercent')),vol:nz(f(o,'Volume'))||0}));
+ const r=pickTX(rows);if(r)r.src='期交所 OpenAPI 每日行情';return r}
+async function txCsv(){const d=twNow(),s=x=>x.toISOString().slice(0,10).replace(/-/g,'/');const a=new Date(d.getTime()-6*864e5);
+ const body=new URLSearchParams({down_type:'1',commodity_id:'TX',queryStartDate:s(a),queryEndDate:s(d)});
+ const t=await get('https://www.taifex.com.tw/cht/3/futDataDown',{method:'POST',body,headers:{'Content-Type':'application/x-www-form-urlencoded'},enc:'big5'},'text');
+ if(!t||!/交易日期/.test(t)){console.log('期交所 CSV 沒有資料：'+String(t||'').slice(0,120));return null}
+ const L=t.trim().split(/\r?\n/).map(x=>x.split(',').map(y=>y.trim()));const H=L[0],ix=n=>H.findIndex(h=>h.includes(n));
+ const iD=ix('交易日期'),iC=ix('契約'),iM=ix('到期月份'),iS=ix('交易時段'),iL=ix('收盤價'),iCh=ix('漲跌價'),iP=ix('漲跌%'),iV=ix('成交量');
+ console.log('CSV 欄位：'+H.join('、'));
+ const rows=L.slice(1).map(a=>({date:ymdIso(a[iD]),contract:a[iC],month:a[iM],session:a[iS]||'',last:nz(a[iL]),chg:nz(a[iCh]),pct:nz(a[iP]),vol:nz(a[iV])||0}));
+ const last=rows.filter(r=>/盤後/.test(r.session)).map(r=>r.date).sort().pop();const r=pickTX(rows.filter(x=>x.date==last));if(r)r.src='期交所每日行情下載';return r}
+async function tx(){let r=null;try{r=await txOpenApi()}catch(e){console.log('OpenAPI 解析失敗：'+e.message)}
+ if(!r)try{r=await txCsv()}catch(e){console.log('CSV 解析失敗：'+e.message)}
+ if(!r){console.log('台指期夜盤：抓不到，保留上一次');return}
+ // 期交所的夜盤屬於「下一個交易日」；有些來源寫的是開盤那一天，統一成下一個台股交易日
+ if(r.tradeDate&&!twTrading(r.tradeDate)||(old.tx&&r.tradeDate<old.tx.tradeDate)){console.log('夜盤交易日不合理：'+r.tradeDate)}
+ console.log(`台指期夜盤：${r.tradeDate} ${r.contract} ${r.c}（${r.chg>=0?'+':''}${r.chg}，${r.pct}%）來源：${r.src}`);out.tx=r}
+
+// ---------- 集中市場融資餘額（億元）
+async function marginDay(d){const j=await get(`https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date=${d.replace(/-/g,'')}&selectType=MS&response=json`);
+ if(!j||j.stat!='OK'||ymdIso(j.date)!=d)return null;
+ for(const T of j.tables||[])for(const a of T.data||[]){if(/融資金額/.test(String(a[0]))){const F=T.fields||[],ib=F.findIndex(x=>/今日餘額/.test(x));const v=nz(a[ib>0?ib:a.length-1]);if(v!=null)return Math.round(v/1e3)/100}}// 仟元 → 億元
+ console.log('MI_MARGN 找不到融資金額：'+JSON.stringify(j.tables?.[0]||{}).slice(0,200));return null}
+async function margin(){const H=new Map((old.margin&&old.margin.hist)||[]);const D=pxDays().slice(-25),need=D.filter(d=>!H.has(d)).slice(-25);
+ let n=0;for(const d of need){const v=await marginDay(d);if(v!=null){H.set(d,v);n++}await sleep(2200)}
+ const hist=[...H].sort((a,b)=>a[0]<b[0]?-1:1).slice(-40);if(!hist.length){console.log('融資餘額：沒有資料');return}
+ out.margin={src:'證交所信用交易統計（集中市場）',unit:'億元',tradeDate:hist[hist.length-1][0],hist};
+ console.log(`融資餘額：新增 ${n} 天，最新 ${out.margin.tradeDate} ${hist[hist.length-1][1]} 億`)}
+
+await tx();
+await margin();
+fs.mkdirSync('data/mkt',{recursive:true});
+const s=JSON.stringify({...out,upd:undefined}),o=JSON.stringify({...old,upd:undefined});
+if(s==o)console.log('沒有新資料');else{fs.writeFileSync(OUT,JSON.stringify(out)+'\n');console.log('已寫入 '+OUT)}
