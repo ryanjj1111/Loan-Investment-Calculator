@@ -3,6 +3,8 @@
 // 兩種開法：從股票（輸入代號，最多 3 檔、同一個策略）、從策略（全市場今天【選什麼】沒有 ❌、【何時買】成立的股票）。
 // 不建論點、不記交易；問 AI、建立規劃中論點在 PR 乙。
 const EV_GR=[['pre','有初步證據'],['neu','中性'],['few','樣本太少'],['none','沒有回測']];
+// 按鈕上的策略名稱：括號裡的補充說明省略
+const evNm=st=>String(st.name||'').replace(/\s*[（(].*$/,'').trim()||st.id,evGrS=sid=>evGr(sid)?evGrN(sid):'';
 const evGr=sid=>(S.stEvid||{})[sid]||'',evGrN=sid=>(EV_GR.find(x=>x[0]==evGr(sid))||[0,'證據未標'])[1],evRank=sid=>{const i=EV_GR.findIndex(x=>x[0]==evGr(sid));return i<0?8:i};
 const EV_TECH=/電子|半導體|光電|電腦|通信|資訊服務|數位雲端/;
 let EV={mode:'stock',codes:[],sid:'',all:0,tech:1,scan:null,scanSid:''};
@@ -66,12 +68,12 @@ function evRender(){const L=evOn(),c0=EV.codes[0];let h=`<div class=ovh><button 
  if(typeof wlHtml=='function'&&(EV.mode=='strat'||!EV.codes.length))h+=wlHtml();
  if(EV.mode=='stock'){h+=evCodeIn();
   if(EV.codes.length){const M=evMatrix(c0),fit=M.filter(x=>x.fit),no=M.filter(x=>!x.fit);if(!EV.sid||!L.some(s=>s.id==EV.sid))EV.sid=(fit[0]||M[0]||{st:{}}).st.id||'';
-   h+=`<div class=sub>${esc(c0)} ${esc(nameOf(c0))} 適合哪個策略（【選什麼】沒有 ❌；依證據等級排序）</div>${fit.length?fit.map(x=>`<div class=tmr><button class="${EV.sid==x.st.id?'pri':''}" onclick="evSet('sid','${x.st.id}')">${esc(x.st.id+' '+x.st.name)}</button> <span class=h>${esc(evGrN(x.st.id))}｜選什麼 ✅ ${x.r.sel.ok}／${x.r.sel.n}${x.r.sel.pend?`，${x.r.sel.pend} 項要補`:''}</span></div>`).join(''):'<div class=wn>目前沒有策略的【選什麼】適合這檔。</div>'}
-   ${no.length?`<details ${EV.all?'open':''} ontoggle="EV.all=this.open?1:0"><summary class=h>不適合：${no.map(x=>esc(x.st.id)).join('、')}</summary>${no.map(x=>`<div class=tmr><button class="${EV.sid==x.st.id?'pri':''}" onclick="evSet('sid','${x.st.id}')">${esc(x.st.id+' '+x.st.name)}</button> <span class=h>${esc(evGrN(x.st.id))}｜❌ ${esc(x.r.sel?x.r.sel.badT.map(t=>t.replace(/〔.〕/g,'')).join('、'):'沒有【選什麼】')}</span></div>`).join('')}</details>`:''}`;
+   h+=`<div class=sub>${esc(c0)} ${esc(nameOf(c0))} 適合哪個策略（【選什麼】沒有 ❌；依證據等級排序）</div>${fit.length?fit.map(x=>`<div class=tmr><button class="${EV.sid==x.st.id?'pri':''}" onclick="evSet('sid','${x.st.id}')">${esc(x.st.id+' '+evNm(x.st))}</button> <span class=h>${evGrS(x.st.id)?esc(evGrS(x.st.id))+'｜':''}選什麼 ✅ ${x.r.sel.ok}／${x.r.sel.n}${x.r.sel.pend?`，${x.r.sel.pend} 項要補`:''}</span></div>`).join(''):'<div class=wn>目前沒有策略的【選什麼】適合這檔。</div>'}
+   ${no.length?`<details ${EV.all?'open':''} ontoggle="EV.all=this.open?1:0"><summary class=h>不適合：${no.map(x=>esc(x.st.id)).join('、')}</summary>${no.map(x=>`<div class=tmr><button class="${EV.sid==x.st.id?'pri':''}" onclick="evSet('sid','${x.st.id}')">${esc(x.st.id+' '+evNm(x.st))}</button> <span class=h>${evGrS(x.st.id)?esc(evGrS(x.st.id))+'｜':''}❌ ${esc(x.r.sel?x.r.sel.badT.map(t=>t.replace(/〔.〕/g,'')).join('、'):'沒有【選什麼】')}</span></div>`).join('')}</details>`:''}`;
    const st=stStrat(S,EV.sid);if(st){if(evGr(st.id)&&evRank(st.id)>=2)h+=`<div class=wn>${esc(st.id)} 的證據等級是「${esc(evGrN(st.id))}」；新資金建議優先給證據等級較高的策略。</div>`;h+=EV.codes.map(c=>evCard(c,st)).join('')}}
   else h+='<div class=h>輸入代號或名字。最多 3 檔，用同一個策略比較。</div>';h+=evPlanHtml()}
  else{const st=stStrat(S,EV.sid)||L[0];if(st)EV.sid=st.id;
-  h+=`<div class=chips>${L.map(s=>`<button class="${EV.sid==s.id?'pri':''}" onclick="evSet('sid','${s.id}');EV.scan=null;evRender()">${esc(s.id)} <small>${esc(evGrN(s.id))}</small></button>`).join('')}</div>
+  h+=`<div class=chips>${L.map(s=>`<button class="${EV.sid==s.id?'pri':''}" onclick="evSet('sid','${s.id}');EV.scan=null;evRender()">${esc(s.id+' '+evNm(s))}${evGrS(s.id)?` <small>${esc(evGrS(s.id))}</small>`:''}</button>`).join('')}</div>
   <label class=ck><input type=checkbox ${EV.tech?'checked':''} onchange="evSet('tech',this.checked?1:0)">只看科技類（電子、半導體、光電、電腦、通信、資訊服務、數位雲端）</label>
   <div class=h>列出全市場今天【選什麼】沒有 ❌、【何時買】成立、【不買】沒有成立的股票（缺資料或要自己判斷的也列，標出差幾項）。檢核資料是 ${CK?esc(asD(CK.d)):'—'} 收盤；跳動保險標記的股票不列。</div>
   <div class=asbtn><button class=pri onclick="evRunScan()">🔎 找 ${esc(st?st.id:'')} 今天符合的股票</button></div><div id=evScan>${EV.scan&&EV.scanSid==EV.sid?(EV.scan.length?`<div class=sub>${EV.scan.length} 檔（全部符合 ${EV.scan.filter(x=>!x.n).length} 檔）</div>`+EV.scan.slice(0,EV.more?9999:40).map(x=>`<div class=tmr><a href="#" onclick="evOpen({codes:['${x.c}'],sid:'${EV.sid}',mode:'stock',src0:'screen'});return false"><b>${esc(x.c)} ${esc(nameOf(x.c))}</b></a> ${x.n?`<span class=h>差 ${x.n} 項：${esc(x.r.lack.map(z=>z.t.replace(/〔.〕/g,'')).join('、').slice(0,60))}</span>`:'<span class=ok>✅ 條件都符合</span>'}${typeof wlMini=='function'?wlMini(x.c,EV.sid):''}</div>`).join('')+(EV.scan.length>40?`<div class=asbtn><button onclick="EV.more=EV.more?0:1;evRender()">${EV.more?'只列前 40 檔':`顯示全部 ${EV.scan.length} 檔`}</button></div>`:''):'<div class=h>今天沒有符合的股票。</div>'):''}</div>`}
