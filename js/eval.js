@@ -26,8 +26,8 @@ function evCheck(c,st){c=cU(c);const G=ckGroups(st,c),out={c,st,G,sel:null,lack:
  // 再用論點卡的同一套判斷核對一次（暫時的規劃中論點，不存檔）
  if(out.v=='ok'&&typeof ckVerdict=='function')try{const v=ckVerdict({id:'__ev',code:c,sid:st.id,sver:st.ver,status:'plan',met:[],plan:[]});if(v&&v.cls!='ok'){out.v=v.cls=='bad'?'bad':'wait';out.why=String(v.t||'').replace(/^\S+\s*/,'')}}catch(e){}
  return out}
-// 現價：自己的現價（持股）→ 檢核資料的收盤
-const evPx=c=>{c=cU(c);const p=num((S.px||{})[c]);if(p!=null)return p;try{const m=CK&&CK.s&&CK.s[c]?ckM(c):null;return m&&m.c!=null?m.c:null}catch(e){return null}};
+// 現價：存的價格和網頁最新收盤取比較新的（pxNow），都沒有時用檢核資料的收盤
+const evPx=c=>{try{const P=pxNow(c);return P?P.v:null}catch(e){return null}};
 // 第 1 批買進試算
 function evBuy(c,st){const px=evPx(c);if(px==null)return null;const sc=typeof stStopCalc=='function'?stStopCalc(st,c,px):null,stop=sc&&sc.v!=null?sc.v:null;
  const E=stExposure(S),pl=stPlanDef(st),f1=pl&&pl.length?(+pl[0].pct||100)/100:1,hint=stop!=null&&stop<px?asSizeHint(S,px,(1-stop/px)*100,st.riskPct):null;

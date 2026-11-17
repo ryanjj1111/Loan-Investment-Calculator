@@ -8,7 +8,20 @@ async function ckLoad(){if(ckBusy||(CK&&Date.now()-CK._t<18e5))return;ckBusy=1;t
 function ckM0(c){c=cU(c);if(!CK||!c)return null;if(CKM[c]!==undefined)return CKM[c];const a=CK.s[c];if(!a){CKM[c]=null;return null}const o={};CK.f.forEach((k,i)=>o[k]=a[i]);return CKM[c]=o}
 // 檢核資料是前一個交易日收盤；之後有新價格（手填的盤中價，或網頁抓到的當天收盤）時，和價格有關的條件改用新價格試算
 // RSI、MACD、均線、法人、融資、營收維持用檢核資料
-function ckM(c){const o=ckM0(c);if(!o)return o;c=cU(c);const px=num((S.px||{})[c]),d=(S.pxd||{})[c]||'',auto=!!(S.pxa||{})[c];
+// 現價：存的價格（持股、論點、手填）和網頁最新抓到的收盤價（PXL），取日期比較新的那個；都沒有時用檢核資料的收盤
+// 沒持有、沒論點的股票（例如評估新股票）存的價格不會自動更新，所以一定要經過這裡，不能直接讀 S.px
+function pxNow(c){c=cU(c);const v=num((S.px||{})[c]),d=(S.pxd||{})[c]||'',a=(S.pxa||{})[c];let r=v!=null?{v,d,auto:!!a,src:a||''}:null;
+ const L=typeof PXL!='undefined'&&PXL?PXL[c]:null;if(L&&L.v>0&&(!r||!r.d||L.d>r.d||(L.d==r.d&&!r.auto)))r={v:L.v,d:L.d,auto:true,src:L.src||1};
+ const o=CK&&CK.d?ckM0(c):null;if(o&&o.c!=null&&(!r||(r.auto||!r.d)&&r.d<CK.d))r={v:o.c,d:CK.d,auto:true,src:'檢核資料'};return r}
+// 資料「應該要到」的最近交易日（當天 15:00 後才算當天；休市日用 data/mkt/holidays.json）
+const twHol=d=>typeof HOL!='undefined'&&HOL&&Array.isArray(HOL.tw)&&HOL.tw.includes(d);
+function twTd(d){const w=new Date(d+'T00:00:00Z').getUTCDay();return w>0&&w<6&&!twHol(d)}
+function twPrevTd(d){let x=ckAddD(d,-1);for(let k=0;k<30&&!twTd(x);k++)x=ckAddD(x,-1);return x}
+function twExpTd(hh=15){const h=typeof AS_HOUR!='undefined'?AS_HOUR:new Date(Date.now()+8*36e5).getUTCHours();return twTd(TODAY)&&h>=hh?TODAY:twPrevTd(TODAY)}
+// 資料日期比應該要到的交易日舊：回傳應該要的日期（給「⚠️ 非最新」用），沒有過期回傳空字串
+// hh：當天幾點後才要求有當天資料（收盤價 15 點；檢核資料 18 點，三大法人、指標排程比較晚）
+const pxStale=(d,hh=15)=>{const e=twExpTd(hh);return d&&d<e?e:''};
+function ckM(c){const o=ckM0(c);if(!o)return o;c=cU(c);const P=pxNow(c),px=P?P.v:null,d=P?P.d:'',auto=!!(P&&P.auto);
  if(px==null||px==o.c)return o;if(auto?d>CK.d:d>=CK.d||!d){const r=o.c>0?px/o.c:1;
   // 本益比、股價淨值比是用檢核資料那天的收盤算的；換成新價格時一起等比例換算，不然觸發價和判斷會把兩天的數字混在一起
   return Object.assign({},o,{c:px,live:{px,d,auto,c0:o.c,pe:o.pe,pb:o.pb},pe:o.pe!=null?Math.round(o.pe*r*100)/100:o.pe,pb:o.pb!=null?Math.round(o.pb*r*100)/100:o.pb})}return o}
@@ -393,7 +406,7 @@ function exTrig(T){const st=stStrat(S,T.sid),c=cU(T.code),m0=CK?ckM(c):null,m=m0
   else if(/^回到前高$/.test(p)&&(X.hi0??(m&&m.hi250))!=null)add(X.hi0??m.hi250,'≥','回到前高',x.act)
   else if(/^本益比(?:回)?到(?:近)?5年(?:本益比)?區間(?:的)?上緣$/.test(p)&&m&&m.pe>0&&m.peHi5)add(m.c*m.peHi5/m.pe,'≥','本益比到 5 年上緣',x.act)
   else if(/^股價淨值比到(?:近)?10年區間(?:的)?上1\/3$/.test(p)&&m&&m.pb>0&&m.pbQ&&m.pbQ[1]>0)add(m.c*m.pbQ[1]/m.pb,'≥','股價淨值比到近 10 年區間上 1/3',x.act)}}
- const px=num((S.px||{})[c])??(m&&m.c),U=[];for(const o of out){if(px!=null&&(o.dir=='≥'?px>=o.px:px<=o.px)&&o.what!='論點停損價')continue;// 已經過了的觸發價不列（那條規則已經成立）
+ const px=(pxNow(c)||{}).v??(m&&m.c),U=[];for(const o of out){if(px!=null&&(o.dir=='≥'?px>=o.px:px<=o.px)&&o.what!='論點停損價')continue;// 已經過了的觸發價不列（那條規則已經成立）
  const d=U.find(u=>(u.dir=='≥')==(o.dir=='≥')&&Math.abs(u.px/o.px-1)<0.003);if(d){if(d.what=='論點停損價'){d.what=o.what+'（＝論點停損價）';d.act=o.act;d.ap=o.ap}else if(o.what=='論點停損價')d.what+='（＝論點停損價）';else d.what+='、'+o.what;continue}U.push(o)}
  U.forEach(o=>{o.gap=px?(o.px/px-1)*100:null;o.hit=o.gap!=null&&(o.dir=='≥'?o.gap<=0:o.gap>=0)});return U.sort((a,b)=>(b.hit-a.hit)||Math.abs(a.gap??99)-Math.abs(b.gap??99))}
 function exTrigHtml(T,n){const L=exTrig(T).slice(0,n||9);if(!L.length)return'';

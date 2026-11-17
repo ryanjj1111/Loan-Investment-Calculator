@@ -40,7 +40,14 @@ function arcPut(r){const A=arcGet(r.date.slice(0,7)),row=A.d[r.date]?A.d[r.date]
 function arcSave(){for(const m in arc){const A=arc[m];if(!A._ch)continue;const days=Object.keys(A.d).sort();
  fs.writeFileSync(`data/px/${m}.json`,'{"codes":'+JSON.stringify(A.codes)+',\n"d":{\n'+days.map(d=>JSON.stringify(d)+':'+JSON.stringify(A.d[d])).join(',\n')+'\n}}\n');say(`寫入 data/px/${m}.json（${days.length} 天、${A.codes.length} 檔）`)}}
 
-const from=process.argv[2]||'',today=twToday();fs.mkdirSync('data/px',{recursive:true});
+const today=twToday();fs.mkdirSync('data/px',{recursive:true});
+// 沒指定補抓日時，自動補上漏掉的交易日：排程停跑幾天後恢復，從上次存到的那天隔天補到今天（最多 31 天）
+let from=process.argv[2]||'';
+if(!from){const P0=fs.existsSync('data/prices.json')?JSON.parse(fs.readFileSync('data/prices.json','utf8')):{},last=[P0.tse&&P0.tse.date,P0.otc&&P0.otc.date].filter(Boolean).sort()[0]||'';
+ if(last){const d=new Date(last+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);const nx=d.toISOString().slice(0,10),lim=new Date(Date.parse(today+'T00:00:00Z')-31*864e5).toISOString().slice(0,10);
+  // 只有中間隔了平日（今天以前）才補；今天由下面「抓最新」負責
+  let gap=0;for(const x=new Date(nx+'T00:00:00Z');x.toISOString().slice(0,10)<today;x.setUTCDate(x.getUTCDate()+1)){const w=x.getUTCDay();if(w>0&&w<6)gap++}
+  if(gap){from=nx<lim?lim:nx;say(`上次存到 ${last}，中間有 ${gap} 個平日沒抓，自動補抓`)}}}
 if(from){say(`補抓 ${from} ～ ${today}`);for(let d=new Date(from+'T00:00:00Z');d.toISOString().slice(0,10)<=today;d.setUTCDate(d.getUTCDate()+1)){const iso=d.toISOString().slice(0,10),wd=d.getUTCDay();if(wd==0||wd==6)continue;
  const a=await tseDay(iso);await sleep(1500);const b=await otcDay(iso);await sleep(1500);if(a)arcPut(a);if(b)arcPut(b);say(`${iso}：上市 ${a?Object.keys(a.px).length:0}、上櫃 ${b?Object.keys(b.px).length:0}`)}}
 const P=fs.existsSync('data/prices.json')?JSON.parse(fs.readFileSync('data/prices.json','utf8')):{};let ch=0;
