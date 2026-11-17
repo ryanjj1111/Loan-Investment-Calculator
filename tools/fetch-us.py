@@ -11,7 +11,7 @@ UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.3
 
 # 固定的 ETF 類別清單（整個類別一起增減，不為個別使用者加代號）
 ETFS = {
-    '大盤': ['SPY', 'VOO', 'IVV', 'VTI', 'QQQ', 'QQQM', 'DIA', 'IWM', 'VT', 'VXUS', 'VEA', 'VWO', 'RSP', 'SPLG', 'SCHB', 'ITOT'],
+    '大盤': ['SPY', 'VOO', 'IVV', 'VTI', 'QQQ', 'QQQM', 'DIA', 'IWM', 'VT', 'VXUS', 'VEA', 'VWO', 'RSP', 'SPYM', 'SCHB', 'ITOT'],  # SPYM＝原 SPLG（2025-10-31 改代號）
     '產業': ['XLK', 'XLF', 'XLE', 'XLV', 'XLY', 'XLP', 'XLI', 'XLU', 'XLB', 'XLRE', 'XLC', 'SMH', 'SOXX', 'VGT', 'IGV', 'XBI', 'IBB', 'KRE', 'ARKK'],
     '風格與股利': ['VUG', 'VTV', 'IWF', 'IWD', 'SCHD', 'VYM', 'VIG', 'DGRO', 'JEPI', 'JEPQ', 'MTUM', 'QUAL', 'USMV'],
     '債券與短期公債': ['SGOV', 'BIL', 'SHV', 'SHY', 'IEI', 'IEF', 'TLT', 'TLH', 'BND', 'AGG', 'LQD', 'HYG', 'TIP', 'VGSH', 'VGIT', 'VGLT', 'BSV', 'MUB', 'USFR', 'TFLO'],
@@ -19,7 +19,7 @@ ETFS = {
 }
 
 def now_tw():
-    return (dt.datetime.utcnow() + dt.timedelta(hours=8)).strftime('%Y-%m-%d %H:%M')
+    return (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=8)).strftime('%Y-%m-%d %H:%M')
 
 def load(name):
     try:
@@ -118,16 +118,16 @@ def last_closed_us(now=None, cal=None):
     return None
 
 # ---------- 價格來源轉接層：每個來源回傳 {代號: (日期, 收盤, 前一日收盤)}
-def src_yahoo(symbols, upto=None):
+def src_yahoo(symbols, upto=None, batch=150, threads=True):
     import yfinance as yf
     out = {}
     ymap = {s.replace('.', '-'): s for s in symbols}
     ys = list(ymap)
-    for i in range(0, len(ys), 150):
-        part = ys[i:i + 150]
+    for i in range(0, len(ys), batch):
+        part = ys[i:i + batch]
         for attempt in range(2):
             try:
-                df = yf.download(part, period='7d', interval='1d', auto_adjust=False, group_by='ticker', threads=True, progress=False)
+                df = yf.download(part, period='10d', interval='1d', auto_adjust=False, group_by='ticker', threads=threads, progress=False)
                 break
             except Exception as e:
                 print('yfinance 失敗：', e); df = None; time.sleep(5)
@@ -149,41 +149,101 @@ def src_yahoo(symbols, upto=None):
         time.sleep(1)
     return out
 
-SOURCES = [('Yahoo Finance（yfinance）', src_yahoo)]
+SRC_NAME = 'Yahoo Finance（yfinance）'
 
-def fetch_prices(symbols):
-    exp = last_closed_us()
+def _yahoo_slow(symbols, upto=None):
+    # 重抓用：一次 50 檔、不多線同時抓（多線同時抓會出現 database is locked，2026-11-17）
+    return src_yahoo(symbols, upto, batch=50, threads=False)
+
+def _merge(got, new):
+    # 同一檔留日期比較新的
+    for s, v in (new or {}).items():
+        if s not in got or v[0] > got[s][0]:
+            got[s] = v
+    return got
+
+def _judge(got, symbols):
+    if not got:
+        return None, {}, {}, 0.0
+    d = Counter(v[0] for v in got.values()).most_common(1)[0][0]
+    px = {s: round(v[1], 4) for s, v in got.items() if v[0] == d and v[1] > 0}
+    pv = {s: round(v[2], 4) for s, v in got.items() if v[0] == d and v[2] and v[2] > 0}
+    return d, px, pv, len(px) / max(1, len(symbols))
+
+def fetch_prices(symbols, exp='auto', first=None, retry=None, pause=None, wait=300):
+    # 回傳狀態 {ok, d, exp, n, why}；ok＝價格檔是預期交易日、涵蓋率 ≥ 90%
+    # 2026-11-17：Yahoo 收盤 5 小時後還給前一天的日線（指數卻是最新的），舊程式照樣寫檔、流程顯示成功。
+    # 現在：日期比預期舊就重抓（先馬上換方式重抓落後的代號，還是舊的就等 wait 秒再抓一次），最後還是舊的就回報 ok=False，讓流程顯示失敗
+    exp = last_closed_us() if exp == 'auto' else exp
+    first = first or src_yahoo
+    retry = retry or _yahoo_slow
+    pause = pause or time.sleep
     print(f'預期的交易日（最近一個已收盤的正常盤）：{exp}')
-    for name, fn in SOURCES:
+    try:
+        got = first(symbols, exp) or {}
+    except Exception as e:
+        print(f'{SRC_NAME} 失敗：{e}'); got = {}
+    d, px, pv, cov = _judge(got, symbols)
+    print(f'{SRC_NAME}：{d or "—"} 收盤，{len(px)}／{len(symbols)} 檔（{cov:.1%}）')
+    tries = 0
+    for w in (0, wait):
+        if not exp:
+            break
+        lag = [s for s in symbols if s not in got or got[s][0] < exp]
+        if not lag or (w and d == exp and cov >= 0.9):
+            break  # 都是最新；或是只剩少數幾檔抓不到（例如下市、改代號），不值得再等
+        if w:
+            print(f'還有 {len(lag)} 檔不是 {exp}，等 {w // 60} 分鐘再抓一次')
+            pause(w)
+        tries += 1
         try:
-            got = fn(symbols, exp)
+            new = retry(lag, exp) or {}
         except Exception as e:
-            print(f'{name} 失敗：{e}'); continue
-        if not got:
-            print(f'{name} 沒有資料'); continue
-        d = Counter(v[0] for v in got.values()).most_common(1)[0][0]
-        px = {s: round(v[1], 4) for s, v in got.items() if v[0] == d and v[1] > 0}
-        pv = {s: round(v[2], 4) for s, v in got.items() if v[0] == d and v[2] and v[2] > 0}
-        cov = len(px) / max(1, len(symbols))
-        print(f'{name}：{d} 收盤，{len(px)}／{len(symbols)} 檔（{cov:.1%}）')
-        if cov < 0.9:
-            print('涵蓋率不到 90%，這個來源不採用'); continue
-        old = load('prices.json')
-        if old and old.get('d') == d and old.get('px') == px:
-            print('價格沒有變動'); return True
-        if old and old.get('d', '') > d:
-            print('抓到的日期比現有的舊，不覆蓋'); return True
-        if exp and d != exp:
-            print(f'⚠️ 資料的交易日 {d} 和預期 {exp} 不同（資料未更新）')
-        save('prices.json', {'d': d, 'tradeDate': d, 'session': 'regular', 'exp': exp, 'upd': now_tw(), 'src': name, 'n': len(px), 'px': px, 'pv': pv})
+            print(f'重抓失敗：{e}'); new = {}
+        up = sum(1 for s, v in new.items() if s not in got or v[0] > got[s][0])
+        _merge(got, new)
+        d, px, pv, cov = _judge(got, symbols)
+        print(f'第 {tries} 次重抓 {len(lag)} 檔（一次 50 檔、不多線）：更新 {up} 檔 → {d or "—"} 收盤，{len(px)}／{len(symbols)} 檔（{cov:.1%}）')
+    st = {'ok': False, 'd': d, 'exp': exp, 'n': len(px), 'total': len(symbols), 'tries': tries, 'why': ''}
+    if not got:
+        st['why'] = f'{SRC_NAME} 沒有回傳資料'; return st
+    if cov < 0.9:
+        st['why'] = f'只抓到 {cov:.0%}（不到 90%），這次不採用'; return st
+    fresh = not exp or d == exp
+    old = load('prices.json')
+    if old and old.get('d', '') > d:
+        st['why'] = f'抓到的日期 {d} 比現有的 {old.get("d")} 舊，不覆蓋'
+    elif old and old.get('d') == d and old.get('px') == px:
+        print('價格沒有變動')
+    else:
+        # 比現有的新就先存（就算還不是預期日期，也比更舊的好），檔案裡 ok 標示是不是最新
+        save('prices.json', {'d': d, 'tradeDate': d, 'session': 'regular', 'exp': exp, 'ok': fresh, 'upd': now_tw(), 'src': SRC_NAME, 'n': len(px), 'px': px, 'pv': pv})
         print('已寫入 prices.json')
-        return True
-    return False
+    if not fresh and not st['why']:
+        st['why'] = f'{SRC_NAME} 還沒給 {exp} 的收盤（重抓 {tries} 次後還是 {d}）'
+    st['ok'] = fresh and not st['why']
+    if not st['ok']:
+        print('⚠️ ' + st['why'])
+    return st
+
+def report(st):
+    # 寫進 Actions 的 Summary 頁，並把結果交給下一步（價格不是最新 → 流程顯示失敗，GitHub 會寄信）
+    if st['ok']:
+        line = f"✓ 美股收盤價：{st['d']}（{st['n']}／{st['total']} 檔）"
+    else:
+        line = (f"⚠️ 美股收盤價停在 {st.get('d') or '—'}，應該要有 {st.get('exp') or '—'}：{st['why']}。"
+                '網頁會顯示過期警示；「資料補跑」之後會再觸發，也可以晚一點手動 Run workflow')
+    print(line)
+    for k, v in (('GITHUB_STEP_SUMMARY', line + '\n'), ('GITHUB_OUTPUT', f"px_ok={'true' if st['ok'] else 'false'}\n")):
+        p = os.environ.get(k)
+        if p:
+            with open(p, 'a', encoding='utf-8') as f:
+                f.write(v)
 
 # ---------- 財報日：Nasdaq 網站的公開財報行事曆（一天一次請求，回傳當天所有公司），只留範圍內的代號
 def fetch_events(symbols):
     import requests
-    S = set(symbols); today = dt.datetime.utcnow().date(); earn = {}; okdays = 0
+    S = set(symbols); today = dt.datetime.now(dt.timezone.utc).date(); earn = {}; okdays = 0
     h = dict(UA, Accept='application/json, text/plain, */*', Origin='https://www.nasdaq.com', Referer='https://www.nasdaq.com/')
     for off in range(-7, 29):
         day = today + dt.timedelta(days=off)
@@ -275,7 +335,10 @@ if __name__ == '__main__':
     syms, _ = build_universe()
     if not syms:
         print('沒有範圍清單，結束'); sys.exit(0)
-    ok = fetch_prices(syms)
+    try:
+        st = fetch_prices(syms)
+    except Exception as e:  # 價格這段出錯也要繼續抓財報日、指數
+        st = {'ok': False, 'd': None, 'exp': None, 'n': 0, 'total': len(syms), 'why': f'程式錯誤：{e}'}
     try:
         fetch_events(syms)
     except Exception as e:
@@ -284,5 +347,4 @@ if __name__ == '__main__':
         fetch_mkt_us()
     except Exception as e:
         print('美股指數整段失敗：', e)
-    if not ok:
-        print('這次沒有抓到價格（保留上一次的檔案）')
+    report(st)
