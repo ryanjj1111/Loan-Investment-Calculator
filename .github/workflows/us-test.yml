@@ -2,10 +2,10 @@
 name: 美股計算測試
 on:
   pull_request:
-    paths: ['js/**', 'tools/test/**', '.github/workflows/us-test.yml']
+    paths: ['js/**', 'tools/test/**', 'tools/fetch-us.py', '.github/workflows/us-test.yml']
   push:
     branches: [main]
-    paths: ['js/**', 'tools/test/**', '.github/workflows/us-test.yml']
+    paths: ['js/**', 'tools/test/**', 'tools/fetch-us.py', '.github/workflows/us-test.yml']
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -15,3 +15,4 @@ jobs:
         with:
           node-version: 20
       - run: node tools/test/us-test.mjs
+      - run: python3 tools/test/us-fetch-test.py   # 美股抓價的判斷（不連網路）

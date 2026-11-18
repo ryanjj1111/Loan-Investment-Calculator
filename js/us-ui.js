@@ -10,6 +10,8 @@ try{const c=JSON.parse(ls('lcfx')||'null');if(c){USFX.file=c.file||null;USFX.alt
 let USDT={px:null,ev:null,mac:null,t:0,busy:0},USP=null,USQ={q:'week',n:'',amt:0},USUNDO=null;
 try{const c=JSON.parse(ls('lcusd')||'null');if(c){USDT.px=c.px||null;USDT.ev=c.ev||null;USDT.mac=c.mac||null}}catch(e){}
 const usAu=()=>usAuto(USDT.px);
+// 美股價格應該要有的交易日（休市日曆讀到了才算；讀不到就退回「超過 3 個平日」的判斷）
+const usExpNow=()=>typeof HOL!='undefined'&&HOL&&Array.isArray(HOL.us)?usExpDay(new Date(),HOL):null;
 async function usDataLoad(force){if(USDT.busy||(!force&&Date.now()-USDT.t<18e5))return;USDT.busy=1;USDT.t=Date.now();let ch=0;
  for(const [k,f] of [['px','us/prices.json'],['ev','us/events.json'],['mac','us/macro.json']]){try{const j=typeof pxGet=='function'?await pxGet(f):null;
    if(j&&JSON.stringify(j)!=JSON.stringify(USDT[k])&&(k!='px'||!USDT.px||(j.d||'')>=(USDT.px.d||''))){USDT[k]=j;ch=1}}catch(e){}}
@@ -34,7 +36,7 @@ function avAfter(){usEnsure();avApply();const v=avCur(),n=$('avNav');if(!n)retur
  const b=$('usAddB');if(b){const has=typeof S!='undefined'&&S&&S.us&&Array.isArray(S.us.accts);b.style.display=avOn()?'none':'';b.textContent=has?'🇺🇸 顯示美股':'🇺🇸 ＋新增美股帳戶'}
  const td=$('usToday'),uv=$('usView'),av=$('allView');
  if(!avOn()){if(td)td.innerHTML='';if(uv)uv.innerHTML='';if(av)av.innerHTML='';return}
- usFxLoad();usDataLoad();const au=usAu(),T=usCalc(S.us,au),fx=usFxNow(),AL=usAlerts(S.us,T,fx,TODAY),W=usWatch(S.us,T,au,USDT.ev,USDT.mac,TODAY);usHistTick(T,fx);
+ usFxLoad();usDataLoad();const au=usAu(),T=usCalc(S.us,au),fx=usFxNow(),AL=usAlerts(S.us,T,fx,TODAY),W=usWatch(S.us,T,au,USDT.ev,USDT.mac,TODAY,usExpNow());usHistTick(T,fx);
  if(td)td.innerHTML=(W.length?`<div class=p style="margin-bottom:10px"><b>🇺🇸 美股要注意（${W.length}）</b>${usWatchHtml(W)}<div class=asbtn><button onclick="usAsk('week')">🤖 每週美股與總經</button><button onclick="avSet('us')">看美股 ›</button></div></div>`:'')
   +(AL.length?`<div class=stal style="margin-bottom:10px"><b>🇺🇸 美股資料要補（${AL.length}）</b>${AL.map(a=>`<div>・${esc(a.t)}</div>`).join('')}<div><button onclick="avSet('${AL.every(a=>a.k=='fx')?'all':'us'}')">去處理 ›</button></div></div>`:'');
  if(v=='us'&&uv)uv.innerHTML=usViewHtml(T,fx,AL,W);
@@ -66,8 +68,8 @@ const usPxTxt=r=>r.px==null?'<span class=wn>沒有現價</span>':`現價 ${r.px.
 window.usSetC=c=>{USC=c;ls('lcuc',c);asCalc()};window.usSetG=g=>{USG=g;ls('lcug',g);asCalc()};window.usSetSo=s=>{USS=s;ls('lcuso',s);asCalc()};
 
 // ---------- 美股那一格
-const usWatchHtml=W=>W.map(w=>`<div class=asl>${w.k=='earn'?'📅':w.k=='earnDone'?'📝':w.k=='macro'?'🏛️':w.k=='move'?(w.chg>=0?'📈':'📉'):w.k=='cap'?'⚖️':'⚠️'} ${esc(w.t)}${w.k=='earnDone'?` <button class=lk onclick="usAsk('earn','${esc(w.n)}')">🤖 財報後檢查</button>`:''}</div>`).join('');
-const usPxLine=T=>{const au=usAu(),m=T.rows.filter(r=>r.src=='m').length,a=T.rows.filter(r=>r.src=='a').length;return`現價：${a?`自動 ${esc(usD(au.d))} 收盤 ${a} 檔`:''}${a&&m?'・':''}${m?`手填 ${m} 檔`:''}${!a&&!m?'還沒有':''}`};
+const usWatchHtml=W=>W.map(w=>`<div class="asl${w.k=='stale'?' wn':''}">${w.k=='earn'?'📅':w.k=='earnDone'?'📝':w.k=='macro'?'🏛️':w.k=='move'?(w.chg>=0?'📈':'📉'):w.k=='cap'?'⚖️':'⚠️'} ${esc(w.t)}${w.k=='earnDone'?` <button class=lk onclick="usAsk('earn','${esc(w.n)}')">🤖 財報後檢查</button>`:''}</div>`).join('');
+const usPxLine=T=>{const au=usAu(),m=T.rows.filter(r=>r.src=='m').length,a=T.rows.filter(r=>r.src=='a').length;const ex=usExpNow();return`現價：${a?`自動 ${esc(usD(au.d))} 收盤 ${a} 檔${ex&&au.d<ex?` <b class=wn>⚠️ 不是最新（應該要有 ${esc(usD(ex))}）</b>`:''}`:''}${a&&m?'・':''}${m?`手填 ${m} 檔`:''}${!a&&!m?'還沒有':''}`};
 // 一格可以收合的區塊（和台股同一個 fold()；收合狀態記在這台裝置）
 const usSec=(k,title,sum,body)=>`<div class=p>${fold('us_'+k,title,sum,body)}</div>`;
 // 自訂順序（↕ 調整順序）：帳戶順序就是 us.accts 的順序；持股順序存在 us.ord（合併時是代號，依帳戶分組時是「帳戶|代號」）
@@ -283,7 +285,7 @@ function usPasteHook(j,txt){if(!j||!Array.isArray(j.positions)||!j.positions.len
  if(typeof isS=='function'&&isS())return false;asClose();setTimeout(()=>usPaste('',txt),0);return true}
 
 // ---------- 🤖 問 AI（美股）：App 整理部位與日曆，AI 上網查資料。只產生要貼給 AI 的文字，不匯回任何資料
-function usAskText(){const q=USQ,us=S.us,au=usAu(),T=usCalc(us,au),fx=usFxNow(),W=usWatch(us,T,au,USDT.ev,USDT.mac,TODAY),al=usAlloc(T),R0=T.rows.filter(r=>r.mvC>0).sort((a,b)=>b.mvC-a.mvC);
+function usAskText(){const q=USQ,us=S.us,au=usAu(),T=usCalc(us,au),fx=usFxNow(),W=usWatch(us,T,au,USDT.ev,USDT.mac,TODAY,usExpNow()),al=usAlloc(T),R0=T.rows.filter(r=>r.mvC>0).sort((a,b)=>b.mvC-a.mvC);
  const line=r=>`- ${r.n}${r.name?' '+r.name:''}${r.tag?'（'+r.tag+'）':''}：占美股持股 ${r.w.toFixed(0)}%${r.plp!=null?`，未實現 ${usPc(r.plp)}`:''}${q.amt?`，${usQt(r.q)} 股、市值 ${usU(r.mvC)}${r.avg!=null?'、均價 '+r.avg.toFixed(2):''}`:''}`;
  let th='';try{const z=asSum(S),CS=asCash(),V=usAllView({p:z.p.mv,a:z.a.mv,cash:CS.v!=null?Math.max(0,CS.v*1e4):null},T,fx,null),L=usThemes(stExposure(S).grp||{},T,fx,V.tot).slice(0,5);
   if(L.length)th='\n【跨市場主題】（台股主動＋美股，占全資產）\n'+L.map(x=>`- ${x.g} ${x.p.toFixed(0)}%（台股 ${(x.tw/V.tot*100).toFixed(0)}%＋美股 ${(x.us/V.tot*100).toFixed(0)}%）`).join('\n')+(V.usd>0?`\n美元資產占全資產 ${V.ccy[1].p.toFixed(0)}%`:'')}catch(e){}

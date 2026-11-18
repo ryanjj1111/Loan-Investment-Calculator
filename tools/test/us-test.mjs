@@ -8,7 +8,7 @@ const src=['js/engine.js','js/strategy-engine.js','js/asset-engine.js','js/us-en
 if(!src.includes(`const TODAY='${TODAY}'`))throw new Error('engine.js 的 TODAY 寫法改了，請更新測試');
 const noop=()=>null,el={style:{},classList:{add(){},remove(){},toggle(){}},appendChild(){},setAttribute(){}};
 const ctx=vm.createContext({console,document:{getElementById:noop,querySelector:noop,querySelectorAll:()=>[],addEventListener(){},createElement:()=>el,body:el},localStorage:{getItem:noop,setItem(){}},navigator:{},location:{href:''},setTimeout,fetch:async()=>({ok:false})});ctx.window=ctx;
-vm.runInContext(src+'\n;globalThis.__E={migrate,settle,project,planInit,forecast,loanS,aprLoan,breakeven,cashflow,asSum,asRows,asVsBm,asGroups,asOpenRisk,asTrend,usDef,usAcctDef,usOn,usNewId,usPx,usClean,usAcctCalc,usCalc,usAlloc,usFx,usAlerts,usAllView,usDiff,usDays,usAuto,usWeekdays,usMacTw,usWOpt,usWatch,usThemes,usHistAdd,usPasteApply};',ctx);const E=ctx.__E;
+vm.runInContext(src+'\n;globalThis.__E={migrate,settle,project,planInit,forecast,loanS,aprLoan,breakeven,cashflow,asSum,asRows,asVsBm,asGroups,asOpenRisk,asTrend,usDef,usAcctDef,usOn,usNewId,usPx,usClean,usAcctCalc,usCalc,usAlloc,usFx,usAlerts,usAllView,usDiff,usDays,usAuto,usExpDay,usWeekdays,usMacTw,usWOpt,usWatch,usThemes,usHistAdd,usPasteApply};',ctx);const E=ctx.__E;
 const US=JSON.parse(rd('tools/test/us/us-block.json'));let bad=0,n=0;
 const ok=(c,m)=>{n++;if(!c){bad++;console.log('✗ '+m)}else console.log('✓ '+m)};
 const eq=(a,b,m)=>ok(JSON.stringify(a)===JSON.stringify(b),m+(JSON.stringify(a)===JSON.stringify(b)?'':`：得到 ${JSON.stringify(a)}，預期 ${JSON.stringify(b)}`));
@@ -75,6 +75,17 @@ const EV={earn:{AAA:{d:'2026-11-19',t:'post'},BBB:{d:'2026-11-12',t:'pre'},DDD:{
 const W=E.usWatch(US,T2,AU,EV,MC,'2026-11-14').map(w=>w.k+':'+(w.n||w.mk||''));
 eq(W,['earnDone:BBB','move:AAA','macro:cpi','cap:AAA','macro:fomc','earn:AAA'],'要注意：BBB 財報後檢查、AAA 單日 +5.0%、今天 CPI（先列緊急的），再來 AAA 超過占比上限、聯準會、AAA 5 天後財報；不是持股的不列');
 eq(E.usWatch(US,T2,AU,EV,MC,'2026-11-19').some(w=>w.k=='stale'),true,'價格超過 3 個平日沒更新 → 提醒');
+// 應有交易日（美東）：收盤 3 小時後才算當天；週末、休市日往前找；提早收盤用提早的時間（2026-11-17）
+const HOL={us:['2026-11-26'],usEarly:{'2026-11-27':'13:00'}},at=s=>new Date(s);
+eq([E.usExpDay(at('2026-11-17T00:05:00Z'),HOL),E.usExpDay(at('2026-11-17T00:00:00Z')-36e5*1,HOL)],['2026-11-16','2026-11-13'],'週一美東 19:05 → 當天；18:00（台灣週二 07:00）→ 還要求上週五');
+eq(E.usExpDay(at('2026-11-17T02:05:00Z'),HOL),'2026-11-16','台灣週二 10:05（今天的狀況）→ 應該要有週一 11/16');
+eq(E.usExpDay(at('2026-11-15T04:00:00Z'),HOL),'2026-11-13','週末 → 上週五');
+eq(E.usExpDay(at('2026-11-27T04:00:00Z'),HOL),'2026-11-25','感恩節（休市）→ 前一個交易日');
+eq([E.usExpDay(at('2026-11-27T20:59:00Z'),HOL),E.usExpDay(at('2026-11-27T21:00:00Z'),HOL)],['2026-11-25','2026-11-27'],'提早收盤 13:00 → 16:00 起算當天');
+const WS=x=>E.usWatch(US,T2,AU,EV,MC,'2026-11-13',x).filter(w=>w.k=='stale');
+eq([WS('2026-11-13').length,WS('2026-11-12').length],[1,0],'有應有交易日：價格 11/12 < 11/13 → 馬上提醒（不用等 3 個平日）；一樣就不提醒');
+eq(WS('2026-11-13')[0].t.includes('應該要有 2026-11-13'),true,'提醒寫明應該要有哪天');
+eq(E.usWatch(US,T2,AU,EV,MC,'2026-11-13','2026-11-13')[0].k,'stale','過期提醒排在最前面');
 eq(E.usWatch(Object.assign({},US,{watch:{mv:8,cap:60}}),T2,AU,null,null,'2026-11-14'),[],'門檻調高、沒有事件 → 沒有提醒');
 eq(E.usWOpt(US),{mv:5,cap:30},'預設門檻：單日 5%、單一持股 30%');
 const TH=E.usThemes({'測試主題一':500000,'台股主題':200000},T,fx,3449909);

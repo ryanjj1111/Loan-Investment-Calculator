@@ -16,7 +16,7 @@ concurrency:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25   # 價格不是最新時會等 5 分鐘再重抓一次
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,6 +24,7 @@ jobs:
           python-version: '3.12'
       - run: pip install -q yfinance pandas lxml requests
       - name: 抓價格與財報日
+        id: fetch
         run: python tools/fetch-us.py
       - name: 存檔
         run: |
@@ -33,3 +34,9 @@ jobs:
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
           git commit -m "美股收盤價 $(TZ=Asia/Taipei date +%F' '%H:%M) [skip ci]"
           for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done; exit 1
+      # 財報日、指數照樣存檔；個股價格不是最新時，這一步讓整個流程顯示失敗（GitHub 會寄信），原因寫在 Summary 頁
+      - name: 確認價格是最新
+        if: steps.fetch.outputs.px_ok != 'true'
+        run: |
+          echo "::error::美股收盤價不是最新，原因見 Summary 頁"
+          exit 1

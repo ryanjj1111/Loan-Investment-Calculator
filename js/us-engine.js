@@ -85,6 +85,11 @@ function usDiff(b,a){const L=[],B={},Af={};for(const x of usClean(b.items))B[x.n
 // 自動價格檔 {d, px:{代號:收盤}, pv:{代號:前一日收盤}}；類股代號（BRK.B／BRK-B）兩種寫法都查得到
 function usAuto(file){if(!file||!file.px||!file.d)return null;const px={},pv={};for(const k in file.px){px[k]=file.px[k];if(k.includes('.'))px[k.replace(/\./g,'-')]=file.px[k]}
  for(const k in file.pv||{}){pv[k]=file.pv[k];if(k.includes('.'))pv[k.replace(/\./g,'-')]=file.pv[k]}return{d:file.d,px,pv,upd:file.upd||'',src:file.src||''}}
+// 美股價格「應該要有」的交易日（美東日期）：正常盤收盤（含提早收盤）3 小時後才算當天，給台灣早上的抓價排程一點延誤空間
+// now＝Date，hol＝data/mkt/holidays.json（us：休市日、usEarly：提早收盤）。2026-11-17 起取代「超過 3 個平日」的寬鬆判斷
+function usExpDay(now,hol){const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now||new Date()).map(o=>[o.type,o.value]));
+ const H=hol||{},U=H.us||[],td=s=>{const w=new Date(s+'T00:00:00Z').getUTCDay();return w>0&&w<6&&!U.includes(s)},back=s=>{const t=new Date(s+'T00:00:00Z');do t.setUTCDate(t.getUTCDate()-1);while(!td(t.toISOString().slice(0,10)));return t.toISOString().slice(0,10)};
+ const d=`${p.year}-${p.month}-${p.day}`,m=+p.hour*60+ +p.minute,e=(H.usEarly||{})[d],cl=e?+e.slice(0,2)*60+ +e.slice(3,5):960;return td(d)&&m>=cl+180?d:back(d)}
 // a 到 b 之間有幾個平日（不含 a、含 b）
 function usWeekdays(a,b){const n=usDays(a,b);if(n==null||n<=0)return 0;let c=0;const t=new Date(a+'T00:00:00Z');for(let i=0;i<n;i++){t.setUTCDate(t.getUTCDate()+1);const w=t.getUTCDay();if(w>=1&&w<=5)c++}return c}
 const US_MAC={fomc:'聯準會利率決議',cpi:'美國 CPI（通膨）',jobs:'美國就業報告'};
@@ -92,8 +97,9 @@ const US_MAC={fomc:'聯準會利率決議',cpi:'美國 CPI（通膨）',jobs:'�
 function usMacTw(e){if(e.k!='fomc')return{d:e.d,when:'晚上'};const t=new Date(e.d+'T00:00:00Z');t.setUTCDate(t.getUTCDate()+1);return{d:t.toISOString().slice(0,10),when:'凌晨'}}
 const usWOpt=us=>{const w=(us&&us.watch)||{},mv=usNum(w.mv),cap=usNum(w.cap);return{mv:mv>0?mv:5,cap:cap>0?cap:30}};
 // 要注意的事：持股財報（前後）、總經、單日大漲跌、單一持股占比、價格沒更新。ev＝{earn:{代號:{d,t}}}，mac＝{ev:[{d,k}]}
-function usWatch(us,T,auto,ev,mac,today){const W=[],o=usWOpt(us),E=(ev&&ev.earn)||{};
- if(auto&&auto.d&&T.rows.some(r=>r.src=='a')&&usWeekdays(auto.d,today)>3)W.push({k:'stale',pr:1,t:`美股價格停在 ${auto.d}，超過 3 個平日沒更新`});
+// exp＝usExpDay() 算的應有交易日（讀不到休市日曆時傳 null，退回「超過 3 個平日」）
+function usWatch(us,T,auto,ev,mac,today,exp){const W=[],o=usWOpt(us),E=(ev&&ev.earn)||{};
+ if(auto&&auto.d&&T.rows.some(r=>r.src=='a')){if(exp?auto.d<exp:usWeekdays(auto.d,today)>3)W.push({k:'stale',pr:0,t:exp?`美股價格停在 ${auto.d}（應該要有 ${exp}）：市值、損益、單日漲跌和問 AI 的數字都是舊的。通常是資料來源還沒更新，「資料補跑」會再抓；急用可以先手填現價`:`美股價格停在 ${auto.d}，超過 3 個平日沒更新`})}
  for(const r of T.rows){const e=E[r.n]||E[r.n.replace(/-/g,'.')];if(e&&e.d){const n=usDays(today,e.d),tm=e.t=='pre'?'盤前':e.t=='post'?'盤後':'';
    if(n>=0&&n<=14)W.push({k:'earn',pr:n<=1?1:2,n:r.n,d:e.d,days:n,t:`${r.n} 財報 ${e.d}${tm?'（美東'+tm+'）':''}${n==0?'，今天':n==1?'，明天':`，${n} 天後`}`});
    else if(n<0&&n>=-5)W.push({k:'earnDone',pr:1,n:r.n,d:e.d,days:n,t:`${r.n} 財報已在 ${e.d} 公布：做一次「財報後檢查」`})}
@@ -122,4 +128,4 @@ function usPasteApply(A,pos,partial){const old=usClean(A?A.items:[]),O={};for(co
  const cash=pos&&usNum(pos.cash)!=null?usNum(pos.cash):(A?usNum(A.cash):null),after={name:A?A.name:(pos&&pos.account)||'',cash,items:usClean(items)};
  return{after,diff:A?usDiff(A,after):after.items.map(x=>`${x.n} 新增 ${x.q} 股`).concat(cash!=null?[`現金 ${cash}`]:[]),px,bad}}
 
-if(typeof module!='undefined'&&module.exports)module.exports={US_V,usNum,usCode,usC,usQ,usDays,usDef,usAcctDef,usOn,usNewId,usPx,usClean,usAcctCalc,usCalc,usAlloc,usFx,usAlerts,usAllView,usDiff,usAuto,usWeekdays,US_MAC,usMacTw,usWOpt,usWatch,usThemes,usHistAdd,usPasteApply,US_NOTAG};
+if(typeof module!='undefined'&&module.exports)module.exports={US_V,usNum,usCode,usC,usQ,usDays,usDef,usAcctDef,usOn,usNewId,usPx,usClean,usAcctCalc,usCalc,usAlloc,usFx,usAlerts,usAllView,usDiff,usAuto,usExpDay,usWeekdays,US_MAC,usMacTw,usWOpt,usWatch,usThemes,usHistAdd,usPasteApply,US_NOTAG};
