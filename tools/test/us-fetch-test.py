@@ -84,5 +84,24 @@ M.report({'ok': False, 'd': '2026-11-13', 'exp': '2026-11-16', 'n': 600, 'total'
 eq(open(out).read(), 'px_ok=false\n', '不是最新 → px_ok=false（流程最後一步會顯示失敗）')
 eq('停在 2026-11-13，應該要有 2026-11-16' in open(summ).read(), True, 'Summary 頁寫明停在哪天、應該要哪天')
 
+# 10) yf.download 的欄位排法（2026-11-18：只抓一檔時是兩層欄位，舊程式 df['Close'] 出錯，NVDA 盤後價格沒抓到）
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+    print('（沒有 pandas，略過欄位排法測試）')
+if pd is not None:
+    idx = pd.to_datetime(['2026-11-16', '2026-11-17'])
+    one = pd.DataFrame([[1.0, 10.0], [2.0, 11.0]], index=idx, columns=pd.MultiIndex.from_tuples([('NVDA', 'Open'), ('NVDA', 'Close')]))
+    two = pd.DataFrame([[10.0, 20.0], [11.0, 21.0]], index=idx, columns=pd.MultiIndex.from_tuples([('NVDA', 'Close'), ('AAPL', 'Close')]))
+    swap = pd.DataFrame([[10.0, 20.0], [11.0, 21.0]], index=idx, columns=pd.MultiIndex.from_tuples([('Close', 'NVDA'), ('Close', 'AAPL')]))
+    flat = pd.DataFrame({'Open': [1.0, 2.0], 'Close': [10.0, 11.0]}, index=idx)
+    eq([M._col(one, 'NVDA').iloc[-1], M._col(two, 'AAPL').iloc[-1], M._col(swap, 'AAPL').iloc[-1], M._col(flat, 'NVDA').iloc[-1]],
+       [11.0, 21.0, 21.0, 11.0], '只抓一檔（兩層欄位）、多檔、欄位在前、單層欄位都取得到收盤價')
+    try:
+        M._col(two, 'TSLA'); eq('沒出錯', '出錯', '沒抓到的代號要出錯（交給呼叫端略過）')
+    except KeyError:
+        eq(True, True, '沒抓到的代號要出錯（交給呼叫端略過）')
+
 print('全部通過' if not fails else f'{fails} 項失敗')
 sys.exit(1 if fails else 0)

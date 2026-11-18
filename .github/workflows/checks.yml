@@ -34,6 +34,8 @@ jobs:
         # 中途出錯也先把已經抓到的存起來，最後再標示失敗
         run: node tools/fetch-checks.mjs "${{ github.event_name == 'push' && '55' || inputs.minutes || '12' }}" || touch /tmp/ckfail
       - name: 存檔
+        # 推送 claude/ 分支觸發的是測試實跑：只看結果、不存檔（存了會和 main 的資料衝突，2026-11-18 PR #45）
+        if: github.event_name != 'push'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
@@ -41,3 +43,6 @@ jobs:
           if git diff --cached --quiet; then echo "沒有新資料"; test ! -f /tmp/ckfail; exit $?; fi
           git commit -m "檢核資料 $(TZ=Asia/Taipei date +%F' '%H:%M) [skip ci]"
           for i in 1 2 3; do git pull --rebase -q && git push && { test ! -f /tmp/ckfail; exit $?; }; sleep 5; done; exit 1
+      - name: 測試實跑的結果
+        if: github.event_name == 'push'
+        run: test ! -f /tmp/ckfail

@@ -118,6 +118,18 @@ def last_closed_us(now=None, cal=None):
     return None
 
 # ---------- 價格來源轉接層：每個來源回傳 {代號: (日期, 收盤, 前一日收盤)}
+def _col(df, y, field='Close'):
+    # 從 yf.download 的結果取一檔的欄位。新版 yfinance 用 group_by='ticker' 時，只抓一檔也會是兩層欄位（代號, 欄位），
+    # 舊程式只抓一檔時直接 df['Close'] 會出錯（2026-11-18 NVDA 盤後價格、單檔重抓都因此失敗）
+    cols = df.columns
+    if getattr(cols, 'nlevels', 1) > 1:
+        if y in cols.get_level_values(0):
+            return df[y][field]
+        if field in cols.get_level_values(0):  # 另一種排法：（欄位, 代號）
+            return df[field][y]
+        raise KeyError(y)
+    return df[field]
+
 def src_yahoo(symbols, upto=None, batch=150, threads=True):
     import yfinance as yf
     out = {}
@@ -135,7 +147,7 @@ def src_yahoo(symbols, upto=None, batch=150, threads=True):
             continue
         for y in part:
             try:
-                c = (df[y]['Close'] if len(part) > 1 else df['Close']).dropna()
+                c = _col(df, y).dropna()
                 if hasattr(c, 'columns'):
                     c = c.iloc[:, 0]
                 if upto:  # 丟掉還沒收盤的日線（交易日晚於最近一個已收盤的正常盤）
@@ -287,7 +299,7 @@ def fetch_mkt_us():
     days = set()
     for k, y in IDX.items():
         try:
-            c = df[y]['Close'].dropna()
+            c = _col(df, y).dropna()
             c = c[[i.strftime('%Y-%m-%d') <= (exp or '9999') for i in c.index]]
             if len(c) < 2:
                 continue
@@ -310,7 +322,7 @@ def fetch_mkt_us():
             from zoneinfo import ZoneInfo
             for y, s in ym.items():
                 try:
-                    c = (h[y]['Close'] if len(ym) > 1 else h['Close']).dropna()
+                    c = _col(h, y).dropna()
                     c.index = c.index.tz_convert(ZoneInfo('America/New_York'))
                     reg = c[[i.strftime('%Y-%m-%d') == exp and (i.hour, i.minute) < (16, 0) for i in c.index]]
                     aft = c[[i.strftime('%Y-%m-%d') == exp and (i.hour, i.minute) >= (16, 0) for i in c.index]]
