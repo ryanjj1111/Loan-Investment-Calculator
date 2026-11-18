@@ -25,6 +25,8 @@ jobs:
       - name: 抓匯率
         run: node tools/fetch-fx.mjs
       - name: 存檔
+        # 推送 claude/ 分支觸發的是測試實跑：只看結果、不存檔（存了會和 main 的資料衝突，2026-11-18 PR #45）
+        if: github.event_name != 'push'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898299+github-actions[bot]@users.noreply.github.com"

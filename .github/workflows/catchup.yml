@@ -1,13 +1,14 @@
-# 資料補跑：GitHub 排程可能延誤或整天沒跑（2026-11-14～16 就停過），這個流程檢查公開資料是不是最新，過期的就觸發對應的抓資料流程
-# 兩條路觸發、互為備援：① 下面的 GitHub 排程 ② 外部定時器（例如 cron-job.org）呼叫 workflow_dispatch（不靠 GitHub 排程）
-# 資料已是最新就什麼都不做，重複觸發沒有副作用。只讀公開資料，不含任何個人持股
+# 資料補跑：GitHub 排程常延誤幾個小時、有時整天沒跑（2026-11-14～18 晚 5～10 小時），這個流程檢查公開資料是不是最新，過期的就觸發對應的抓資料流程
+# 手動觸發（workflow_dispatch）不像排程那樣延誤，所以只要任何一個補跑時段有跑到，資料幾分鐘內就會更新
+# 2026-11-18 起每 30 分鐘一個時段（台灣 05:07～23:37，每天）：排程延誤時，總有一個時段會在資料該出來之後跑到
+# 資料已是最新就什麼都不做（約 20 秒）；公開 repo 不計執行分鐘。只讀公開資料，不含任何個人持股
+# 防止重複觸發：同一個流程還在跑、1 小時內跑過、或 12 小時內已補跑 4 次，就不再觸發（資料來源一直沒更新時，不會每半小時失敗一次、寄一封信）
+# 外部定時器（例如 cron-job.org）也可以呼叫 workflow_dispatch，非必要
 name: 資料補跑
 on:
   schedule:
-    - cron: '7 8 * * 1-5'     # 台灣 16:07
-    - cron: '7 11 * * 1-5'    # 台灣 19:07
-    - cron: '47 14 * * 1-5'   # 台灣 22:47
-    - cron: '7 23 * * 1-5'    # 台灣週二～週六 07:07（晨報 07:30 之前）
+    - cron: '7,37 21-23 * * *'   # 台灣 05:07～07:37
+    - cron: '7,37 0-15 * * *'    # 台灣 08:07～23:37
   workflow_dispatch:
 permissions:
   contents: read
@@ -40,13 +41,23 @@ jobs:
               [ -n "$id" ] && break; done
             [ -n "$id" ] && gh run watch "$id" --exit-status >/dev/null && echo "✓ $1 完成" || echo "⚠️ $1 沒有成功"
           }
-          if grep -qx prices.yml /tmp/stale; then
+          # 這個流程還在跑、1 小時內跑過（含排程延誤後才跑的）、或 12 小時內已補跑 4 次 → 不觸發
+          can_run(){
+            j=$(gh run list -w "$1" -L 20 --json status,createdAt,event)
+            busy=$(jq '[.[]|select(.status!="completed")]|length' <<<"$j")
+            recent=$(jq --arg t "$(date -u -d '-60 min' +%FT%TZ)" '[.[]|select(.createdAt>=$t)]|length' <<<"$j")
+            tries=$(jq --arg t "$(date -u -d '-12 hours' +%FT%TZ)" '[.[]|select(.event=="workflow_dispatch" and .createdAt>=$t)]|length' <<<"$j")
+            if [ "$busy" -gt 0 ]; then echo "⏳ $1 還在跑，這次不觸發" | tee -a "$GITHUB_STEP_SUMMARY"; return 1; fi
+            if [ "$recent" -gt 0 ]; then echo "⏳ $1 1 小時內跑過，這次不觸發" | tee -a "$GITHUB_STEP_SUMMARY"; return 1; fi
+            if [ "$tries" -ge 4 ]; then echo "🛑 $1 12 小時內已補跑 4 次，先停（資料來源可能還沒更新，看 Actions 紀錄）" | tee -a "$GITHUB_STEP_SUMMARY"; return 1; fi
+          }
+          if grep -qx prices.yml /tmp/stale && can_run prices.yml; then
             run_wait prices.yml
             git fetch -q --depth 1 origin main && git checkout -q FETCH_HEAD -- data
             node tools/catchup.mjs > /tmp/stale 2>/dev/null
           fi
           # 檢核資料要跑比較久，觸發就好，不等
           for w in checks.yml mkt.yml us-prices.yml; do
-            if grep -qx "$w" /tmp/stale; then gh workflow run "$w" --ref main && echo "已觸發 $w"; fi
+            if grep -qx "$w" /tmp/stale && can_run "$w"; then gh workflow run "$w" --ref main && echo "已觸發 $w" | tee -a "$GITHUB_STEP_SUMMARY"; fi
           done
           [ -s /tmp/stale ] || echo "資料都是最新，不用補跑"
