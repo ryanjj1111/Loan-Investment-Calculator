@@ -14,9 +14,9 @@ const ok=(c,m)=>{n++;if(!c){bad++;console.log('✗ '+m)}else console.log('✓ '+
 const eq=(a,b,m)=>ok(JSON.stringify(a)===JSON.stringify(b),m+(JSON.stringify(a)===JSON.stringify(b)?'':`：得到 ${JSON.stringify(a)}，預期 ${JSON.stringify(b)}`));
 const nm=c=>({'9101':'甲公司','9202':'乙公司','9303':'丙公司','0099':'測試ETF'})[c]||'';
 const tr=(dt,n,k,q,px,ac='a',thesisId='')=>({dt,n,k,q,px,ac,thesisId,fee:'',tax:''});
-const S={feeMode:'full',strategies:[{id:'S91',name:'測試成長',ver:3,on:1,logic:'測試用邏輯',exit:'1. 停利：測試條件\n2. 停損：跌破均價 −15%\n持有中檢查：每月看營收'}],
+const S={feeMode:'full',watch:[{c:'9606',sid:'X',d:'2026-11-20'},{c:'9707',sid:'S91',d:'2026-11-20'}],strategies:[{id:'S92',name:'停用的',on:0,screen:'1. x'},{id:'S91',name:'測試成長',ver:3,on:1,term:'中',screen:'【選什麼：全部符合】\n1. 〔基〕月營收年增 > 10%',entry:'1. 〔技〕站上月線',logic:'測試用邏輯',exit:'1. 停利：測試條件\n2. 停損：跌破均價 −15%\n持有中檢查：每月看營收'}],
  theses:[
-  {id:'T901',code:'9101',sid:'S91',status:'hold',created:'2026-11-01',why:'營收年增 30%。均價 123.5 元買進 2,000 股，投入 25 萬元。毛利率創高，明年 EPS 估 6 元，123.5 元約 20 倍。成本 120 元，當核心',wrongIf:'跌破均價 −15% 或營收轉負',stop:'110',tgtPx:'',target:'',pillars:[{t:'需求續強',chk:'月營收年增 > 20%'},{t:'',chk:''},{t:'毛利率',chk:''}]},
+  {id:'T901',code:'9101',sid:'S91',status:'hold',created:'2026-11-01',why:'營收年增 30%。均價 123.5 元買進 2,000 股，投入 25 萬元。毛利率創高，明年 EPS 估 6 元，123.5 元約 20 倍。成本 120 元，當核心',wrongIf:'跌破均價 −15% 或營收轉負',stop:'110',tgtPx:'',target:'',peers:['9202','VRT'],pillars:[{t:'需求續強',chk:'月營收年增 > 20%'},{t:'',chk:''},{t:'毛利率',chk:''}]},
   {id:'T902',code:'9202',sid:'U',status:'hold',created:'2026-11-02',why:'景氣循環上升段',wrongIf:'報價轉跌',stop:'50',reviewD:'2027-01-10',riskNote:'波動大'},
   {id:'T903',code:'9303',sid:'S91',status:'plan',created:'2026-11-03',why:'規劃中，不上傳',wrongIf:'x',stop:'1'},
   {id:'T904',code:'9404',sid:'S91',status:'exit',created:'2026-10-01',why:'已結案，不上傳',wrongIf:'x',stop:'1'}],
@@ -25,7 +25,12 @@ const S={feeMode:'full',strategies:[{id:'S91',name:'測試成長',ver:3,on:1,log
 const R=E.bsBuild(S,nm),H=JSON.parse(R.hold),md=E.bsMd(R.body,'2026-11-21 08:00');
 eq(H.tw,[{code:'9101',name:'甲公司'},{code:'9202',name:'乙公司'}],'台股持股：排除 ETF（00 開頭）、已賣光的');
 eq(H.us,['AAA','ZZZ'],'美股持股：股數 > 0、排除當現金的代號、轉大寫、排序');
-ok(R.n==2,'只放持有中論點（2 檔）');ok(!/T903|T904|規劃中|已結案/.test(md),'規劃中、已結案的論點不上傳');
+ok(R.n==2,'持有中論點 2 檔');ok(!/T904|已結案/.test(md),'已結案的論點不上傳');
+ok(/## 規劃中（還沒買[\s\S]*### 9303 丙公司（T903｜S91 測試成長）[\s\S]*買進理由（2026-11-03 寫的，數字不是現況）：規劃中，不上傳。/.test(md),'規劃中論點放在「規劃中」段');
+ok(md.indexOf('## 規劃中')>md.indexOf('### 9202'),'規劃中段在持股之後');ok(!/### 9303[^#]*停損價/.test(md),'規劃中不放停損價');
+ok(/### 9101[\s\S]*同業（比價用）：9202 乙公司、VRT/.test(md),'同業：台股帶名稱、美股只有代號');ok(/### 9202[\s\S]*同業：還沒寫/.test(md),'沒寫同業的標「還沒寫」');eq(R.noPe,['9202'],'列出還沒寫同業的代號');
+eq(H.plan,[{code:'9303',name:'丙公司',sid:'S91',id:'T903'}],'持股清單：規劃中');eq(H.watch,[{code:'9606',name:'',sid:'X'},{code:'9707',name:'',sid:'S91'}],'持股清單：觀察名單');
+ok(/### S91 測試成長（v3｜中期）[\s\S]*- 選什麼：\n  - 【選什麼：全部符合】\n  1\. 〔基〕月營收年增 > 10%[\s\S]*- 何時買：\n  1\. 〔技〕站上月線[\s\S]*- 何時賣：/.test(R.strat),'策略規則：選什麼、何時買、何時賣');ok(!/S92/.test(R.strat),'停用的策略不上傳');
 ok(!/2,000|2000 股|25 萬|123\.5/.test(md),'股數、成本、金額的句子整句拿掉');ok(/營收年增 30%/.test(md)&&/毛利率創高/.test(md),'同一段其他句子保留');
 ok(/跌破均價 −15% 或營收轉負/.test(md),'規則裡的「跌破均價 −15%」是百分比，保留');
 ok(/1\. 需求續強｜檢查：月營收年增 > 20%/.test(md)&&/2\. 毛利率/.test(md),'支柱：略過空白、依序編號');
