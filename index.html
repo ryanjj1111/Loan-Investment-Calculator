@@ -265,7 +265,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
   <div class="p"><b>依論點</b> <span class="ib" role="button" tabindex="0" data-tn="依論點" data-tt="持有未滿 6 個月顯示期間報酬（未年化）。點一列可打開該論點。">ⓘ</span><div class="w"><table id="stThT" class="stt"></table></div></div></div>
 </div>
 
-<div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button><button class="pro" onclick="msOpen()">🗓️ 月結</button><button class="pro" id="usAddB" onclick="usStart()">🇺🇸 ＋新增美股帳戶</button></div>
+<div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;background:#f1f5f9;cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button><button class="pro" onclick="msOpen()">🗓️ 月結</button><button class="pro" id="usAddB" onclick="usStart()">🇺🇸 ＋新增美股帳戶</button><button id="bsBtn" onclick="bsOpen()">📡 晨報同步</button></div>
 <div class="h" style="margin-top:6px"><span id="bkS"></span> <span class="ib" role="button" tabindex="0" data-tn="資料與備份" data-tt="資料只存在這個瀏覽器。每次修改或結算後，請按「⬇️ 匯出設定檔」存到雲端硬碟或電腦；換手機、換電腦時用「⬆️ 匯入」還原。">ⓘ</span><br>本工具僅供試算，非投資或稅務建議。</div><div id="iosHint" class="stal" style="display:none"></div></div>
 
 <div id="toast"><span id="toastT"></span><button onclick="undo()">復原</button></div>
@@ -286,7 +286,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li><b>划算門檻</b>：每年含息報酬至少要多少，借錢才比定期定額好。</li>
 <li><b>停損線</b>：A 跌到這條線，代表虧到你設定的上限（已含已付利息）。</li>
 <li>按住圖表左右拖動看各月數值；「1 年｜3 年｜全部」切換範圍；點圖例開關線。</li></ul>
-<h3>資料與專業版</h3><ul><li>資料只存在這個瀏覽器，請用「⬇️ 匯出設定檔」備份到雲端硬碟。</li>
+<h3>資料與專業版</h3><ul><li>資料只存在這個瀏覽器，請用「⬇️ 匯出設定檔」備份到雲端硬碟。</li><li><b>📡 晨報同步</b>（2026-11-21，頁面最下方）：填自己的私人 repo 和 GitHub 金鑰後，論點、支柱、持股清單一改就自動上傳（停手 20 秒後），Telegram 晨報與盤前判斷都讀這份，不用手動同步。只上傳論點文字、停損／目標價、持股代號與名稱，不上傳股數、成本、金額。金鑰只存在這個瀏覽器，不在設定檔裡。上傳失敗、或改了超過 3 天還沒傳上去，「📅 明天要做的事」最上面會提醒。</li><li><b>支柱</b>（論點的「什麼情況代表我錯了」下方）：這筆投資要成立的 2～3 件事，每件寫一個可以檢查的標準；盤前判斷會逐一對照新消息。</li>
 <li>專業版還有資產首頁（庫存、損益、記交易）、策略與論點、每月結算、壓力情境、停損規則、ETF 歷史參考等功能；切換不會改變任何數字。</li>
 <li>本工具僅供試算，非投資建議。</li></ul></div>
 <div class="pro">
@@ -440,27 +440,28 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button><button onclick="usAsk()">🤖 問 AI</button></div>
 <div class="asfab asw" id="twFab"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261117a"></script>
-<script src="data/stocks.js?v=20261117a"></script>
-<script src="js/tip.js?v=20261117a"></script>
-<script src="js/engine.js?v=20261117a"></script>
-<script src="js/ui.js?v=20261117a"></script>
-<script src="js/strategy-engine.js?v=20261117a"></script>
-<script src="js/asset-engine.js?v=20261117a"></script>
-<script src="js/us-engine.js?v=20261117a"></script>
-<script src="js/prices.js?v=20261117a"></script>
-<script src="js/check.js?v=20261117a"></script>
-<script src="js/outlook.js?v=20261117a"></script>
-<script src="js/strategy-ui.js?v=20261117a"></script>
-<script src="js/order.js?v=20261117a"></script>
-<script src="js/asset-ui.js?v=20261117a"></script>
-<script src="js/us-ui.js?v=20261117a"></script>
-<script src="js/eval.js?v=20261117a"></script>
-<script src="js/ai-import.js?v=20261117a"></script>
-<script src="js/ai-ask.js?v=20261117a"></script>
-<script src="js/back.js?v=20261117a"></script>
-<script src="js/watch.js?v=20261117a"></script>
-<script src="js/season.js?v=20261117a"></script>
-<script src="js/month.js?v=20261117a"></script>
-<script src="js/main.js?v=20261117a"></script>
+<script src="data/etf-ref.js?v=20261121a"></script>
+<script src="data/stocks.js?v=20261121a"></script>
+<script src="js/tip.js?v=20261121a"></script>
+<script src="js/engine.js?v=20261121a"></script>
+<script src="js/ui.js?v=20261121a"></script>
+<script src="js/strategy-engine.js?v=20261121a"></script>
+<script src="js/asset-engine.js?v=20261121a"></script>
+<script src="js/us-engine.js?v=20261121a"></script>
+<script src="js/prices.js?v=20261121a"></script>
+<script src="js/check.js?v=20261121a"></script>
+<script src="js/outlook.js?v=20261121a"></script>
+<script src="js/strategy-ui.js?v=20261121a"></script>
+<script src="js/order.js?v=20261121a"></script>
+<script src="js/asset-ui.js?v=20261121a"></script>
+<script src="js/us-ui.js?v=20261121a"></script>
+<script src="js/eval.js?v=20261121a"></script>
+<script src="js/ai-import.js?v=20261121a"></script>
+<script src="js/ai-ask.js?v=20261121a"></script>
+<script src="js/back.js?v=20261121a"></script>
+<script src="js/watch.js?v=20261121a"></script>
+<script src="js/season.js?v=20261121a"></script>
+<script src="js/month.js?v=20261121a"></script>
+<script src="js/brief-sync.js?v=20261121a"></script>
+<script src="js/main.js?v=20261121a"></script>
 </body></html>
