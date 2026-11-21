@@ -286,7 +286,7 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <li><b>划算門檻</b>：每年含息報酬至少要多少，借錢才比定期定額好。</li>
 <li><b>停損線</b>：A 跌到這條線，代表虧到你設定的上限（已含已付利息）。</li>
 <li>按住圖表左右拖動看各月數值；「1 年｜3 年｜全部」切換範圍；點圖例開關線。</li></ul>
-<h3>資料與專業版</h3><ul><li>資料只存在這個瀏覽器，請用「⬇️ 匯出設定檔」備份到雲端硬碟。</li><li><b>📡 晨報同步</b>（2026-11-21，頁面最下方）：填自己的私人 repo 和 GitHub 金鑰後，論點、支柱、持股清單一改就自動上傳（停手 20 秒後），Telegram 晨報與盤前判斷都讀這份，不用手動同步。只上傳論點文字、停損／目標價、持股代號與名稱，不上傳股數、成本、金額。金鑰只存在這個瀏覽器，不在設定檔裡。上傳失敗、或改了超過 3 天還沒傳上去，「📅 明天要做的事」最上面會提醒。</li><li><b>支柱</b>（論點的「什麼情況代表我錯了」下方）：這筆投資要成立的 2～3 件事，每件寫一個可以檢查的標準；盤前判斷會逐一對照新消息。</li>
+<h3>資料與專業版</h3><ul><li>資料只存在這個瀏覽器，請用「⬇️ 匯出設定檔」備份到雲端硬碟。</li><li><b>📡 晨報同步</b>（2026-11-21，頁面最下方）：填自己的私人 repo 和 GitHub 金鑰後，論點、支柱、持股清單一改就自動上傳（停手 20 秒後），Telegram 晨報與盤前判斷都讀這份，不用手動同步。只上傳論點文字、停損／目標價、持股代號與名稱，不上傳股數、成本、金額。金鑰只存在這個瀏覽器，不在設定檔裡。上傳失敗、或改了超過 3 天還沒傳上去，「📅 明天要做的事」最上面會提醒。</li><li><b>支柱</b>（論點的「什麼情況代表我錯了」下方）：這筆投資要成立的 2～3 件事，每件寫一個可以檢查的標準；盤前判斷會逐一對照新消息。</li><li><b>同業</b>（支柱下方，2026-11-21）：和這檔比估值、毛利、成長的公司，台股或美股代號最多 5 個；每月週六回顧寫「估值與同業」用。</li><li><b>👀 觀察名單 → 📋 轉成規劃中</b>（2026-11-21）：觀察名單每筆可以一鍵建立規劃中論點，選好策略（或「U 不歸類」）就帶入草稿（買進理由、錯了條件、支柱、同業）並打開表單。「🧭 工具自選」是 Claude 每週候選或研究挑的、和自己策略無關的標的，不跑策略檢核，只追蹤價格與理由；Claude 給的匯入檔可以直接加觀察（含草稿）。</li>
 <li>專業版還有資產首頁（庫存、損益、記交易）、策略與論點、每月結算、壓力情境、停損規則、ETF 歷史參考等功能；切換不會改變任何數字。</li>
 <li>本工具僅供試算，非投資建議。</li></ul></div>
 <div class="pro">
@@ -440,28 +440,28 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button><button onclick="usAsk()">🤖 問 AI</button></div>
 <div class="asfab asw" id="twFab"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261121a"></script>
-<script src="data/stocks.js?v=20261121a"></script>
-<script src="js/tip.js?v=20261121a"></script>
-<script src="js/engine.js?v=20261121a"></script>
-<script src="js/ui.js?v=20261121a"></script>
-<script src="js/strategy-engine.js?v=20261121a"></script>
-<script src="js/asset-engine.js?v=20261121a"></script>
-<script src="js/us-engine.js?v=20261121a"></script>
-<script src="js/prices.js?v=20261121a"></script>
-<script src="js/check.js?v=20261121a"></script>
-<script src="js/outlook.js?v=20261121a"></script>
-<script src="js/strategy-ui.js?v=20261121a"></script>
-<script src="js/order.js?v=20261121a"></script>
-<script src="js/asset-ui.js?v=20261121a"></script>
-<script src="js/us-ui.js?v=20261121a"></script>
-<script src="js/eval.js?v=20261121a"></script>
-<script src="js/ai-import.js?v=20261121a"></script>
-<script src="js/ai-ask.js?v=20261121a"></script>
-<script src="js/back.js?v=20261121a"></script>
-<script src="js/watch.js?v=20261121a"></script>
-<script src="js/season.js?v=20261121a"></script>
-<script src="js/month.js?v=20261121a"></script>
-<script src="js/brief-sync.js?v=20261121a"></script>
-<script src="js/main.js?v=20261121a"></script>
+<script src="data/etf-ref.js?v=20261121b"></script>
+<script src="data/stocks.js?v=20261121b"></script>
+<script src="js/tip.js?v=20261121b"></script>
+<script src="js/engine.js?v=20261121b"></script>
+<script src="js/ui.js?v=20261121b"></script>
+<script src="js/strategy-engine.js?v=20261121b"></script>
+<script src="js/asset-engine.js?v=20261121b"></script>
+<script src="js/us-engine.js?v=20261121b"></script>
+<script src="js/prices.js?v=20261121b"></script>
+<script src="js/check.js?v=20261121b"></script>
+<script src="js/outlook.js?v=20261121b"></script>
+<script src="js/strategy-ui.js?v=20261121b"></script>
+<script src="js/order.js?v=20261121b"></script>
+<script src="js/asset-ui.js?v=20261121b"></script>
+<script src="js/us-ui.js?v=20261121b"></script>
+<script src="js/eval.js?v=20261121b"></script>
+<script src="js/ai-import.js?v=20261121b"></script>
+<script src="js/ai-ask.js?v=20261121b"></script>
+<script src="js/back.js?v=20261121b"></script>
+<script src="js/watch.js?v=20261121b"></script>
+<script src="js/season.js?v=20261121b"></script>
+<script src="js/month.js?v=20261121b"></script>
+<script src="js/brief-sync.js?v=20261121b"></script>
+<script src="js/main.js?v=20261121b"></script>
 </body></html>

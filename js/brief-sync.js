@@ -1,9 +1,10 @@
 // 晨報同步（2026-11-21）：把「論點摘要」和「持股清單」自動上傳到你自己的私人 repo，給 Telegram 晨報與盤前判斷用
 // 單一來源：論點只在 App 裡改，改完自動上傳，不用手動匯出或同步。
 // 上傳的內容：台股持有中論點的文字（買進理由、什麼情況代表我錯了、支柱、停損價、目標價、重新評估日）、策略的出場規則、持股代號與名稱。
+// 2026-11-21：另外上傳啟用中策略的規則（brief/strategies.md，給每週候選篩選用）；論點加同業、規劃中論點；持股清單加規劃中與觀察名單的代號
 // 不上傳：股數、成本、均價、金額、交易紀錄（論點文字裡提到成本、均價、萬元、股數的句子會整句拿掉）。
 // 金鑰（GitHub token）和 repo 名稱只存在這個瀏覽器（localStorage 的 lcbs），不在設定檔裡，匯出備份也不會帶出去。
-const BS_KEY='lcbs',BS_TH='brief/theses.md',BS_HD='brief/holdings.json',BS_WAIT=20000,BS_STALE=3;
+const BS_KEY='lcbs',BS_TH='brief/theses.md',BS_HD='brief/holdings.json',BS_SG='brief/strategies.md',BS_WAIT=20000,BS_STALE=3;
 
 // ---- 1) 產生內容（純函式，測試用）
 // 含成本、金額、股數的句子整句拿掉。規則裡的「跌破均價 −15%」是百分比，保留。
@@ -32,16 +33,29 @@ function bsBuild(S,nm){nm=nm||(()=>'');const H=bsHold(S,nm),held=new Set(H.tw.ma
   L.push(`### ${st.id} ${st.name||''}（v${st.ver||1}）`,'');if(st.logic)L.push(`- 邏輯：${String(st.logic).trim()}`);
   const ex=String(st.exit||'').split('\n').map(s=>s.trim()).filter(Boolean);if(ex.length){L.push('- 何時賣：');for(const x of ex)L.push('  '+(/^\d+[.、]/.test(x)?x:'- '+x))}L.push('')}
  L.push('## 各檔','');
- for(const T of TH){const c=cU(T.code),st=stStrat(S,T.sid),sn=T.sid==ST_U?'U 不歸類':st?`${st.id} ${st.name||''}`:(T.sid||'未指定');
-  L.push(`### ${c} ${nm(c)||''}（${T.id}｜${sn}）`,'');
-  const px=bsPx(S,T),w=bsClean(T.why,px),f=bsClean(T.wrongIf,px),tg=bsClean(T.target,px),rk=bsClean(T.riskNote,px),P=bsPillars(T,px);
-  if(w)L.push(`- 買進理由（${T.created||''} 寫的，數字不是現況）：${w}`);if(f)L.push(`- 什麼情況代表我錯了：${f}`);
-  if(P.length){L.push('- 支柱（盤前判斷逐一對照）：');P.forEach((p,j)=>L.push(`  ${j+1}. ${p.t||'（沒寫名稱）'}${p.chk?`｜檢查：${p.chk}`:''}`))}else L.push('- 支柱：還沒寫');
-  if(num(T.stop)!=null)L.push(`- 停損價：${num(T.stop)}`);if(num(T.tgtPx)!=null)L.push(`- 目標價：${num(T.tgtPx)}`);if(tg)L.push(`- 停利／期限：${tg}`);
-  if(T.reviewD)L.push(`- 重新評估日：${T.reviewD}`);if(rk)L.push(`- 主要風險：${rk}`);L.push('')}
+ for(const T of TH)bsThLines(S,T,nm,L,1);
  const miss=H.tw.filter(x=>!TH.some(T=>cU(T.code)==x.code));if(miss.length)L.push('## 有持股但沒有論點','',...miss.map(x=>`- ${x.code} ${x.name}`),'');
- const body=L.join('\n'),hold={_說明:'晨報用的持股清單，由投資帳本 App 自動上傳：只放代號與名稱，不放股數、成本、金額。不要手動改，改了下次會被 App 蓋掉。ETF 不列（不看重大訊息）',tw:H.tw,us:H.us};
- return{body,hold:JSON.stringify(hold,null,1)+'\n',n:TH.length,noPl:TH.filter(T=>!bsPillars(T,[]).length).map(T=>cU(T.code))}}
+ const PL=(S.theses||[]).filter(T=>T.status=='plan').sort((a,b)=>a.id<b.id?-1:1);
+ if(PL.length){L.push('## 規劃中（還沒買：不寫進持股判斷，只給每週候選與同業比價用）','');for(const T of PL)bsThLines(S,T,nm,L,0)}
+ const W=(Array.isArray(S.watch)?S.watch:[]).map(w=>({code:cU(w.c),name:nm(cU(w.c))||'',sid:w.sid})).filter(w=>w.code);
+ const body=L.join('\n'),hold={_說明:'晨報用的持股清單，由投資帳本 App 自動上傳：只放代號與名稱，不放股數、成本、金額。不要手動改，改了下次會被 App 蓋掉。tw、us 是持股（ETF 不列，不看重大訊息）；plan 是規劃中論點、watch 是觀察名單（sid X＝工具自選），每週候選不重複列這些',tw:H.tw,us:H.us,plan:PL.map(T=>({code:cU(T.code),name:nm(cU(T.code))||'',sid:T.sid,id:T.id})),watch:W};
+ return{body,hold:JSON.stringify(hold,null,1)+'\n',strat:bsStrat(S),n:TH.length,noPl:TH.filter(T=>!bsPillars(T,[]).length).map(T=>cU(T.code)),noPe:TH.filter(T=>!(Array.isArray(T.peers)&&T.peers.length)).map(T=>cU(T.code))}}
+// 一個論點的段落（持有中 full=1：含停損、目標；規劃中 full=0）
+function bsThLines(S,T,nm,L,full){const c=cU(T.code),st=stStrat(S,T.sid),sn=T.sid==ST_U?'U 不歸類':st?`${st.id} ${st.name||''}`:(T.sid||'未指定');
+ L.push(`### ${c} ${nm(c)||''}（${T.id}｜${sn}）`,'');
+ const px=bsPx(S,T),w=bsClean(T.why,px),f=bsClean(T.wrongIf,px),tg=bsClean(T.target,px),rk=bsClean(T.riskNote,px),P=bsPillars(T,px),pe=(Array.isArray(T.peers)?T.peers:[]).map(cU).filter(Boolean).slice(0,5);
+ if(T.ovr)L.push(`- 規則外觀察：${T.ovr.d} 建立時 App 判斷${T.ovr.v=='bad'?'不買':'還差資料'}`);
+ if(w)L.push(`- 買進理由（${T.created||''} 寫的，數字不是現況）：${w}`);if(f)L.push(`- 什麼情況代表我錯了：${f}`);
+ if(P.length){L.push('- 支柱（盤前判斷逐一對照）：');P.forEach((p,j)=>L.push(`  ${j+1}. ${p.t||'（沒寫名稱）'}${p.chk?`｜檢查：${p.chk}`:''}`))}else L.push('- 支柱：還沒寫');
+ L.push(pe.length?`- 同業（比價用）：${pe.map(x=>x+(nm(x)?' '+nm(x):'')).join('、')}`:'- 同業：還沒寫');
+ if(full){if(num(T.stop)!=null)L.push(`- 停損價：${num(T.stop)}`);if(num(T.tgtPx)!=null)L.push(`- 目標價：${num(T.tgtPx)}`);if(tg)L.push(`- 停利／期限：${tg}`)}
+ if(T.reviewD)L.push(`- 重新評估日：${T.reviewD}`);if(rk)L.push(`- 主要風險：${rk}`);L.push('')}
+// 啟用中策略的規則（給每週候選篩選用）：只有規則文字，沒有個人金額
+function bsStrat(S){const L=['## 啟用中的策略',''],SL=(S.strategies||[]).filter(s=>+s.on).sort((a,b)=>a.id<b.id?-1:1),ln=t=>String(t||'').split('\n').map(x=>x.trim()).filter(Boolean);
+ for(const st of SL){L.push(`### ${st.id} ${st.name||''}（v${st.ver||1}${st.term?`｜${st.term}期`:''}）`,'');if(st.logic)L.push(`- 邏輯：${String(st.logic).trim()}`);
+  for(const[k,lb]of[['screen','選什麼'],['entry','何時買'],['exit','何時賣']]){const X=ln(st[k]);if(!X.length)continue;L.push(`- ${lb}：`);for(const x of X)L.push('  '+(/^\d+[.、]/.test(x)?x:'- '+x))}L.push('')}
+ if(!SL.length)L.push('（沒有啟用中的策略）','');return L.join('\n')}
+function bsSgMd(body,at){return`# 策略規則（每週候選篩選用）\n\n> 由投資帳本 App 自動上傳（${at}）。只在 App 的策略頁改，不要直接改這個檔。\n> 只有規則文字，不放個人金額。〔基〕〔技〕〔籌〕〔盤〕是資料類型；（股票屬性）（前瞻資料）（主題指標）是要另外查的資料。\n\n${body}`}
 function bsMd(body,at){return`# 台股持股論點摘要（盤前判斷用）\n\n> 由投資帳本 App 自動上傳（${at}）。只在 App 裡改論點，不要直接改這個檔，改了下次會被蓋掉。\n> 只放判斷需要的文字與價位，不放股數、成本、金額。\n\n${body}`}
 function bsHash(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return String(h)}
 
@@ -63,10 +77,10 @@ async function bsOne(c,path,text,cmp){const cur=await bsGh(c,path),old=cur?unb64
 const bsNow=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`};
 const bsBodyOf=md=>md.replace(/^[\s\S]*?\n\n(?=## )/,'');
 let bsBusy=false,bsTm=null;
-async function bsRun(force){const c=bsCfg();if(!bsOn()||bsBusy)return;const R=bsBuild(S,nameOf),h=bsHash(R.body+R.hold);
+async function bsRun(force){const c=bsCfg();if(!bsOn()||bsBusy)return;const R=bsBuild(S,nameOf),h=bsHash(R.body+R.hold+R.strat);
  if(!force&&h===c.hash&&c.ok)return;bsBusy=true;bsPut({try:new Date().toISOString()});
- try{const n=(await bsOne(c,BS_TH,bsMd(R.body,bsNow()),md=>bsBodyOf(md)))+(await bsOne(c,BS_HD,R.hold));
-  bsPut({hash:h,ok:new Date().toISOString(),err:'',n:R.n,noPl:R.noPl});if(force)toast(n?'✅ 已上傳到晨報 repo':'✅ 晨報 repo 已經是最新的')}
+ try{const n=(await bsOne(c,BS_TH,bsMd(R.body,bsNow()),md=>bsBodyOf(md)))+(await bsOne(c,BS_HD,R.hold))+(await bsOne(c,BS_SG,bsSgMd(R.strat,bsNow()),md=>bsBodyOf(md)));
+  bsPut({hash:h,ok:new Date().toISOString(),err:'',n:R.n,noPl:R.noPl,noPe:R.noPe});if(force)toast(n?'✅ 已上傳到晨報 repo':'✅ 晨報 repo 已經是最新的')}
  catch(e){bsPut({err:String(e.message||e),errAt:new Date().toISOString()});if(force)toast('⚠️ 上傳失敗：'+(e.message||e))}
  finally{bsBusy=false;bsPaint()}}
 // save() 每次存檔都會呼叫；停手 20 秒後才上傳，連續修改只傳一次
@@ -76,12 +90,12 @@ setTimeout(()=>{if(bsOn())bsRun(false)},4000);
 
 // ---- 4) 畫面
 // 資產頁「📅 明天要做的事」最上面：上傳失敗、或論點改了但還沒傳上去超過 3 天，才顯示
-function bsWarn(){if(!bsOn())return'';const c=bsCfg(),R=bsBuild(S,nameOf),pend=bsHash(R.body+R.hold)!==c.hash,ok=c.ok?Date.parse(c.ok):0;
+function bsWarn(){if(!bsOn())return'';const c=bsCfg(),R=bsBuild(S,nameOf),pend=bsHash(R.body+R.hold+R.strat)!==c.hash,ok=c.ok?Date.parse(c.ok):0;
  if(c.err&&pend)return`<div class=wn style="margin:4px 0">📡 晨報同步失敗：${esc(c.err)} <button class=lk onclick="bsOpen()">設定 ›</button></div>`;
  if(pend&&ok&&Date.now()-ok>BS_STALE*864e5)return`<div class=wn style="margin:4px 0">📡 論點改了，但已經 ${Math.floor((Date.now()-ok)/864e5)} 天沒有傳到晨報 repo <button class=lk onclick="bsRun(true)">立即上傳</button></div>`;return''}
 function bsStat(){const c=bsCfg(),t=x=>x?new Date(x).toLocaleString('zh-TW',{hour12:false}):'—';
  if(!bsOn())return'<span class=h>還沒啟用</span>';
- return`${c.err?`<span class=wn>上次失敗（${t(c.errAt)}）：${esc(c.err)}</span><br>`:''}<span class=${c.ok?'ok':'h'}>最後成功：${t(c.ok)}${c.ok?`｜${c.n||0} 檔論點`:''}</span>${(c.noPl||[]).length?`<br><span class=h>還沒寫支柱：${esc(c.noPl.join('、'))}</span>`:''}`}
+ return`${c.err?`<span class=wn>上次失敗（${t(c.errAt)}）：${esc(c.err)}</span><br>`:''}<span class=${c.ok?'ok':'h'}>最後成功：${t(c.ok)}${c.ok?`｜${c.n||0} 檔論點`:''}</span>${(c.noPl||[]).length?`<br><span class=h>還沒寫支柱：${esc(c.noPl.join('、'))}</span>`:''}${(c.noPe||[]).length?`<br><span class=h>還沒寫同業：${esc(c.noPe.join('、'))}</span>`:''}`}
 function bsPaint(){const e=$('bsSt');if(e)e.innerHTML=bsStat();const b=$('bsBtn');if(b){const c=bsCfg();b.textContent=bsOn()?(c.err?'📡 晨報同步 ⚠️':'📡 晨報同步 ✓'):'📡 晨報同步'}}
 window.bsOpen=()=>{const c=bsCfg();asOvOpen(`<div class=ovh><button onclick="asClose()">✕</button><b>📡 晨報同步</b></div>
  <div class=h>論點、支柱、持股清單改了之後，App 會自動上傳到你的私人 repo，Telegram 晨報與每天的盤前判斷都讀這份。只上傳論點文字、停損／目標價和持股代號；<b>不上傳股數、成本、金額</b>。</div>
@@ -95,6 +109,6 @@ window.bsSave=()=>{const t=$('bsTok').value.trim(),repo=$('bsRepo').value.trim()
  if(repo&&!/^[\w.-]+\/[\w.-]+$/.test(repo)){toast('repo 名稱要是「帳號/名稱」');return}
  const o={on:$('bsOn').checked,repo};if(t&&!/^•+$/.test(t))o.tok=t;if(repo!==bsCfg().repo)o.hash='';bsPut(o);bsPaint();if(bsOn())bsRun(true);else toast(o.on?'還缺 repo 或金鑰':'已關閉自動上傳')};
 window.bsForget=()=>{const c=bsCfg();delete c.tok;c.on=false;ls(BS_KEY,JSON.stringify(c));bsOpen();bsPaint();toast('已清除這個瀏覽器裡的金鑰')};
-window.bsPrev=()=>{const R=bsBuild(S,nameOf),e=$('bsPv');e.textContent=bsMd(R.body,'預覽')+'\n\n---- holdings.json ----\n'+R.hold;e.style.display='block'};
+window.bsPrev=()=>{const R=bsBuild(S,nameOf),e=$('bsPv');e.textContent=bsMd(R.body,'預覽')+'\n\n---- holdings.json ----\n'+R.hold+'\n---- strategies.md ----\n'+bsSgMd(R.strat,'預覽');e.style.display='block'};
 window.bsRun=bsRun;
 document.addEventListener('DOMContentLoaded',bsPaint);setTimeout(bsPaint,0);

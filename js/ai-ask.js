@@ -46,7 +46,7 @@ function aaStock(c){const T=aaThOf(c),st=T?stStrat(S,T.sid):(AA.sid?stStrat(S,AA
  const rm=T&&p&&typeof stRmul=='function'?stRmul(T,p.ret):null;if(rm!=null)pos.push(`${rm>=0?'+':''}${rm.toFixed(2)}R`);
  if(AA.amt&&qty)pos.push(`股數 ${qty.toLocaleString()}｜市值 ${W2(mv)} 萬`);
  if(pos.length)L.push(pos.join('｜'));
- if(T){if(T.ovr)L.push(`註記：規則外觀察（${T.ovr.d} App 判斷${T.ovr.v=='bad'?'不買':'還差資料'}：${T.ovr.why||''}），績效另外算`);if(T.riskNote)L.push(`建立時寫的最大風險：${T.riskNote}`);if(T.metLate)L.push(`註記：${T.metLate}`);const wd=T.created||T.baseD||'';if(T.why)L.push(`買進理由（${wd} 建立論點時寫的，裡面的數字不是現況）：${T.why}`);if(T.wrongIf)L.push(`什麼情況代表我錯了：${T.wrongIf}`);if(Array.isArray(T.pillars)&&T.pillars.length)L.push(`支柱：${T.pillars.map((p,j)=>`${j+1}. ${p.t||''}${p.chk?'（檢查：'+p.chk+'）':''}`).join('　')}`)}
+ if(T){if(T.ovr)L.push(`註記：規則外觀察（${T.ovr.d} App 判斷${T.ovr.v=='bad'?'不買':'還差資料'}：${T.ovr.why||''}），績效另外算`);if(T.riskNote)L.push(`建立時寫的最大風險：${T.riskNote}`);if(T.metLate)L.push(`註記：${T.metLate}`);const wd=T.created||T.baseD||'';if(T.why)L.push(`買進理由（${wd} 建立論點時寫的，裡面的數字不是現況）：${T.why}`);if(T.wrongIf)L.push(`什麼情況代表我錯了：${T.wrongIf}`);if(Array.isArray(T.pillars)&&T.pillars.length)L.push(`支柱：${T.pillars.map((p,j)=>`${j+1}. ${p.t||''}${p.chk?'（檢查：'+p.chk+'）':''}`).join('　')}`);if(Array.isArray(T.peers)&&T.peers.length)L.push(`同業：${T.peers.join('、')}`)}
  if(T&&st&&T.status=='hold'&&(q=='exit'||q=='review'||q=='free'||q=='buy')){const X=exEval(T);if(X.length){L.push('出場條件（'+st.id+' 何時賣，逐條附判斷用的數字）：');
   for(const x of X){const a=exAckOf(T,x.key),r0=x.r,ic=a&&a.k=='na'?'🚫':!r0?'❔':r0.v===true?'🔴':r0.pre?'⏸':r0.v===false?'✓':'⏳';
    let ms=r0&&r0.miss||'';if(ms&&+T.useInit===1&&/進場前/.test(ms))ms+='（補記的論點沒有買進日，這一部分不判斷）';
