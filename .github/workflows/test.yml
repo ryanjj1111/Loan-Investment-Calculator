@@ -17,3 +17,4 @@ jobs:
       - run: node tools/test/engine-test.mjs
       - run: node tools/test/check-test.mjs
       - run: node tools/test/ai-text-test.mjs
+      - run: node tools/test/brief-sync-test.mjs

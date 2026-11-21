@@ -29,6 +29,8 @@ function stOnIn(p,v){if(/^theses\.\d+\.code$/.test(p)){const T=S.theses[+p.split
  if(/^theses\.\d+\.(status|sid|useInit)$/.test(p)||/^strategies\.\d+\.on$/.test(p)||/^trades\.\d+\.(thesisId|k|dt)$/.test(p)){if(/^theses\.\d+\.status$/.test(p)){const T=S.theses[+p.split('.')[1]];if(v=='exit'&&T&&!T.exit.date)T.exit.date=TODAY}setTimeout(()=>{stBuild();if(/^trades/.test(p))renderTrades()},0)}
  {const m=/^theses\.(\d+)\.code$/.exec(p);if(m){const T=S.theses[+m[1]],e=$('stn_'+T.id);if(e)e.innerText=nameOf(v)}}}
 document.addEventListener('change',e=>{const p=e.target.dataset&&e.target.dataset.p;if(p&&/^theses\.\d+\.code$/.test(p)){const T=S.theses[+p.split('.')[1]];if(T)T.code=cU(T.code);stBuild();stCalc();renderTrades();save()}});
+// 支柱（2026-11-21）：T.pillars=[{t,chk}]，最多 3 個；後面空白的不存
+document.addEventListener('input',e=>{const d=e.target.dataset;if(d.pl===undefined)return;const[id,j,f]=d.pl.split('|'),T=stThesis(S,id);if(!T)return;const P=Array.isArray(T.pillars)?T.pillars.slice(0,3):[];while(P.length<=+j)P.push({t:'',chk:''});P[+j]=Object.assign({t:'',chk:''},P[+j],{[f]:e.target.value});while(P.length&&!String(P[P.length-1].t||'').trim()&&!String(P[P.length-1].chk||'').trim())P.pop();if(P.length)T.pillars=P;else delete T.pillars;upd()});
 document.addEventListener('input',e=>{const d=e.target.dataset;if(d.tag===undefined)return;const c=d.tag,a=e.target.value.split(/[、,，]/).map(s=>s.trim()).filter(Boolean);S.tags=S.tags||{};if(a.length)S.tags[c]=a;else delete S.tags[c];upd()});
 document.addEventListener('toggle',e=>{const t=e.target;if(!t.dataset)return;if(t.dataset.th){t.open?stOpen.add(t.dataset.th):stOpen.delete(t.dataset.th)}else if(t.dataset.sl){t.open?stLibOpen.add(t.dataset.sl):stLibOpen.delete(t.dataset.sl)}},true);
 
@@ -64,6 +66,8 @@ function stThCard(T){const i=stTi(T.id),c=cU(T.code),st=stStrat(S,T.sid),sopt=[[
  ${stCondBox(T,st)}
  <label>補充一句為什麼買（選填）${stTxt(`theses.${i}.why`,T.why,'勾選的條件之外，還想補充的理由',2)}</label>
  <label>什麼情況代表我錯了${stTxt(`theses.${i}.wrongIf`,T.wrongIf,st?'預設帶入策略的「理由失效」規則':'例如：連續兩個月營收年減、法人下修 EPS')}</label>
+ <div class=sub>支柱（盤前判斷用，2～3 個）${tipI('這筆投資要成立，哪 2～3 件事必須是真的；每件事寫一個「可以檢查的標準」。每天的盤前判斷會逐一對照新消息，告訴你哪根支柱被加分或扣分。會自動上傳到晨報用的私人 repo（「📡 晨報同步」）。','支柱')}</div>
+ ${[0,1,2].map(j=>{const P=(T.pillars||[])[j]||{};return`<div class=g><label>支柱 ${j+1}<input data-pl="${T.id}|${j}|t" value="${esc(P.t||'')}" placeholder="${j?'':'例如：AI 伺服器電源需求續強'}" autocomplete=off></label><label>怎麼檢查<input data-pl="${T.id}|${j}|chk" value="${esc(P.chk||'')}" placeholder="${j?'':'例如：資料中心營收占比不降、月營收年增 > 20%'}" autocomplete=off></label></div>`}).join('')}
  <details class=more><summary class=h>更多欄位（建立日、預計期間、目標估值、分批計畫${hasIni?'、期初持股':''}）</summary>
  <div class=g><label>建立日${dIn(`theses.${i}.created`,T.created,'建立日')}</label><label>預計幾個月會反映${inp(`theses.${i}.expectM`,T.expectM,'o',`placeholder="${st&&st.holdMax?'策略預設 '+st.holdMax:''}"`)}</label></div>
  <label>目標估值或出場條件${stTxt(`theses.${i}.target`,T.target,'例如：本益比回到 5 年中位數')}</label>

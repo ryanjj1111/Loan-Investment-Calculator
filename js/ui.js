@@ -11,7 +11,7 @@ function niceStep(r){if(!(r>0))return 1;const e=Math.pow(10,Math.floor(Math.log1
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);v===null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){return null}}
 function load(){try{const j=JSON.parse(ls('lc3'));if(j){S=migrate(j).o;fixCur();return}}catch(e){}S=norm(clone(DEF));if(typeof stSeed=='function')stSeed(S);fixCur()}
 function fixCur(){if(!S.cur.dt){S.cur.dt=TODAY;S.cur.m=TODAY.slice(0,7)}}
-function save(){const e=sigE();if(e!==ls('lce')){if(ls('lce')!=null)S.edited=new Date().toISOString();ls('lce',e)}ls('lc3',JSON.stringify(S));if(typeof bkUpd=='function')bkUpd()}
+function save(){const e=sigE();if(e!==ls('lce')){if(ls('lce')!=null)S.edited=new Date().toISOString();ls('lce',e)}ls('lc3',JSON.stringify(S));if(typeof bkUpd=='function')bkUpd();if(typeof bsQueue=='function')bsQueue()}
 // 最後修改時間：只看實際內容（不含現價自動更新、畫面狀態），匯入舊檔時用來警告
 function sigE(){const o=Object.assign({},S);['trG','trOpen','rng','pin','edited','px','pxd','pxa','ui'].forEach(k=>delete o[k]);const s=JSON.stringify(o);let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return String(h)}
 // 備份狀態：以內容指紋判斷是否有尚未匯出的變更
