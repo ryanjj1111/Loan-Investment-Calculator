@@ -36,9 +36,12 @@ async function txOpenApi(){const j=await get('https://openapi.taifex.com.tw/v1/D
  const rows=j.map(o=>({date:ymdIso(f(o,'Date')),contract:String(f(o,'Contract')||'').trim(),month:String(f(o,'ContractMonth(Week)','ContractMonth')||'').trim(),session:String(f(o,'TradingSession')||''),
   open:nz(f(o,'Open')),last:nz(f(o,'Last')),chg:nz(f(o,'Change')),pct:nz(f(o,'%','ChangePercent')),vol:nz(f(o,'Volume'))||0}));
  const r=pickTX(rows);if(r)r.src='期交所 OpenAPI 每日行情';return r}
-async function txCsv(){const d=twNow(),s=x=>x.toISOString().slice(0,10).replace(/-/g,'/');const a=new Date(d.getTime()-6*864e5);
- const body=new URLSearchParams({down_type:'1',commodity_id:'TX',queryStartDate:s(a),queryEndDate:s(d)});
- const t=await get('https://www.taifex.com.tw/cht/3/futDataDown',{method:'POST',body,headers:{'Content-Type':'application/x-www-form-urlencoded'},enc:'big5'},'text');
+// 2026-11-21：夜盤的交易日是「下一個交易日」，週五晚上那場寫成下週一。查詢只到今天時，週六、連假前會漏掉最新一場
+// （11/21 漏了 11/20 晚上 −1,881 點那場），所以查詢範圍往後多 6 天；期交所不接受未來日期時，退回只查到今天
+async function txCsv(){const d=twNow(),s=x=>x.toISOString().slice(0,10).replace(/-/g,'/');const a=new Date(d.getTime()-6*864e5),z=new Date(d.getTime()+6*864e5);
+ const q=end=>get('https://www.taifex.com.tw/cht/3/futDataDown',{method:'POST',body:new URLSearchParams({down_type:'1',commodity_id:'TX',queryStartDate:s(a),queryEndDate:s(end)}),headers:{'Content-Type':'application/x-www-form-urlencoded'},enc:'big5'},'text');
+ let t=null;try{t=await q(z)}catch(e){console.log('期交所 CSV（查到未來 6 天）失敗：'+e.message)}
+ if(!t||!/交易日期/.test(t)){console.log('期交所 CSV 查到未來日期沒有資料，改查到今天：'+String(t||'').slice(0,80));t=await q(d)}
  if(!t||!/交易日期/.test(t)){console.log('期交所 CSV 沒有資料：'+String(t||'').slice(0,120));return null}
  const L=t.trim().split(/\r?\n/).map(x=>x.split(',').map(y=>y.trim()));const H=L[0],ix=n=>H.findIndex(h=>h.includes(n));
  const iD=ix('交易日期'),iC=ix('契約'),iM=ix('到期月份'),iS=ix('交易時段'),iL=ix('收盤價'),iCh=ix('漲跌價'),iP=ix('漲跌%'),iV=ix('成交量');
