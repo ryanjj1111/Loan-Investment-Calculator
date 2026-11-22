@@ -99,8 +99,8 @@ const EMI={'✅':['tick','ok'],'✓':['tick','ok'],'✔':['tick','ok'],'☑':['t
  '🏦':['building'],'🏛':['landmark'],'🕘':['clock'],'🌐':['globe'],'↩':['undo-2'],'↺':['rotate-ccw'],'↕':['arrow-up-down'],'✕':['x'],'🔻':['arrow-down'],'🔺':['arrow-up'],
  '✋':['hand'],'📱':['smartphone'],'⬜':['square'],'📑':['files'],'⚔':['swords'],'🔮':['trending-up'],'👉':['→']};
 const EMI_RE=new RegExp('\\p{Regional_Indicator}{2}\\s?|(?:'+Object.keys(EMI).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')\\uFE0F?','gu');
-// 第二批分三次上線：先換這些範圍（2a：標題列、資產頁、資產頁開出來的視窗）
-const EMI_ROOTS='.hdr,.wsw,#pgA,#twFab,#usFab,#asOv,#toast';
+// 整個畫面都換（2a 資產頁；2b、2c 加上策略頁、信貸頁、使用說明、說明小視窗、工具列）
+const EMI_ROOTS='body';
 const EMI_SKIP='script,style,textarea,pre,code,[contenteditable],.noic';
 let EMI_TX=null;
 function emiHtml(m,rest,par){const k=m.replace(/️/g,'');if(/\p{Regional_Indicator}/u.test(k))return'';const d=EMI[k];if(!d)return null;
