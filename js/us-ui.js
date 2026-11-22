@@ -62,7 +62,7 @@ const usMn=(c,fx,dp)=>c==null?'—':USC=='TWD'&&fx?(c<0?'−':'')+'NT$'+R(Math.a
 // 不到 1 美元的損益顯示 $0、不加正負號
 const usSg=(c,fx)=>c==null?'—':Math.abs(c)<50?usMn(0,fx):(c>=0?'+':'')+usMn(c,fx);
 const usPc=v=>v==null||isNaN(v)?'':(v>=0?'+':'')+v.toFixed(1)+'%';
-const usCl=v=>v==null?'':v<0?'bad':'ok';
+const usCl=v=>v==null?'':v<0?'dn':'up';
 const usQt=q=>(+q).toLocaleString('en-US',{maximumFractionDigits:6});
 const usPxTxt=r=>r.px==null?'<span class=wn>沒有現價</span>':`現價 ${r.px.toLocaleString('en-US',{maximumFractionDigits:4})}<span class=h>（${r.src=='m'?'手填 ':''}${esc(usD(r.pxd))}）</span>`;
 window.usSetC=c=>{USC=c;ls('lcuc',c);asCalc()};window.usSetG=g=>{USG=g;ls('lcug',g);asCalc()};window.usSetSo=s=>{USS=s;ls('lcuso',s);asCalc()};
@@ -91,8 +91,8 @@ function usViewHtml(T,fx,AL,W){const al=usAlloc(T),om=typeof ORDM!='undefined'?O
   <div class=asl>前三大：${al.top.map(x=>`${esc(x.n)} ${x.p.toFixed(0)}%`).join('、')}（合計 ${al.top3.toFixed(0)}%）</div>
   ${al.byAcct.length>1?`<div class=asl>帳戶：${al.byAcct.map(x=>`${esc(x.name)} ${x.p.toFixed(0)}%`).join('、')}</div>`:''}
   ${al.byTag.length?`<div class=asl>主題：${al.byTag.map(x=>`${esc(x.tag)} ${x.p.toFixed(0)}%`).join('、')}</div>`:''}
-  <div class=asbar><span style="width:${al.stockP}%;background:#6366f1" title="持股"></span><span style="width:${al.cashP}%;background:#94a3b8" title="現金"></span></div>
-  <div class=asl><span class=dot style="background:#6366f1"></span>持股 ${al.stockP.toFixed(0)}%　<span class=dot style="background:#94a3b8"></span>現金 ${al.cashP.toFixed(0)}%</div>
+  <div class=asbar><span style="width:${al.stockP}%;background:var(--c5)" title="持股"></span><span style="width:${al.cashP}%;background:var(--c8)" title="現金"></span></div>
+  <div class=asl><span class=dot style="background:var(--c5)"></span>持股 ${al.stockP.toFixed(0)}%　<span class=dot style="background:var(--c8)"></span>現金 ${al.cashP.toFixed(0)}%</div>
   <div class=g style="margin-top:6px"><label>單日漲跌提醒（%）<input type=number step=any inputmode=decimal value="${usWOpt(S.us).mv}" onchange="usWSet('mv',this.value)"></label><label><span>單一持股上限（%）${tipI('單日漲跌或單一持股占比超過這兩個門檻，就會標在那一檔，也會出現在「今日」；只是提醒，不會自動做任何事。','提醒門檻')}</span><input type=number step=any inputmode=decimal value="${usWOpt(S.us).cap}" onchange="usWSet('cap',this.value)"></label></div>`);
  h+=usSec('acct','🏦 帳戶（'+T.accts.length+'）',T.accts.map(a=>esc(a.name||a.id)).join('、').slice(0,40),`${USUNDO?`<div class=stal style="margin-bottom:8px">剛才貼上更新了 ${esc(USUNDO.names)}。<button onclick="usUndo()">↩ 復原這次貼上</button></div>`:''}${T.accts.length>1?`<div class=asgs style="margin-top:4px">${ordTog('ua')}</div>`:''}
   ${T.accts.map(a=>{const d=a.upd?usDays(a.upd,TODAY):null;return`<div class=asr data-ok="${esc(a.id)}" onclick="${om=='ua'?'':`usAcct('${esc(a.id)}')`}"><div class=a1><span><b>${esc(a.name||a.id)}</b> <small class=h>${a.mode=='ledger'?'帳本':'快照'}・${a.rows.length} 檔</small></span>${om=='ua'?ordBtn('ua',a.id):`<b>${usMn(a.valC,fx)}</b>`}</div>
@@ -123,19 +123,19 @@ function usTrendHtml(T,fx){const o=usTrO(),tw=USC=='TWD'&&fx,ALL0=usHistGet(),sr
  const chip=(k,v,l)=>`<button class="${(k=='v'?o.v:o.r)==v?'on':''}" onclick="usTrSet('${k}','${v}')">${l}</button>`;
  const head=`<div class=chips style="margin:4px 0">${chip('v','tot','總額')}${chip('v','acct','帳戶')}<span style="width:8px"></span>${chip('r','1m','1 個月')}${chip('r','3m','3 個月')}${chip('r','ytd','今年')}${chip('r','all','全部')}</div>`;
  if(P.length<2)return F(head+`<div class=h>${ALL0.length<2?'每個有價格更新的日子記一點，至少兩個日期才畫得出來（從開始使用美股那天起累積）。':'這段期間的資料不到兩個日期，請切到「全部」。'}</div>`+src);
- const CO=['#f59e0b','#10b981','#ec4899','#8b5cf6','#0ea5e9','#14b8a6','#ef4444','#64748b'];
+ const CO=['var(--c3)','var(--c1)','var(--c4)','var(--c5)','var(--c6)','var(--c7)','var(--c2)','var(--c8)'];
  const ALL=o.v=='acct'?T.accts.map((a,i)=>({k:'a_'+a.id,n:a.name||a.id,c:CO[i%CO.length],g:h=>h.a?h.a[a.id]:null}))
-  :[{k:'v',n:'帳戶總值（持股＋現金）',c:'#10b981',g:h=>h.usd},{k:'m',n:'持股市值',c:'#3b82f6',g:h=>h.mv}].concat(P.some(h=>h.cash>0)?[{k:'c',n:'現金',c:'#94a3b8',dash:'4 3',g:h=>h.cash}]:[]);
+  :[{k:'v',n:'帳戶總值（持股＋現金）',c:'var(--c1)',g:h=>h.usd},{k:'m',n:'持股市值',c:'var(--c2)',g:h=>h.mv}].concat(P.some(h=>h.cash>0)?[{k:'c',n:'現金',c:'var(--c8)',dash:'4 3',g:h=>h.cash}]:[]);
  const SER=ALL.filter(x=>!o.hid.has(x.k)),val=(h,s)=>cv(h,s.g(h));
  const logD=new Set((S.us.log||[]).map(x=>x.dt));
- const lg=`<div class=trlg>${ALL.map(x=>`<span onclick="usTrTog('${x.k}')" style="cursor:pointer;${o.hid.has(x.k)?'opacity:.35;text-decoration:line-through':''}"><i style="border-color:${x.c}${x.dash?';border-top-style:dashed':''}"></i>${esc(x.n)}</span>`).join('')}${o.v=='tot'?'<span><b style="color:#f59e0b">●</b> 有更新部位</span>':''}<span class=h>單位：${unit} ${tipI('點下面的圖例可以開關線條；手指在圖上拖動，看每天的數字。','資產趨勢')}</span></div>`;
+ const lg=`<div class=trlg>${ALL.map(x=>`<span onclick="usTrTog('${x.k}')" style="cursor:pointer;${o.hid.has(x.k)?'opacity:.35;text-decoration:line-through':''}"><i style="border-color:${x.c}${x.dash?';border-top-style:dashed':''}"></i>${esc(x.n)}</span>`).join('')}${o.v=='tot'?'<span><b style="color:var(--c3)">●</b> 有更新部位</span>':''}<span class=h>單位：${unit} ${tipI('點下面的圖例可以開關線條；手指在圖上拖動，看每天的數字。','資產趨勢')}</span></div>`;
  let lo=Infinity,hi=-Infinity;for(const s of SER)for(const h of P){const v=val(h,s);if(v!=null){lo=Math.min(lo,v);hi=Math.max(hi,v)}}
  if(!isFinite(lo))return F(head+`<div class=h>${o.v=='acct'?'各帳戶的線從這一版上線後才開始記，過幾天就會有。':'線條都關掉了，點下面的圖例打開。'}</div>`+lg+src);
  const pad=(hi-lo)*0.08||hi*0.02||1;lo-=pad;hi+=pad;const W=340,H=180,L=34,Rr=40,Tp=8,B=18,x=i=>L+(W-L-Rr)*i/(P.length-1),y=v=>Tp+(H-Tp-B)*(1-(v-lo)/(hi-lo));
  const path=s=>{let d='',on=0;P.forEach((h,i)=>{const v=val(h,s);if(v==null){on=0;return}d+=(on?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1);on=1});return d};
  const yt=[0,0.5,1].map(f=>lo+(hi-lo)*f),xt=[0,Math.floor((P.length-1)/2),P.length-1].filter((v,i,a)=>a.indexOf(v)==i);
  const mkS=o.v=='tot'?SER.find(s=>s.k=='v')||SER.find(s=>s.k=='m'):null;
- const mk=mkS?P.map((h,i)=>logD.has(h.d)&&val(h,mkS)!=null?`<circle cx="${x(i).toFixed(1)}" cy="${y(val(h,mkS)).toFixed(1)}" r="2.6" fill="#f59e0b"/>`:'').join(''):'';
+ const mk=mkS?P.map((h,i)=>logD.has(h.d)&&val(h,mkS)!=null?`<circle cx="${x(i).toFixed(1)}" cy="${y(val(h,mkS)).toFixed(1)}" r="2.6" fill="var(--c3)"/>`:'').join(''):'';
  const ends=SER.map(s=>{const v=val(last,s);return v==null?null:{s,v,yy:y(v)}}).filter(Boolean).sort((p,q)=>p.yy-q.yy);for(let i=1;i<ends.length;i++)if(ends[i].yy-ends[i-1].yy<10)ends[i].yy=ends[i-1].yy+10;
  USTRD={P,SER,x,W,L,Rr,val,full};
  const dv=cv(last,last.usd)-cv(first,first.usd);
@@ -216,7 +216,7 @@ window.usStockSave=n=>{const us=S.us,v=usNum($('usPxV').value),d=$('usPxD').valu
 
 // ---------- 總覽那一格（唯讀）
 function allViewHtml(T,fx){let grp={};try{grp=stExposure(S).grp||{}}catch(e){}const z=asSum(S),CS=asCash(),cash=CS.v!=null?Math.max(0,CS.v*1e4):null;let rem=null;try{const r=settle(S,curEff());if(r&&r.rem>0)rem=r.rem}catch(e){}
- const V=usAllView({p:z.p.mv,a:z.a.mv,cash},T,fx,rem),CO={p:'#3b82f6',a:'#f59e0b',c:'#94a3b8',us:'#6366f1',uc:'#c4b5fd',TWD:'#0ea5e9',USD:'#6366f1'},pc=p=>p>=10||p==0?p.toFixed(0):p.toFixed(1);
+ const V=usAllView({p:z.p.mv,a:z.a.mv,cash},T,fx,rem),CO={p:'var(--c2)',a:'var(--c3)',c:'var(--c8)',us:'var(--c5)',uc:'var(--c5s)',TWD:'var(--c6)',USD:'var(--c5)'},pc=p=>p>=10||p==0?p.toFixed(0):p.toFixed(1);
  const bar=L=>`<div class=asbar>${L.map(s=>s.v>0?`<span style="width:${s.p}%;background:${CO[s.k]}" title="${s.l||s.k}"${s.go?` onclick="avSet('${s.go}')"`:''}></span>`:'').join('')}</div>`;
  return`<div class=p><b>🌐 全資產（新台幣）</b>${tipI('不含信貸計算；信貸數字請看 💰 信貸。','全資產')}<div class=allb>${W2(V.tot)} 萬</div>
   ${(V.noFx||z.miss.length||T.miss.length||(V.cashNull&&V.tot>0))?'<div class=h>':''}${V.noFx?'<span class=wn>沒有匯率，美股還沒算進來。</span>':''}${z.miss.length?`<span class=wn>台股有 ${z.miss.length} 檔沒有現價。</span>`:''}${T.miss.length?`<span class=wn>美股有 ${T.miss.length} 檔沒有現價，沒算進來。</span>`:''}${V.cashNull&&V.tot>0?'台股帳戶現金還沒填。':''}${(V.noFx||z.miss.length||T.miss.length||(V.cashNull&&V.tot>0))?'</div>':''}
@@ -239,8 +239,8 @@ window.usWSet=(k,v)=>{v=usNum(v);if(v==null||v<=0||v>100){toast('請填 0～100 
 // ---------- 跨市場主題集中度（總覽）
 function usThemeHtml(grp,T,fx,tot){const L=usThemes(grp,T,fx,tot);if(!L.length)return'';const un=L.find(x=>x.g==US_NOTAG);
  return`<div class=p><b>🧭 跨市場主題集中度</b>${tipI('台股主動持股的主題＋美股各檔的主題，名稱相同的加在一起，占全資產的比例。被動 ETF 與現金不算。沒填主題的美股合成一格。','跨市場主題集中度')}
-  ${L.slice(0,8).map(x=>`<div class="asl alll" style="cursor:default"><span>${esc(x.g)}</span><span>${W2(x.v)} 萬　<b>${x.p.toFixed(x.p>=10?0:1)}%</b></span></div><div class=asbar style="margin:2px 0 6px"><span style="width:${Math.min(100,x.tw/tot*100)}%;background:#f59e0b" title="台股"></span><span style="width:${Math.min(100,x.us/tot*100)}%;background:#6366f1" title="美股"></span></div>`).join('')}
-  <div class=asl><span class=dot style="background:#f59e0b"></span>台股　<span class=dot style="background:#6366f1"></span>美股${L.length>8?`　<span class=h>另有 ${L.length-8} 個主題</span>`:''}</div>
+  ${L.slice(0,8).map(x=>`<div class="asl alll" style="cursor:default"><span>${esc(x.g)}</span><span>${W2(x.v)} 萬　<b>${x.p.toFixed(x.p>=10?0:1)}%</b></span></div><div class=asbar style="margin:2px 0 6px"><span style="width:${Math.min(100,x.tw/tot*100)}%;background:var(--c3)" title="台股"></span><span style="width:${Math.min(100,x.us/tot*100)}%;background:var(--c5)" title="美股"></span></div>`).join('')}
+  <div class=asl><span class=dot style="background:var(--c3)"></span>台股　<span class=dot style="background:var(--c5)"></span>美股${L.length>8?`　<span class=h>另有 ${L.length-8} 個主題</span>`:''}</div>
   ${!fx?'<div class=wn>沒有匯率，美股還沒算進來。</div>':''}</div>`}
 
 // ---------- 貼上 AI 整理的截圖（投資帳本 v1 的 positions）：預覽差異 → 整個帳戶覆寫 → 可以復原
@@ -258,7 +258,7 @@ function usPasteHtml(){const p=USP,A=(S.us&&S.us.accts)||[];
  <div class=asbtn><button onclick="usCopy(US_PASTE_TIP(USP.id?usAcN(USP.id):''),'已複製說明，連同截圖貼給 AI')">📋 複製給 AI 的說明</button></div>
  <textarea id=usPsT rows=6 style="width:100%;margin-top:6px" placeholder='貼上 AI 回覆（含 "positions" 的 JSON）' onchange="USP.txt=this.value">${esc(p.txt)}</textarea>
  <div class=asbtn><button class=pri onclick="USP.txt=$('usPsT').value;usPasteRun()">預覽差異</button><button onclick="asClose()">取消</button></div>
- ${p.err?`<div class=stal style="border-color:#fca5a5;background:#fef2f2">❌ ${esc(p.err)}</div>`:''}
+ ${p.err?`<div class=stal style="border-color:var(--badb);background:var(--badbg)">❌ ${esc(p.err)}</div>`:''}
  ${p.pos?`<label class=asl><input type=checkbox ${p.partial?'checked':''} onchange="USP.partial=this.checked?1:0;usPasteRun()"> 截圖只截到一部分：只更新出現的代號，其他不動</label>
   ${p.pos.map((po,i)=>{const m=p.map[i],Ac=m.id=='new'?null:A.find(a=>a.id==m.id),r=usPasteApply(Ac,po,p.partial);return`<div class=asth><b>${esc(po.account||'（沒寫帳戶名稱）')}</b>${po.date?` <span class=h>${esc(po.date)}</span>`:''}
    <label>更新到 <select onchange="USP.map[${i}].id=this.value;usPasteRe()">${A.map(a=>`<option value="${esc(a.id)}" ${m.id==a.id?'selected':''}>${esc(a.name||a.id)}</option>`).join('')}<option value="new" ${m.id=='new'?'selected':''}>＋新增帳戶「${esc(po.account||'新帳戶')}」</option></select></label>

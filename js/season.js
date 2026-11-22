@@ -67,7 +67,7 @@ function ssHtml(){const p=SSP,t=ssText(),n=new Set(ssFin(stAlerts(S)).map(a=>a.t
  <details class=aapv><summary class=h>預覽</summary><pre>${esc(t)}</pre></details>
  <div class=sub>貼上 AI 的回覆</div><textarea id=ssT rows=5 style="width:100%" placeholder='整段貼上（裡面要有 "season" 的 JSON）' onchange="SSP.txt=this.value">${esc(p.txt)}</textarea>
  <div class=asbtn><button onclick="SSP.txt=$('ssT').value;ssRun()">預覽</button></div>
- ${p.err?`<div class=stal style="border-color:#fca5a5;background:#fef2f2">❌ ${esc(p.err)}</div>`:''}
+ ${p.err?`<div class=stal style="border-color:var(--badb);background:var(--badbg)">❌ ${esc(p.err)}</div>`:''}
  ${p.L?p.L.map(x=>`<div class=tmr>${x.T?`<b>${esc(x.T.id)} ${esc(cU(x.T.code))} ${esc(nameOf(x.T.code))}</b>`:`<span class=wn>${esc(x.id||'（沒寫論點）')}：找不到這個論點，略過</span>`} ${x.T?`<b class="${x.view=='有疑慮'?'wn':x.view=='仍成立'?'ok':'h'}">${esc(x.view)}</b>${x.why?'　'+esc(x.why):''}<div class=h>${x.src.length?esc(x.src.join('；')):'<span class=wn>沒有附來源</span>'}${x.fix?'　<span class=wn>'+esc(x.fix)+'</span>':''}</div>`:''}</div>`).join('')+`<div class=asbtn><button class=pri onclick="ssApply()">記到各檔旁邊（${p.L.filter(x=>x.T).length} 筆）</button></div>`:''}`}
 const ssRe=()=>{const b=$('asOvB'),h=b.scrollTop;b.innerHTML=ssHtml();b.scrollTop=h};
 const ssCp=(t,ok)=>{const fb=()=>{const e=document.createElement('textarea');e.value=t;document.body.appendChild(e);e.select();try{document.execCommand('copy')}catch(x){}e.remove();ok()};if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb()};

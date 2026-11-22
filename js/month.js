@@ -59,7 +59,7 @@ function msRender(){const b=$('msBody');if(!b)return;const m=msCur(),L=msSteps()
   if(s.k=='backup')body=`<div class=h>最後一步：把設定檔存到雲端硬碟。${ls('lcx')?`上次匯出 ${esc(new Date(ls('lcx')).toLocaleDateString('sv-SE'))}。`:'還沒有匯出過。'}</div><div class=asbtn>${expCanShare()?'<button class=pri onclick="expShare().then(msRender)">📤 分享到雲端硬碟</button>':''}<button ${expCanShare()?'':'class=pri'} onclick="exp();msRender()">⬇️ 下載設定檔</button></div>`;
   return box(s,i,body)}).join('');
  const top=b.scrollTop;b.innerHTML=`<div class=h>完成 ${n}／${L.length}。每一步做完會自己打勾，也可以手動勾。中途離開沒關係，從「今日」回來接著做。</div>${html}
-  ${n==L.length?`<div class="stal" style="border-color:#86efac;background:#f0fdf4"><b>✅ ${+msMon().slice(5)} 月月結完成。</b> 下個月 11 日之後「今日」會再出現月結。</div>`:''}<div class=asl><button class=lk onclick="msReset()">重新開始這個月</button></div>`;b.scrollTop=top}
+  ${n==L.length?`<div class="stal" style="border-color:var(--okb);background:var(--okbg)"><b>✅ ${+msMon().slice(5)} 月月結完成。</b> 下個月 11 日之後「今日」會再出現月結。</div>`:''}<div class=asl><button class=lk onclick="msReset()">重新開始這個月</button></div>`;b.scrollTop=top}
 // 結算：呼叫現有的 snap()（同一天已有結算會先問要不要覆蓋）
 window.msSnap=()=>{const n0=JSON.stringify((S.snaps||[]).map(s=>[sDate(s),s.c,s.p,s.a]));try{snap()}catch(e){}if(JSON.stringify((S.snaps||[]).map(s=>[sDate(s),s.c,s.p,s.a]))!=n0)toast('已結算，接著匯出備份',0);msRender()};
 

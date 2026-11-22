@@ -6,7 +6,7 @@ let asG=ls('lcag')||'ac',asSo=ls('lcas')||'mv',asF=ls('lcaf')||'all',asCl=ls('lc
 const asPct=v=>v==null||isNaN(v)?'—':(v>=0?'+':'')+v.toFixed(1)+'%';
 const asM=v=>v==null||isNaN(v)?'—':(v>=0?'+':'−')+W2(Math.abs(v))+' 萬';
 const asY=v=>v==null||isNaN(v)?'—':(v>=0?'+':'−')+R(Math.abs(v));
-const asC=v=>v==null||isNaN(v)?'':v<0?'bad':'ok';
+const asC=v=>v==null||isNaN(v)?'':v<0?'dn':'up';
 const asD=d=>d?String(d).slice(5).replace('-','/'):'';
 const asKN=k=>({buy:'買進',sell:'賣出',div:'配息',sdiv:'配股'})[k]||k;
 
@@ -46,8 +46,8 @@ function asCalc(){asCardsSum();if(!$('pgA'))return;const sp=$('sPxNote');if(sp)s
  // 配置
  const CS=asCash(),cash=CS.v!=null?Math.max(0,CS.v*1e4):null,tot=z.p.mv+z.a.mv+(cash||0),seg=(v,c,l)=>tot>0&&v>0?`<span style="width:${v/tot*100}%;background:${c}" title="${l}"></span>`:'';
  const W=(+S.Wp||0)+(+S.Wa||0)+(+S.Wc||0),G=asGroups(S);
- $('asAlloc').innerHTML=tot>0?fold('alloc','🧩 配置',`被動 ${(z.p.mv/tot*100).toFixed(0)}%｜主動 ${(z.a.mv/tot*100).toFixed(0)}%${cash!=null?'｜現金 '+(cash/tot*100).toFixed(0)+'%':''}`,`<div class=asbar>${seg(z.p.mv,'#3b82f6','被動')}${seg(z.a.mv,'#f59e0b','主動')}${seg(cash,'#94a3b8','現金')}</div>
-  <div class=asl><span class=dot style="background:#3b82f6"></span>被動 ${(z.p.mv/tot*100).toFixed(0)}%　<span class=dot style="background:#f59e0b"></span>主動 ${(z.a.mv/tot*100).toFixed(0)}%${cash!=null?`　<span class=dot style="background:#94a3b8"></span>現金 ${(cash/tot*100).toFixed(0)}%`:''}${W>0?`<br><span class=h>目標：被動 ${((+S.Wp||0)/W*100).toFixed(0)}%｜主動 ${((+S.Wa||0)/W*100).toFixed(0)}%｜現金 ${((+S.Wc||0)/W*100).toFixed(0)}%</span>`:''}</div>
+ $('asAlloc').innerHTML=tot>0?fold('alloc','🧩 配置',`被動 ${(z.p.mv/tot*100).toFixed(0)}%｜主動 ${(z.a.mv/tot*100).toFixed(0)}%${cash!=null?'｜現金 '+(cash/tot*100).toFixed(0)+'%':''}`,`<div class=asbar>${seg(z.p.mv,'var(--c2)','被動')}${seg(z.a.mv,'var(--c3)','主動')}${seg(cash,'var(--c8)','現金')}</div>
+  <div class=asl><span class=dot style="background:var(--c2)"></span>被動 ${(z.p.mv/tot*100).toFixed(0)}%　<span class=dot style="background:var(--c3)"></span>主動 ${(z.a.mv/tot*100).toFixed(0)}%${cash!=null?`　<span class=dot style="background:var(--c8)"></span>現金 ${(cash/tot*100).toFixed(0)}%`:''}${W>0?`<br><span class=h>目標：被動 ${((+S.Wp||0)/W*100).toFixed(0)}%｜主動 ${((+S.Wa||0)/W*100).toFixed(0)}%｜現金 ${((+S.Wc||0)/W*100).toFixed(0)}%</span>`:''}</div>
   <div class=asl>現金 ${CS.v==null?'<span class=h>還沒填</span>':`現在約 <b>主動 ${CS.a.toFixed(1)} 萬｜被動 ${CS.p.toFixed(1)} 萬</b> <span class="${CS.old?'wn':'h'}">（上次填 ${esc(asD(CS.d))}：主動 ${(+CS.L.a).toFixed(1)}、被動 ${(+CS.L.p).toFixed(1)} 萬${CS.est?'；之後的買賣、配息已自動加減，買進在交易當天就先扣':''}${CS.old?'；超過 30 天沒更新':''}）</span>`}
    <div class="h cashln">更新交割帳戶餘額：主動 <input type=number step=any value="${S.cur&&S.cur.ca!=null?S.cur.ca:''}" placeholder="${CS.L&&CS.L.src=='snap'?CS.L.a:''}" onchange="asCashSet('ca',this.value)"> 萬<span style="width:6px"></span>被動 <input type=number step=any value="${S.cur&&S.cur.cp!=null?S.cur.cp:''}" placeholder="${CS.L&&CS.L.src=='snap'?CS.L.p:''}" onchange="asCashSet('cp',this.value)"> 萬${tipI('照交割帳戶今天的餘額填。\n和「💰 信貸 → 📋 結算」這一期的現金是同一組欄位；兩格合計就是信貸頁的「追蹤帳戶現金合計」。','帳戶現金')}</div>
    ${CS.legacy?`<div class=wn>舊資料只有現金合計 ${CS.L.t} 萬，先全部算在主動帳戶；請分成主動、被動兩格各填一次。</div>`:''}</div>
@@ -302,18 +302,18 @@ function asTrendDraw(){const el=$('asTrend');if(!el)return;const T=asTrend(S),F=
  const P=T.pts.filter(p=>p.d>=d0);if(P.length<2){el.innerHTML=F('<div class=h>這段期間的資料不足 2 天。</div>');return}
  const a0=P[0],b0=P[P.length-1];let pk=0,mdd=0;for(const p of P){pk=Math.max(pk,p.twr);mdd=Math.min(mdd,p.twr/pk-1)}const tw=(b0.twr/a0.twr-1)*100;
  TRS=`${asPct(tw)}｜回撤 ${(mdd*100).toFixed(1)}%｜總資產 ${W2(b0.tot)} 萬`;if(asFolded('trend')){el.innerHTML=F('');return}
- const ALL=vw=='nw'?[{k:'real',n:'真實淨資產',c:'#8b5cf6'},{k:'base0',n:'撥款前淨資產',c:'#ef4444',dash:'2 3'}]
-  :[...(T.hasCash?[{k:'tot',n:'總資產（持股＋現金）',c:'#10b981'}]:[]),{k:'mv',n:'持股市值',c:'#3b82f6'},{k:'bm',n:'同金流 '+bmC(S),c:'#9ca3af',dash:'5 3'}];
+ const ALL=vw=='nw'?[{k:'real',n:'真實淨資產',c:'var(--c1)'},{k:'base0',n:'撥款前淨資產',c:'var(--c2)',dash:'2 3'}]
+  :[...(T.hasCash?[{k:'tot',n:'總資產（持股＋現金）',c:'var(--c1)'}]:[]),{k:'mv',n:'持股市值',c:'var(--c2)'},{k:'bm',n:'同金流 '+bmC(S),c:'var(--c8)',dash:'5 3'}];
  const hid=new Set(String(S.trHide||'').split(',').filter(Boolean)),SER=ALL.filter(x=>!hid.has(x.k));
  const val=(p,k)=>k=='base0'?T.base0:p[k];let lo=Infinity,hi=-Infinity;for(const x of SER)for(const p of P){const v=val(p,x.k);if(v!=null){lo=Math.min(lo,v);hi=Math.max(hi,v)}}
  const chip=(k,v,l)=>`<button class="${(k=='trR'?rg:vw)==v?'on':''}" onclick="S.${k}='${v}';save();asTrendDraw()">${l}</button>`;
  const head=`<div class=chips style="margin:4px 0">${chip('trV','as','資產')}${chip('trV','nw','淨資產')}<span style="width:8px"></span>${chip('trR','1m','1 個月')}${chip('trR','3m','3 個月')}${chip('trR','ytd','今年')}${chip('trR','all','全部')}</div>`;
- const lg=`<div class=trlg>${ALL.map(x=>`<span onclick="asTrTog('${x.k}')" style="cursor:pointer;${hid.has(x.k)?'opacity:.35;text-decoration:line-through':''}"><i style="border-color:${x.c}${x.dash?';border-top-style:dashed':''}"></i>${esc(x.n)}</span>`).join('')}${vw=='as'?'<span><b style="color:#f59e0b">●</b> 有買賣</span>':''}<span class=h>單位：萬 ${tipI('點下面的圖例可以開關線條；手指在圖上拖動，看每天的數字與當天的交易。\n\n每天收盤價來自網站的收盤價檔。'+(T.hasCash?'現金用你最近一次填的金額，依之後的買賣與配息推算。':'還沒填現金，所以只有持股市值。')+(vw=='nw'?'\n真實淨資產＝持股＋現金－剩餘本金－累計已繳月付金－開辦費－淨入金－外部費用（和結算相同）。':''),'資產趨勢')}</span></div>`;
+ const lg=`<div class=trlg>${ALL.map(x=>`<span onclick="asTrTog('${x.k}')" style="cursor:pointer;${hid.has(x.k)?'opacity:.35;text-decoration:line-through':''}"><i style="border-color:${x.c}${x.dash?';border-top-style:dashed':''}"></i>${esc(x.n)}</span>`).join('')}${vw=='as'?'<span><b style="color:var(--c3)">●</b> 有買賣</span>':''}<span class=h>單位：萬 ${tipI('點下面的圖例可以開關線條；手指在圖上拖動，看每天的數字與當天的交易。\n\n每天收盤價來自網站的收盤價檔。'+(T.hasCash?'現金用你最近一次填的金額，依之後的買賣與配息推算。':'還沒填現金，所以只有持股市值。')+(vw=='nw'?'\n真實淨資產＝持股＋現金－剩餘本金－累計已繳月付金－開辦費－淨入金－外部費用（和結算相同）。':''),'資產趨勢')}</span></div>`;
  if(!isFinite(lo)){el.innerHTML=F(head+`<div class=h>${vw=='nw'?'真實淨資產要先在結算填現金。':'線條都關掉了，點下面的圖例打開。'}</div>`+lg);return}
  const pad=(hi-lo)*0.08||hi*0.02||1;lo-=pad;hi+=pad;const W=340,H=180,L=32,Rr=40,Tp=8,B=18,x=i=>L+(W-L-Rr)*i/(P.length-1),y=v=>Tp+(H-Tp-B)*(1-(v-lo)/(hi-lo));
  const path=k=>{let d='',on=0;P.forEach((p,i)=>{const v=val(p,k);if(v==null){on=0;return}d+=(on?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1);on=1});return d};
  const yt=[0,0.5,1].map(f=>lo+(hi-lo)*f),xt=[0,Math.floor((P.length-1)/2),P.length-1];
- const mk=vw=='as'&&!hid.has('mv')?P.map((p,i)=>p.tr?`<circle cx="${x(i).toFixed(1)}" cy="${y(p.mv).toFixed(1)}" r="2.6" fill="#f59e0b"/>`:'').join(''):'';
+ const mk=vw=='as'&&!hid.has('mv')?P.map((p,i)=>p.tr?`<circle cx="${x(i).toFixed(1)}" cy="${y(p.mv).toFixed(1)}" r="2.6" fill="var(--c3)"/>`:'').join(''):'';
  // 線尾數值：照高低排，太近的往上下推開
  const ends=SER.map(z=>{const v=val(b0,z.k);return v==null?null:{z,v,yy:y(v)}}).filter(Boolean).sort((p,q)=>p.yy-q.yy);for(let i=1;i<ends.length;i++)if(ends[i].yy-ends[i-1].yy<10)ends[i].yy=ends[i-1].yy+10;
  TRD={P,SER,T,x,y,W,L,Rr,val};

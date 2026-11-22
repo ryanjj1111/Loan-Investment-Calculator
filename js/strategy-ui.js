@@ -14,7 +14,7 @@ const stTxt=(p,v,ph,rows)=>`<textarea data-p="${p}" data-t="s" rows="${rows||2}"
 const stSel=(p,v,opts)=>`<select data-p="${p}" data-t="s">${opts.map(([k,l])=>`<option value="${esc(k)}" ${String(v)==String(k)?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
 const stPct=v=>v==null||isNaN(v)?'—':(v>=0?'+':'')+v.toFixed(1)+'%';
 const stPp=v=>v==null||isNaN(v)?'—':(v>=0?'+':'')+v.toFixed(1)+' 個百分點';
-const stCls=v=>v==null?'':v<0?'bad':'ok';
+const stCls=v=>v==null?'':v<0?'dn':'up';
 
 // ---------- 交易紀錄的連動（結算頁）
 function stChip(i){const x=S.trades[i];if(!x)return'';const T=x.thesisId?stThesis(S,x.thesisId):null;if(x.ac!='a'&&!T)return stRsChip(x);return stRsChip(x)+`<span class="thc ${T?'on':''}" onclick="edTr(${i})" title="投資論點（點 ✎ 修改）">${T?esc(T.id):'未分類'}</span><span id="ths${i}"></span>`}

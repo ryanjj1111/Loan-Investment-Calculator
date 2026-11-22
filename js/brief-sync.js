@@ -104,7 +104,7 @@ window.bsOpen=()=>{const c=bsCfg();asOvOpen(`<div class=ovh><button onclick="asC
  <label>GitHub 金鑰（fine-grained token）<input id=bsTok type=password value="${c.tok?'••••••••':''}" placeholder="github_pat_…" autocomplete=off></label>
  <div class=h>金鑰只存在這個瀏覽器，不在設定檔裡，匯出備份也不會帶出去；換手機或電腦要重新貼一次。${tipI('到 GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token：Repository access 選 Only select repositories，只選晨報用的私人 repo；Permissions 只開 Contents：Read and write（不要開 Workflows）；Expiration 建議 90 天，到期 App 會顯示上傳失敗，再產生一個貼上。這把金鑰能改那個 repo 裡的所有檔案（GitHub 沒辦法限制到單一檔案），所以只貼在自己的裝置上。','GitHub 金鑰')}</div>
  <div class=asbtn style="margin-top:8px"><button class=pri onclick="bsSave()">儲存並上傳</button><button onclick="bsPrev()">預覽要上傳的內容</button>${c.tok?'<button onclick="bsForget()">清除金鑰</button>':''}</div>
- <div id=bsSt style="margin-top:8px">${bsStat()}</div><pre id=bsPv style="display:none;white-space:pre-wrap;font-size:12px;max-height:50vh;overflow:auto;background:#f8fafc;padding:6px;border-radius:6px"></pre>`)};
+ <div id=bsSt style="margin-top:8px">${bsStat()}</div><pre id=bsPv style="display:none;white-space:pre-wrap;font-size:12px;max-height:50vh;overflow:auto;background:var(--soft);padding:6px;border-radius:6px"></pre>`)};
 window.bsSave=()=>{const t=$('bsTok').value.trim(),repo=$('bsRepo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$|\/+$/g,'');
  if(repo&&!/^[\w.-]+\/[\w.-]+$/.test(repo)){toast('repo 名稱要是「帳號/名稱」');return}
  const o={on:$('bsOn').checked,repo};if(t&&!/^•+$/.test(t))o.tok=t;if(repo!==bsCfg().repo)o.hash='';bsPut(o);bsPaint();if(bsOn())bsRun(true);else toast(o.on?'還缺 repo 或金鑰':'已關閉自動上傳')};
