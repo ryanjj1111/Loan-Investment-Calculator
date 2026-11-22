@@ -10,7 +10,7 @@
  const el=id=>document.getElementById(id),shown=id=>{const e=el(id);return !!e&&e.style.display=='flex'};
  let skip=0,tm=0,sk=0; // skip：自己呼叫 history.go() 造成的那一次 popstate 要略過
  const depth=()=>{try{return(history.state&&+history.state.lcOv)||0}catch(e){return 0}};
- const xBtn=()=>{const b=document.querySelector('#asOvB .ovh button');return b&&b.textContent.trim()=='✕'?b:null};
+ const xBtn=()=>{const b=document.querySelector('#asOvB .ovh button');return b&&(b.textContent.trim()=='✕'||b.querySelector('[data-e="✕"]'))?b:null};
  // ✕ 會回到個股頁（不是直接關閉）的畫面算第 2 層
  const level=()=>{if(shown('asOv')){const b=xBtn(),oc=b?(b.getAttribute('onclick')||''):'';
    if(!b||/^asClose\(\)/.test(oc))return 1;
