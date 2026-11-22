@@ -354,7 +354,9 @@ function asTmr(){const D=asDataStat(),A=stAlerts(S),E=stExposure(S),act=[],near=
  const qOf=T=>{const p=stPerf(S,T);return p&&p.q>0?p.q:0},pxOf=c=>num((S.px||{})[cU(c)]);
  // ① 要動作：收盤已觸發的出場規則、跌破停損
  for(const a of A){if(a.k!='exit'&&a.k!='stop')continue;const T=stThesis(S,a.th);if(!T)continue;const c=cU(T.code),px=pxOf(c),x=a.key?(exRules(stStrat(S,T.sid))||[]).find(z=>z.key==a.key):null,fr=a.k=='stop'?1:(x&&x.frac!=null?x.frac:1),q=Math.floor(qOf(T)*fr);
-  act.push({a,T,c,q,amt:px!=null?q*px:null,lb:a.k=='stop'?`跌破停損 ${T.stop}`:(x?x.lb+'成立':'出場條件成立'),why:(String(a.t).match(/（([^（）]*)）$/)||[])[1]||'',act:a.k=='stop'?'全部賣出':(x&&x.act)||'照規則處理',prov:x?asProv(x.cond,D):false});if(q>0&&fr>0)orders.push({side:'賣',c,q,px,why:`${T.id} ${a.k=='stop'?'跌破停損':(x&&x.lb)||'出場條件'}`,key:a.key||'stop',th:T.id})}
+  // 跌破停損：今天（這個計畫日）已經寫了不照做 → 不列成下單，只在下面顯示「今天已決定不照做」
+  const key=a.key||'stop',ak=a.k=='stop'&&typeof exAckOf=='function'?exAckOf(T,'stop'):null,dec=ak&&ak.k=='skip'&&ak.pd&&ak.pd==D.d?ak:null;
+  act.push({a,T,c,q,px,key,fr,dec,amt:px!=null?q*px:null,lb:a.k=='stop'?`跌破停損 ${T.stop}`:(x?x.lb+'成立':'出場條件成立'),why:(String(a.t).match(/（([^（）]*)）$/)||[])[1]||'',act:a.k=='stop'?'全部賣出':(x&&x.act)||'照規則處理',prov:x?asProv(x.cond,D):false});if(q>0&&fr>0&&!dec)orders.push({side:'賣',c,q,px,why:`${T.id} ${a.k=='stop'?'跌破停損':(x&&x.lb)||'出場條件'}`,key:a.key||'stop',th:T.id})}
  // ② 接近觸發：明天收盤碰到就會成立的價位（距現價 5% 內）
  for(const T of S.theses||[]){if(T.status!='hold')continue;const c=cU(T.code);for(const o of(typeof exTrig=='function'?exTrig(T):[])){if(o.hit||o.gap==null||Math.abs(o.gap)>5)continue;const fr=o.what=='論點停損價'?1:(typeof exFrac=='function'?exFrac(o.act||''):null),q=fr?Math.floor(qOf(T)*fr):null;near.push({T,c,o,q})}}
  near.sort((a,b)=>Math.abs(a.o.gap)-Math.abs(b.o.gap));
@@ -384,21 +386,55 @@ function asTmrCheck(){const L=(S.tmrLog||[]).filter(x=>x.d<asExpTd()&&x.it.lengt
  for(const o of L.it){const tr=(S.trades||[]).some(x=>cU(x.n)==o.c&&x.dt>L.d&&x.dt<=nx&&(o.s=='賣'?x.k=='sell':x.k=='buy'));const T=o.th?stThesis(S,o.th):null,ak=T&&o.k&&o.k!='stop'?(T.exAck||{})[o.k]:null;
   if(tr)done++;else if(ak&&(ak.k=='skip'||ak.k=='na'))dec++;else if(!o.b)miss.push(o)}
  const sells=L.it.filter(o=>!o.b).length;return{d:L.d,nx,n:L.it.length,sells,done,dec,miss}}
+// 該賣沒賣、也沒寫原因（2026-11-23）：看最近 30 份計畫，一直列到處理為止。
+// 處理＝之後有賣出這檔、論點已出場，或這條規則之後寫了決定（不照做／不適用；停損看決定的計畫日 pd）
+function asTmrMiss(){const ex=asExpTd(),out={};
+ for(const L of(S.tmrLog||[]).filter(x=>x.d<ex&&x.it.length)){const nx=asNextTd(L.d);if(nx>TODAY)continue;
+  for(const o of L.it){if(o.b||o.s!='賣')continue;const T=o.th?stThesis(S,o.th):null;if(!T||T.status=='exit')continue;
+   if((S.trades||[]).some(x=>cU(x.n)==o.c&&x.k=='sell'&&x.dt>L.d))continue;const k=o.k||'stop';
+   if((T.exLog||[]).some(z=>z.key==k&&(z.k=='skip'||z.k=='na'||z.k=='sell')&&((z.pd||z.d)>=L.d)))continue;
+   if(k!='stop'){const ak=(T.exAck||{})[k];if(ak&&(typeof ak=='string'||ak.k=='skip'||ak.k=='na'))continue}
+   const id=T.id+'|'+k,m=out[id]||(out[id]={T,c:o.c,k,first:L.d,n:0});m.n++;if(L.d<m.first)m.first=L.d}}
+ return Object.values(out).sort((a,b)=>a.first<b.first?-1:1)}
 const asAlBtns=a=>{const m=asAlRow(a).match(/<button[\s\S]*<\/button>/);return m?' '+m[0]:''};
 // 自動資料過期警示：資料比應該要到的交易日舊（當天 19:00 前只看前一個交易日，因為當天的資料可能還在路上）
 function asStaleHtml(){const D=asDataStat(),ex=D.ex,ds=[D.it[0].d,D.d].filter(Boolean).sort(),old=ds[0]||'';if(!old)return'';
  const due=ex<TODAY||asHour()>=19;if(!(old<ex&&due))return'';
  return`<div class=stale>⚠️ 自動資料停在 <b>${asD(old)}</b>（應該要有 ${asD(ex)}）：均線、本益比、法人、觸發價和問 AI 的數字都是舊的。通常是 GitHub 排程延誤，「資料補跑」會自動補上；急用可以先手動填現價。</div>`}
-function asTmrHtml(){const R=asTmr();asTmrLog(R);const D=R.D,cm=asTmrCheck(),money=v=>v==null?'':`約 ${W2(v)} 萬`;
- const st=`<div class=tmst>${D.it.map(x=>`<span class="${x.ok?'ok':x.need?'wn':'h'}">${x.n} ${x.ok?'✓':'⏳'} ${x.d?asD(x.d):'—'}</span>`).join('')}<span class=h>月營收 ${esc(D.rM)}｜股權分散 ${D.bW?asD(D.bW):'—'} 週</span></div>${D.late?'<div class=wn>今天的資料還沒到，或今天休市；下面是用上一個交易日算的。</div>':D.final?'':`<div class=wn>檢核資料還是 ${asD(D.d)}：均線、法人類的判斷是<b>暫定</b>，資料到了會再變。</div>`}`;
- const row1=x=>`<div class=tmr><b>${esc(x.c)} ${esc(nameOf(x.c))}</b> ${asSid(x.T)}（${esc(x.T.id)}）：${esc(x.lb)} → <b>${esc(x.act)}</b>${x.q?`｜${x.q.toLocaleString()} 股 ${money(x.amt)}`:''}${x.prov?' <span class=wn>暫定</span>':''}${x.why?`<div class=h>${esc(x.why)}</div>`:''}<div>${asAlBtns(x.a)}</div></div>`;
- const row2=x=>`<div class=tmr><b>${esc(x.c)} ${esc(nameOf(x.c))}</b> ${asSid(x.T)}：${esc(x.o.what)} ${x.o.ap?'約 ':''}${f2(x.o.px)}（距現價 ${x.o.gap>=0?'+':''}${x.o.gap.toFixed(1)}%）→ ${esc(x.o.act||'照規則')}${x.q?`｜${x.q.toLocaleString()} 股`:''}</div>`;
- const sec=(n,t,L,f,max)=>L.length?`<div class=sub>${n} ${t}（${L.length}）</div>${L.slice(0,max||99).map(f).join('')}${L.length>(max||99)?`<div class=h>還有 ${L.length-max} 則：<button class=lk onclick="setWs('st')">看全部 ›</button></div>`:''}`:'';
- const none=!R.act.length&&!R.near.length&&!R.watch.length;
- const ord=R.orders.length?`<div class=sub>🧾 明天開盤要下的單</div>${R.orders.map(o=>`<div class=tmr><span class="sd ${o.side=='賣'?'sd-s':'sd-b'}">${o.side}</span><b>${esc(o.c)} ${esc(nameOf(o.c))} ${o.q.toLocaleString()} 股</b> ${asSid((S.theses||[]).find(t=>t.id==o.th))}${o.px!=null?`｜參考價 ${f2(o.px)}`:''}<div class=h>${esc(o.why)}</div></div>`).join('')}`:'';
- const cap=!(S.theses||[]).some(T=>T.status!='exit')?'':`<div class=sub>💰 還能買多少</div><div class=tmr>壓力虧損剩餘額度 ${R.room!=null?`<b>${W2(R.room)} 萬</b>`:'—（先在結算填現金）'}${R.cand.length?'':'｜目前沒有「✅ 可以買／加碼」的論點'}</div>${R.cand.map(x=>`<div class=tmr>${esc(x.c)} ${esc(nameOf(x.c))} ${asSid(x.T)}（${esc(x.T.id)}）：最多 <b>${x.q.toLocaleString()} 股</b>（受限於${esc(x.by)}；停損 ${f2(x.stop)}）${x.bq>0?` <button onclick="asTradeOpen({k:'buy',c:'${x.c}',ac:'a',q:${x.bq}})">＋記交易${x.bn?`（第 ${x.bn} 批 ${x.bq.toLocaleString()} 股）`:`（${x.bq.toLocaleString()} 股）`}</button>`:''}</div>`).join('')}`;
- const ck=cm?`<div class=h style="margin-top:6px">📋 ${asD(cm.d)} 的計畫（${asD(cm.nx)} 執行）：${cm.n} 項，照做 ${cm.done}${cm.dec?`、寫了不照做／不適用 ${cm.dec}`:''}${cm.miss.length?`、<span class=wn>沒做也沒寫原因 ${cm.miss.length}（${cm.miss.map(o=>o.c).join('、')}）</span>`:''}</div>`:'';
- const body=`${st}${typeof bsWarn=='function'?bsWarn():''}${none?'<div class=ok style="margin:6px 0">✅ 明天沒有要做的事。</div>':''}${sec('🔴','要動作',R.act,row1)}${sec('🟠','接近觸發（明天收盤碰到就成立）',R.near,row2,6)}${sec('🟡','要注意',R.watch,x=>`<div class=tmr>${x.d?asD(x.d)+' ':''}${esc(x.t)}${x.a?asAlBtns(x.a):''}</div>`,6)}${ord}${cap}${ck}
- <div class=asbtn style="margin-top:6px"><button class=aiq onclick="aiOpen({q:'pre'})">🤖 盤前問 AI</button></div>`;
- const sum=none?'明天沒有要做的事':[R.act.length?`要動作 ${R.act.length}`:'',R.near.length?`接近 ${R.near.length}`:'',R.watch.length?`注意 ${R.watch.length}`:''].filter(Boolean).join('｜');
+// 明天要做的事（2026-11-23 改版）：要動作和下單合成「開盤要下的單」，一筆一張卡；沒照做的提醒放最上面；要注意、還能買多少收成一行
+function asTmrHtml(){const R=asTmr();asTmrLog(R);const D=R.D,cm=asTmrCheck(),miss=asTmrMiss(),money=v=>v==null?'':`約 ${W2(v)} 萬`,nm=c=>`${esc(c)} ${esc(nameOf(c))}`;
+ const allOk=D.it.every(x=>x.ok)&&D.final&&!D.late;
+ const st=allOk?`<div class=tmd>${ic('tick')}資料 ${asD(D.d)}<span class=h>｜月營收 ${esc(D.rM)}｜股權分散 ${D.bW?asD(D.bW):'—'} 週</span></div>`
+  :`<div class=tmst>${D.it.map(x=>`<span class="${x.ok?'ok':x.need?'wn':'h'}">${x.n} ${x.ok?'✓':'⏳'} ${x.d?asD(x.d):'—'}</span>`).join('')}<span class=h>月營收 ${esc(D.rM)}｜股權分散 ${D.bW?asD(D.bW):'—'} 週</span></div>${D.late?'<div class=wn>今天的資料還沒到，或今天休市；下面是用上一個交易日算的。</div>':D.final?'':`<div class=wn>檢核資料還是 ${asD(D.d)}：均線、法人類的判斷是<b>暫定</b>，資料到了會再變。</div>`}`;
+ const dec=(T,k,lab)=>`<button onclick="exDecide('${T.id}','${k}','sell')">${lab||'記賣出'}</button>`;
+ const see=c=>`<button onclick="asStock('${c}','a')">看個股</button>`;
+ // ① 沒照做、也沒寫原因（處理之前一直列在最上面）
+ const ms=miss.length?`<div class=tmmiss>${miss.map(m=>`<div class=tmmr><div>${ic('triangle-exclamation-point')}<b>${nm(m.c)}</b> ${asSid(m.T)}：${asD(m.first)} 起該賣沒賣，也沒寫原因${m.n>1?`（${m.n} 次）`:''}</div><div class=bt>${dec(m.T,m.k)}<button onclick="exDecide('${m.T.id}','${m.k}','skip')">補寫原因</button></div></div>`).join('')}</div>`:'';
+ // ② 開盤要下的單：賣（照規則）、要自己判斷、買
+ const sells=R.act.filter(x=>!x.dec&&x.q>0&&x.fr>0),judge=R.act.filter(x=>!x.dec&&!(x.q>0&&x.fr>0)),done=R.act.filter(x=>x.dec),buys=R.cand.filter(x=>x.q>0);
+ const sCard=x=>`<div class=tmc><div class=r1><span><span class="sd sd-s">賣</span>${nm(x.c)} ${asSid(x.T)}${x.prov?' <span class=wn>暫定</span>':''}</span><span>${x.q.toLocaleString()} 股</span></div>
+  <div class=r2><span>${esc(x.lb)}${x.fr<1?` → ${esc(x.act)}`:''}${x.px!=null?`・參考價 ${f2(x.px)}`:''}</span><span>${money(x.amt)}</span></div>${x.why?`<div class=r3>${esc(x.why)}</div>`:''}
+  <div class=bt>${dec(x.T,x.key)}<button onclick="exDecide('${x.T.id}','${x.key}','skip')">不照做…</button>${see(x.c)}</div></div>`;
+ const jCard=x=>`<div class=tmc><div class=r1><span><span class="sd sd-j">要自己判斷</span>${nm(x.c)} ${asSid(x.T)}${x.prov?' <span class=wn>暫定</span>':''}</span></div>
+  <div class=r2><span>${esc(x.lb)} → ${esc(x.act)}</span></div>${x.why?`<div class=r3>${esc(x.why)}</div>`:''}
+  <div class=bt>${dec(x.T,x.key,'賣出…')}<button onclick="exDecide('${x.T.id}','${x.key}','skip','keep')">續抱…</button>${see(x.c)}</div></div>`;
+ const bCard=x=>`<div class=tmc><div class=r1><span><span class="sd sd-b">買</span>${nm(x.c)} ${asSid(x.T)}</span><span>最多 ${x.q.toLocaleString()} 股</span></div>
+  <div class=r2><span>受限於${esc(x.by)}・停損 ${f2(x.stop)}・參考價 ${f2(x.px)}</span><span>${money(x.q*x.px)}</span></div>
+  <div class=bt>${x.bq>0?`<button class=pri onclick="asTradeOpen({k:'buy',c:'${x.c}',ac:'a',q:${x.bq}})">記買進${x.bn?`（第 ${x.bn} 批 ${x.bq.toLocaleString()} 股）`:`（${x.bq.toLocaleString()} 股）`}</button>`:''}${see(x.c)}</div></div>`;
+ const nO=sells.length+judge.length+buys.length,sumS=sells.reduce((a,x)=>a+(x.amt||0),0);
+ const ord=nO||done.length?`<div class=tmsh id=tmO>開盤要下的單 <span>${nO}</span>${sells.length&&sumS?`<em>合計賣出 ${money(sumS)}</em>`:''}</div>${sells.map(sCard).join('')}${judge.map(jCard).join('')}${buys.map(bCard).join('')}
+  ${done.map(x=>`<div class=tmdone>${ic('circle-pause')}今天已決定不照做：<b>${nm(x.c)}</b> ${esc(x.lb)}（${esc(x.dec.n)}） <button class=lk onclick="exUndo('${x.T.id}','stop')">撤銷</button></div>`).join('')}`:'';
+ // ③ 接近觸發：全部列出，按距離排序
+ const nr=R.near.length?`<div class=tmsh id=tmN>接近觸發 <span>${R.near.length}</span><em>明天收盤碰到就成立</em></div>${R.near.map(x=>`<div class=tmn><b>${nm(x.c)} ${asSid(x.T)}</b><span class=tg>距 ${x.o.gap>=0?'+':''}${x.o.gap.toFixed(1)}%</span>
+  <span class=h>${esc(x.o.what)} ${x.o.ap?'約 ':''}${f2(x.o.px)}</span><span class=h>${esc(x.o.act||'照規則')}${x.q?` ${x.q.toLocaleString()} 股`:''}</span></div>`).join('')}`:'';
+ // ④ 要注意、還能買多少：收起來，只顯示一行摘要
+ const wt=R.watch.length?`<details class=tmx id=tmW><summary><b>要注意</b> <span class=h>${R.watch.length}｜${esc(String(R.watch[0].t).slice(0,22))}${String(R.watch[0].t).length>22||R.watch.length>1?'…':''}</span></summary>${R.watch.map(x=>`<div class=tmr>${x.d?asD(x.d)+' ':''}${esc(x.t)}${x.a?asAlBtns(x.a):''}</div>`).join('')}</details>`:'';
+ const cap=!(S.theses||[]).some(T=>T.status!='exit')?'':`<div class=tmcap>還能買：壓力虧損剩 ${R.room!=null?`<b>${W2(R.room)} 萬</b>`:'—（先在結算填現金）'}${buys.length?`｜可以買 ${buys.length} 檔（上面「買」）`:'｜沒有可以買的論點'}</div>`;
+ const ck=cm?`<div class=tmplan>${ic('clipboard-list')}${asD(cm.d)} 的計畫（${asD(cm.nx)} 執行）：${cm.n} 項，照做 ${cm.done}${cm.dec?`、有寫決定 ${cm.dec}`:''}${cm.miss.length?`、沒做 ${cm.miss.length}（列在最上面）`:''}</div>`:'';
+ const chip=(n,t,cl,id)=>n?`<button class="tmchip ${cl}" onclick="const e=document.getElementById('${id}');if(e){if(e.tagName=='DETAILS')e.open=true;e.scrollIntoView({behavior:'smooth',block:'center'})}">${t} ${n}</button>`:'';
+ const none=!nO&&!R.near.length&&!R.watch.length&&!miss.length;
+ const chips=none?'':`<div class=tmchips>${chip(nO,'下單','tc-o','tmO')}${chip(R.near.length,'接近','tc-n','tmN')}${chip(R.watch.length,'注意','tc-w','tmW')}</div>`;
+ const body=`${st}${typeof bsWarn=='function'?bsWarn():''}${chips}${ms}${none?`<div class=tmnone>${ic('tick')}明天沒有要下的單</div>`:''}${!nO&&!none&&!done.length?`<div class=tmnone>${ic('tick')}明天沒有要下的單</div>`:''}${ord}${nr}${wt}${cap}${ck}
+ <div class=asbtn style="margin-top:8px"><button class=aiq onclick="aiOpen({q:'pre'})">🤖 盤前問 AI</button></div>`;
+ const sum=none?'明天沒有要做的事':[miss.length?`沒照做 ${miss.length}`:'',nO?`下單 ${nO}`:'',R.near.length?`接近 ${R.near.length}`:'',R.watch.length?`注意 ${R.watch.length}`:''].filter(Boolean).join('｜');
  return`<div class="stal tmbox">${fold('tmr',`📅 明天要做的事${D.final?'':' <span class=wn>暫定</span>'}`,sum,body)}</div>`}

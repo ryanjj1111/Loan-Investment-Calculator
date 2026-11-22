@@ -368,15 +368,20 @@ function exEval(T){const st=stStrat(S,T.sid);if(!st||!CK)return[];const L=exRule
 //   sell＝照規則賣出（記賣出時自動寫入）；na＝這條不適用（一直有效，不算進照規則比例）；skip＝不照做＋原因
 //   舊版的「✓ 已處理」是日期字串，當成 ack。sell、skip、ack 在條件不成立後自動解除；每次決定另外記在 exLog
 const exAckOf=(T,key)=>{const v=(T.exAck||{})[key];return v==null?null:typeof v=='string'?{d:v,k:'ack',n:''}:v};
-function exMark(T,key,k,n,d){if(!T)return;T.exAck=T.exAck||{};const x=(exRules(stStrat(S,T.sid))||[]).find(z=>z.key==key);T.exAck[key]={d:d||TODAY,k,n:n||''};T.exLog=T.exLog||[];const L={d:d||TODAY,key,lb:x?x.lb:'',k,n:n||''};
+// pd＝做決定時「明天要做的事」用的資料日（計畫日）；跌破停損的不照做只對這個計畫日有效（每天都要重新確認）
+function exMark(T,key,k,n,d,pd){if(!T)return;T.exAck=T.exAck||{};const x=key=='stop'?EX_STOP:(exRules(stStrat(S,T.sid))||[]).find(z=>z.key==key);if(pd==null&&typeof asDataStat=='function')try{pd=asDataStat().d||''}catch(e){pd=''}
+ T.exAck[key]={d:d||TODAY,k,n:n||'',pd:pd||''};T.exLog=T.exLog||[];const L={d:d||TODAY,key,lb:x?x.lb:'',k,n:n||'',pd:pd||''};
  // 從「問 AI」接著做的決定：把 AI 當時的看法一起記下（之後檢討「照 AI／不照 AI」的結果）
  if(typeof AA_CTX!='undefined'&&AA_CTX&&AA_CTX.from=='exit'&&AA_CTX.th==T.id&&AA_CTX.rule==key){if(AA_CTX.view)L.aiV=T.exAck[key].aiV=AA_CTX.view;if(AA_CTX.ai)L.aiN=AA_CTX.ai;AA_CTX=null}
  T.exLog.push(L)}
 const EX_RS=lb=>/停損/.test(lb)?'sl':/理由失效/.test(lb)?'inv':/期限|事件/.test(lb)?'to':/停利|減碼|高峰|籌碼|趨勢|跌破|移動/.test(lb)?'tp':'adj';
-window.exDecide=(id,key,k)=>{const T=stThesis(S,id);if(!T)return;const x=(exRules(stStrat(S,T.sid))||[]).find(z=>z.key==key)||{lb:'',act:'',frac:1};
- if(k=='sell'){const c=cU(T.code),h=holdings(S).filter(o=>o.ac=='a'&&cU(o.n)==c).reduce((a,o)=>a+(+o.q||0),0),fr=x.frac||1;
-  if(typeof asTradeOpen!='function')return;asTradeOpen({k:'sell',c,ac:'a'});Object.assign(AT,{q:h?String(fr>=1?h:Math.round(h*fr)):'',rs:EX_RS(x.lb),note:`照規則：${x.lb||'出場條件'}${x.act?' → '+x.act:''}`,sig:id+'|'+key});if(typeof asTh=='function'){asOvOpen(asTradeHtml());asTh();asPrev()}return}
- let n='';if(k=='skip'){n=prompt('不照做的原因（一句話，之後檢討用）：','');if(n==null)return;n=n.trim();if(!n){alert('請寫一句原因');return}}
+// 跌破論點停損價：沒有策略規則可查，用這個當規則（key＝'stop'）
+const EX_STOP={key:'stop',lb:'跌破停損',act:'全部賣出',frac:1};
+// k：sell 照規則賣出（打開賣出表單）／na 這條不適用／skip 不照做（寫原因）；how='keep' 是「要自己判斷」的續抱
+window.exDecide=(id,key,k,how)=>{const T=stThesis(S,id);if(!T)return;const x=key=='stop'?EX_STOP:(exRules(stStrat(S,T.sid))||[]).find(z=>z.key==key)||{lb:'',act:'',frac:1};
+ if(k=='sell'){const c=cU(T.code),h=holdings(S).filter(o=>o.ac=='a'&&cU(o.n)==c).reduce((a,o)=>a+(+o.q||0),0),fr=x.frac;
+  if(typeof asTradeOpen!='function')return;asTradeOpen({k:'sell',c,ac:'a'});Object.assign(AT,{q:h&&fr!==0?String(fr==null||fr>=1?h:Math.round(h*fr)):'',rs:EX_RS(x.lb),note:`照規則：${x.lb||'出場條件'}${x.act?' → '+x.act:''}`,sig:id+'|'+key});if(typeof asTh=='function'){asOvOpen(asTradeHtml());asTh();asPrev()}return}
+ let n='';if(k=='skip'){n=prompt(how=='keep'?'評估後先續抱的原因（一句話，之後檢討用）：':key=='stop'?'不照做的原因（一句話，之後檢討用）。停損每天都要重新確認：明天收盤還在停損價下面，會再問一次。':'不照做的原因（一句話，之後檢討用）：','');if(n==null)return;n=n.trim();if(!n){alert('請寫一句原因');return}}
  else if(k=='na'){n=prompt('為什麼這條不適用？（例如「股價在上升段，這條是谷底建倉才用的停損」）','');if(n==null)return;n=n.trim()}
  exMark(T,key,k,n);save();upd();if(typeof asCalc=='function')asCalc();exReStock()};
 const exReStock=()=>{try{if(typeof asCur!='undefined'&&asCur&&!AT&&$('asOv')&&$('asOv').style.display=='flex'){const b=$('asOvB'),h=b.scrollTop;asStock(asCur.c,asCur.ac);$('asOvB').scrollTop=h}}catch(e){}};
