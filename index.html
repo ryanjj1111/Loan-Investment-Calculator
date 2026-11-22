@@ -190,6 +190,37 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 #iosHint{font-size:12px;margin-top:6px}
 .gds{border-top:1px solid var(--line);padding:6px 0}.gds>summary{font-weight:600;font-size:15px;cursor:pointer;padding:4px 0}.gds h3{font-size:13.5px;margin:8px 0 2px}
 .gdtoc button{font-size:12px;padding:3px 8px}
+
+/* ===== 2026-11-22 介面改版第三批：4px 間距、圓角三級、少用陰影、少量動效 ===== */
+:root{--r1:6px;--r2:8px;--r3:12px}
+body{padding:12px}
+.p{border-radius:var(--r3);padding:12px;margin-bottom:12px;box-shadow:none;border:1px solid var(--line)}
+.c{border-radius:10px;padding:8px}
+.cd,.g,.g3{gap:8px}
+input,select,button,textarea{border-radius:var(--r2)}
+input,select{padding:6px}
+button{padding:6px 10px;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s}
+@media(hover:hover){button:not(:disabled):hover{border-color:var(--mut)}button.on:hover,button.pri:hover{filter:brightness(1.06)}}
+button:not(:disabled):active{transform:translateY(1px)}
+:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px var(--pris)}
+.seg button:first-child{border-radius:var(--r2) 0 0 var(--r2)}.seg button:last-child{border-radius:0 var(--r2) var(--r2) 0}
+.tabs button{border-radius:var(--r2)}
+.stal,.asal,.hl,.stale,.verdict{border-radius:10px}
+.stal{padding:8px 12px}
+/* 明天要做的事、待補資料：改成一般卡片，只有標題圖示帶顏色 */
+.stal.tmbox,.stal.asfx{background:var(--card);border:1px solid var(--line);border-radius:var(--r3);padding:10px 12px}
+.tmbox>.fh>b>.i:first-of-type,.tmbox>.fh>b>span>.i:first-of-type{color:var(--pri)}
+.asfx>details>summary .i:first-of-type,.asfx>summary .i:first-of-type{color:var(--warn)}
+.tmr{border-top:1px solid var(--line);padding:8px 0}
+.asfab{box-shadow:none}
+/* 動效：視窗淡入上移、提示條滑入；系統要求減少動態時全部關掉 */
+.ov{animation:thFade .15s ease-out}.ovb{animation:thUp .18s ease-out}.tipbx{animation:thUp .18s ease-out}#toast{animation:thUp .2s ease-out}
+details>summary{transition:color .15s}
+@keyframes thFade{from{opacity:0}to{opacity:1}}
+@keyframes thUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#toast{animation-name:thToast}@keyframes thToast{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style></head><body>
 <div class="hdr"><h2>投資帳本 <small style="font-size:12px;font-weight:600;color:var(--mut)">資產・策略・信貸</small></h2><div class="hdrr"><button id="thB" class="icb" type="button" onclick="thTog()" aria-label="切換亮色／暗色"></button><div class="seg"><button id="uiS" onclick="setUi('simple')">簡易</button><button id="uiP" onclick="setUi('pro')">專業</button></div></div></div>
 <div class="seg pro wsw"><button id="wsAS" onclick="setWs('as')">📊 資產</button><button id="wsST" onclick="setWs('st')">🧭 策略<span id="stBadge"></span></button><button id="wsLN" onclick="setWs('loan')">💰 信貸</button></div>
@@ -474,30 +505,30 @@ details.more{margin:6px 0;border-top:1px dashed var(--line);padding-top:4px}
 <div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button><button onclick="usAsk()">🤖 問 AI</button></div>
 <div class="asfab asw" id="twFab"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261122c"></script>
-<script src="data/stocks.js?v=20261122c"></script>
-<script src="js/theme.js?v=20261122c"></script>
-<script src="js/icons.js?v=20261122c"></script>
-<script src="js/tip.js?v=20261122c"></script>
-<script src="js/engine.js?v=20261122c"></script>
-<script src="js/ui.js?v=20261122c"></script>
-<script src="js/strategy-engine.js?v=20261122c"></script>
-<script src="js/asset-engine.js?v=20261122c"></script>
-<script src="js/us-engine.js?v=20261122c"></script>
-<script src="js/prices.js?v=20261122c"></script>
-<script src="js/check.js?v=20261122c"></script>
-<script src="js/outlook.js?v=20261122c"></script>
-<script src="js/strategy-ui.js?v=20261122c"></script>
-<script src="js/order.js?v=20261122c"></script>
-<script src="js/asset-ui.js?v=20261122c"></script>
-<script src="js/us-ui.js?v=20261122c"></script>
-<script src="js/eval.js?v=20261122c"></script>
-<script src="js/ai-import.js?v=20261122c"></script>
-<script src="js/ai-ask.js?v=20261122c"></script>
-<script src="js/back.js?v=20261122c"></script>
-<script src="js/watch.js?v=20261122c"></script>
-<script src="js/season.js?v=20261122c"></script>
-<script src="js/month.js?v=20261122c"></script>
-<script src="js/brief-sync.js?v=20261122c"></script>
-<script src="js/main.js?v=20261122c"></script>
+<script src="data/etf-ref.js?v=20261122d"></script>
+<script src="data/stocks.js?v=20261122d"></script>
+<script src="js/theme.js?v=20261122d"></script>
+<script src="js/icons.js?v=20261122d"></script>
+<script src="js/tip.js?v=20261122d"></script>
+<script src="js/engine.js?v=20261122d"></script>
+<script src="js/ui.js?v=20261122d"></script>
+<script src="js/strategy-engine.js?v=20261122d"></script>
+<script src="js/asset-engine.js?v=20261122d"></script>
+<script src="js/us-engine.js?v=20261122d"></script>
+<script src="js/prices.js?v=20261122d"></script>
+<script src="js/check.js?v=20261122d"></script>
+<script src="js/outlook.js?v=20261122d"></script>
+<script src="js/strategy-ui.js?v=20261122d"></script>
+<script src="js/order.js?v=20261122d"></script>
+<script src="js/asset-ui.js?v=20261122d"></script>
+<script src="js/us-ui.js?v=20261122d"></script>
+<script src="js/eval.js?v=20261122d"></script>
+<script src="js/ai-import.js?v=20261122d"></script>
+<script src="js/ai-ask.js?v=20261122d"></script>
+<script src="js/back.js?v=20261122d"></script>
+<script src="js/watch.js?v=20261122d"></script>
+<script src="js/season.js?v=20261122d"></script>
+<script src="js/month.js?v=20261122d"></script>
+<script src="js/brief-sync.js?v=20261122d"></script>
+<script src="js/main.js?v=20261122d"></script>
 </body></html>
