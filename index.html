@@ -221,6 +221,25 @@ details>summary{transition:color .15s}
 @keyframes thUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 #toast{animation-name:thToast}@keyframes thToast{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ===== 2026-11-23 明天要做的事改版 ===== */
+.tmd{font-size:12.5px;color:var(--ok);margin:2px 0 4px}.tmd .h{color:var(--mut)}
+.tmchips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px}.tmchip{border:0;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600}
+.tc-o{background:var(--badbg);color:var(--badt)}.tc-n{background:var(--warnbg);color:var(--warnt)}.tc-w{background:var(--soft2);color:var(--tx2)}
+.tmmiss{background:var(--badbg);color:var(--badt);border-radius:10px;padding:8px 10px;margin:8px 0;font-size:12.5px;line-height:1.55}.tmmr+.tmmr{margin-top:8px;padding-top:8px;border-top:1px solid var(--badb)}.tmmr .i{margin-right:4px}
+.tmsh{display:flex;align-items:baseline;gap:6px;margin:14px 0 4px;font-size:13.5px;font-weight:600}.tmsh span{color:var(--mut);font-weight:400}.tmsh em{margin-left:auto;font-style:normal;font-weight:400;font-size:12px;color:var(--mut)}
+.tmc{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:6px 0}
+.tmc .r1{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14.5px;font-weight:600;font-variant-numeric:tabular-nums}.tmc .r1>span:last-child{white-space:nowrap}
+.tmc .r2{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--mut);margin-top:3px;font-variant-numeric:tabular-nums}.tmc .r2>span:last-child{white-space:nowrap}
+.tmc .r3{font-size:12px;color:var(--mut);margin-top:2px}
+.tmc .bt,.tmmr .bt{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.tmc .bt button,.tmmr .bt button{padding:5px 10px;font-size:12.5px}
+.sd-j{background:var(--soft2);color:var(--tx2);border:1px solid var(--line2)}
+.tmdone{font-size:12.5px;color:var(--mut);margin:6px 0}.tmdone .i{margin-right:4px}
+.tmn{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px;font-variant-numeric:tabular-nums}.tmn .tg{font-weight:600;color:var(--warn);text-align:right;white-space:nowrap}.tmn .h:last-child{text-align:right}
+.tmx{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}.tmx>summary{cursor:pointer;font-size:13.5px}
+.tmcap{margin-top:10px;padding-top:8px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mut)}.tmcap b{color:var(--tx)}
+.tmplan{margin-top:6px;font-size:12px;color:var(--mut)}.tmplan .i{margin-right:3px}
+.tmnone{display:flex;align-items:center;gap:8px;background:var(--soft);border-radius:10px;padding:10px;margin:8px 0;font-size:13.5px}.tmnone .i{color:var(--ok)}
 </style></head><body>
 <div class="hdr"><h2>投資帳本 <small style="font-size:12px;font-weight:600;color:var(--mut)">資產・策略・信貸</small></h2><div class="hdrr"><button id="thB" class="icb" type="button" onclick="thTog()" aria-label="切換亮色／暗色"></button><div class="seg"><button id="uiS" onclick="setUi('simple')">簡易</button><button id="uiP" onclick="setUi('pro')">專業</button></div></div></div>
 <div class="seg pro wsw"><button id="wsAS" onclick="setWs('as')">📊 資產</button><button id="wsST" onclick="setWs('st')">🧭 策略<span id="stBadge"></span></button><button id="wsLN" onclick="setWs('loan')">💰 信貸</button></div>
@@ -412,7 +431,7 @@ details>summary{transition:color .15s}
 <li><b>🧭 跨市場主題集中度</b>（總覽）：台股主動持股的主題和美股各檔的主題，名稱相同的加在一起，看占全資產多少。美股的主題在「美股」點那一檔填。</li>
 <li><b>📈 美股金額走勢</b>：有價格更新的日子記一點；含新投入的金額，不是報酬率。</li>
 <li><b>手機的上一頁</b>：個股頁、記交易、AI 討論等視窗打開時，按上一頁是關閉視窗，不會離開 App。</li>
-<li><b>📅 明天要做的事</b>（資產頁最上面，2026-11-12 取代「⚠️ 提醒」）：上方是資料狀態（收盤價、指標、法人、融資的日期；收盤價和指標到齊才算定案，法人、融資還沒到的條件標「暫定」；平日 15:00 後還沒有今天的收盤價，會寫「今天資料還沒到，或今天休市」）。下面分三層：🔴 要動作（收盤已觸發的出場規則、跌破停損，附股數和約多少錢，旁邊就是三選一）、🟠 接近觸發（明天收盤碰到就成立的價位，距現價 5% 內）、🟡 要注意（法說、財報、除息、月營收、重新評估日、大盤回檔、虧損上限，以及其他提醒）。三層都沒有時寫「明天沒有要做的事」。另外列出<b>明天開盤要下的單</b>（規則一律收盤確認、隔天開盤執行，和回測一致）、<b>還能買多少</b>（壓力虧損剩餘額度；可以買的論點最多幾股，受限於每筆風險、個股上限、主題上限或壓力虧損）、<b>前一天計畫的執行情形</b>（資料定案時自動存當天的單，只存代號、買賣、股數），以及「🤖 盤前問 AI」（附這張清單，只請 AI 查隔夜消息有沒有改變任何一項）。</li>
+<li><b>📅 明天要做的事</b>（資產頁最上面；2026-11-23 改版）：資料四項（收盤價、指標、法人、融資）都到齊時只顯示「✓ 資料 日期」，有缺或還是暫定才展開說明。下面一排數字標籤（下單／接近／注意），點了跳到那一區。<ul><li><b>沒照做的提醒</b>（最上面，橘色）：前幾天的計畫裡該賣沒賣、也沒寫原因的，一直列到你處理為止：記賣出，或「補寫原因」。</li><li><b>開盤要下的單</b>：一筆一張卡。「賣」是收盤已觸發的出場規則或跌破停損，寫股數、約多少錢、參考價，按鈕三個：<b>記賣出</b>（開賣出表單，股數和原因帶好）、<b>不照做…</b>（寫一句原因）、看個股。「要自己判斷」是動作寫「重新評估、檢討、轉換」的出場條件，不寫股數：賣出…（股數自己填）、續抱…（寫原因）。「買」是可以買／加碼的論點，寫最多幾股和受限於哪一項。規則一律收盤確認、隔天開盤執行，和回測一致。</li><li><b>不照做之後</b>：出場條件寫了不照做就不再提醒，等條件不成立後自動解除，下次再成立會重新提醒。<b>跌破停損每天都要重新確認</b>：不照做只對當天的計畫有效，隔天收盤還在停損價下會再問一次（卡片下方顯示「今天已決定不照做」，可以撤銷）。</li><li><b>接近觸發</b>：明天收盤碰到就成立的價位（距現價 5% 內），全部列出，依距離排序。</li><li><b>要注意</b>（法說、財報、除息、月營收、重新評估日、大盤回檔、虧損上限等）和<b>還能買多少</b>（壓力虧損剩餘額度）收成一行，點開看全部。最下面是前一天計畫的執行情形，以及「🤖 盤前問 AI」（附這張清單，只請 AI 查隔夜消息有沒有改變任何一項）。</li></ul></li>
 <li><b>不歸類</b>（2026-11-12）：撥款前持股進不了任何策略時，在論點的「所屬策略」選「不歸類」（或個股頁沒有論點時按「不歸類」）。沒有策略的出場規則，只有論點停損價和重新評估日（到期提醒），不算策略績效，每筆風險上限 1.5%。</li>
 <li><b>部位風險提醒</b>：持有中的論點，（現價 − 停損價）× 股數超過主動資本 × 策略每筆風險的 1.5 倍時，提醒列寫出要符合大約是幾股。停損釘在起算價、股價漲上去以後風險會變大；只是提醒，要不要減碼你決定。加碼補記或不歸類的論點時，記交易表單也會提醒這筆不算策略績效。</li>
 <li><b>從記交易表單問 AI</b>：買進時按條件上方的「🤖 問 AI（帶著這張表單）」，填到一半的表單會先保留；貼回 AI 對「要自己判斷」條件的看法（manual）後按「↩ 回到交易表單」，每個條件下方會顯示 AI 的看法和來源，<b>要自己點「勾選」才算</b>。原本「選什麼」沒達標、問 AI 後才補齊的，論點會註記「買進當下問 AI 後才補齊」。</li>
@@ -505,30 +524,30 @@ details>summary{transition:color .15s}
 <div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button><button onclick="usAsk()">🤖 問 AI</button></div>
 <div class="asfab asw" id="twFab"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261122d"></script>
-<script src="data/stocks.js?v=20261122d"></script>
-<script src="js/theme.js?v=20261122d"></script>
-<script src="js/icons.js?v=20261122d"></script>
-<script src="js/tip.js?v=20261122d"></script>
-<script src="js/engine.js?v=20261122d"></script>
-<script src="js/ui.js?v=20261122d"></script>
-<script src="js/strategy-engine.js?v=20261122d"></script>
-<script src="js/asset-engine.js?v=20261122d"></script>
-<script src="js/us-engine.js?v=20261122d"></script>
-<script src="js/prices.js?v=20261122d"></script>
-<script src="js/check.js?v=20261122d"></script>
-<script src="js/outlook.js?v=20261122d"></script>
-<script src="js/strategy-ui.js?v=20261122d"></script>
-<script src="js/order.js?v=20261122d"></script>
-<script src="js/asset-ui.js?v=20261122d"></script>
-<script src="js/us-ui.js?v=20261122d"></script>
-<script src="js/eval.js?v=20261122d"></script>
-<script src="js/ai-import.js?v=20261122d"></script>
-<script src="js/ai-ask.js?v=20261122d"></script>
-<script src="js/back.js?v=20261122d"></script>
-<script src="js/watch.js?v=20261122d"></script>
-<script src="js/season.js?v=20261122d"></script>
-<script src="js/month.js?v=20261122d"></script>
-<script src="js/brief-sync.js?v=20261122d"></script>
-<script src="js/main.js?v=20261122d"></script>
+<script src="data/etf-ref.js?v=20261123a"></script>
+<script src="data/stocks.js?v=20261123a"></script>
+<script src="js/theme.js?v=20261123a"></script>
+<script src="js/icons.js?v=20261123a"></script>
+<script src="js/tip.js?v=20261123a"></script>
+<script src="js/engine.js?v=20261123a"></script>
+<script src="js/ui.js?v=20261123a"></script>
+<script src="js/strategy-engine.js?v=20261123a"></script>
+<script src="js/asset-engine.js?v=20261123a"></script>
+<script src="js/us-engine.js?v=20261123a"></script>
+<script src="js/prices.js?v=20261123a"></script>
+<script src="js/check.js?v=20261123a"></script>
+<script src="js/outlook.js?v=20261123a"></script>
+<script src="js/strategy-ui.js?v=20261123a"></script>
+<script src="js/order.js?v=20261123a"></script>
+<script src="js/asset-ui.js?v=20261123a"></script>
+<script src="js/us-ui.js?v=20261123a"></script>
+<script src="js/eval.js?v=20261123a"></script>
+<script src="js/ai-import.js?v=20261123a"></script>
+<script src="js/ai-ask.js?v=20261123a"></script>
+<script src="js/back.js?v=20261123a"></script>
+<script src="js/watch.js?v=20261123a"></script>
+<script src="js/season.js?v=20261123a"></script>
+<script src="js/month.js?v=20261123a"></script>
+<script src="js/brief-sync.js?v=20261123a"></script>
+<script src="js/main.js?v=20261123a"></script>
 </body></html>

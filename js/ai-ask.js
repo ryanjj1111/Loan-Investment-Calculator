@@ -167,7 +167,7 @@ function aaStrat(){const L=[],dd=aaDD();
 // 盤前檢查（2026-11-12）：附「📅 明天要做的事」的清單，只請 AI 查隔夜消息有沒有改變任何一項
 function aaPre(){if(typeof asTmr!='function')return'（這個版本沒有「明天要做的事」）';const R=asTmr(),D=R.D,L=[];
  L.push(`【明天要做的事】（資料：${D.it.map(x=>`${x.n} ${x.d?ckMD(x.d):'—'}${x.ok?'':'（還沒更新）'}`).join('、')}${D.final?'':'；判斷是暫定'}）`);
- L.push('要動作（收盤已觸發）：'+(R.act.length?'\n'+R.act.map(x=>`- ${x.c} ${nameOf(x.c)}（${x.T.id}，${stSidN?stSidN(x.T):x.T.sid}）：${x.lb} → ${x.act}${x.q?`，${x.q} 股`:''}${x.why?`（${x.why}）`:''}`).join('\n'):'沒有'));
+ L.push('要動作（收盤已觸發）：'+(R.act.length?'\n'+R.act.map(x=>`- ${x.c} ${nameOf(x.c)}（${x.T.id}，${stSidN?stSidN(x.T):x.T.sid}）：${x.lb} → ${x.act}${x.q?`，${x.q} 股`:''}${x.why?`（${x.why}）`:''}${x.dec?`（今天已決定不照做：${x.dec.n}）`:''}`).join('\n'):'沒有'));
  L.push('接近觸發（距現價 5% 內）：'+(R.near.length?'\n'+R.near.slice(0,8).map(x=>`- ${x.c} ${nameOf(x.c)}：${x.o.what} ${x.o.ap?'約 ':''}${f2(x.o.px)}（距現價 ${aaPct(x.o.gap)}）→ ${x.o.act||'照規則'}`).join('\n'):'沒有'));
  L.push('要注意：'+(R.watch.length?'\n'+R.watch.slice(0,8).map(x=>`- ${x.d?x.d+' ':''}${x.t}`).join('\n'):'沒有'));
  L.push('明天開盤要下的單：'+(R.orders.length?'\n'+R.orders.map(o=>`- ${o.side} ${o.c} ${nameOf(o.c)} ${o.q} 股（參考價 ${o.px!=null?f2(o.px):'—'}；${o.why}）`).join('\n'):'沒有'));
