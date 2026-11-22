@@ -401,4 +401,4 @@ function asTmrHtml(){const R=asTmr();asTmrLog(R);const D=R.D,cm=asTmrCheck(),mon
  const body=`${st}${typeof bsWarn=='function'?bsWarn():''}${none?'<div class=ok style="margin:6px 0">✅ 明天沒有要做的事。</div>':''}${sec('🔴','要動作',R.act,row1)}${sec('🟠','接近觸發（明天收盤碰到就成立）',R.near,row2,6)}${sec('🟡','要注意',R.watch,x=>`<div class=tmr>${x.d?asD(x.d)+' ':''}${esc(x.t)}${x.a?asAlBtns(x.a):''}</div>`,6)}${ord}${cap}${ck}
  <div class=asbtn style="margin-top:6px"><button class=aiq onclick="aiOpen({q:'pre'})">🤖 盤前問 AI</button></div>`;
  const sum=none?'明天沒有要做的事':[R.act.length?`要動作 ${R.act.length}`:'',R.near.length?`接近 ${R.near.length}`:'',R.watch.length?`注意 ${R.watch.length}`:''].filter(Boolean).join('｜');
- return`<div class=stal>${fold('tmr',`📅 明天要做的事${D.final?'':' <span class=wn>暫定</span>'}`,sum,body)}</div>`}
+ return`<div class="stal tmbox">${fold('tmr',`📅 明天要做的事${D.final?'':' <span class=wn>暫定</span>'}`,sum,body)}</div>`}
