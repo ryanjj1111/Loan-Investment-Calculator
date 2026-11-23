@@ -240,6 +240,9 @@ details>summary{transition:color .15s}
 .tmcap{margin-top:10px;padding-top:8px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mut)}.tmcap b{color:var(--tx)}
 .tmplan{margin-top:6px;font-size:12px;color:var(--mut)}.tmplan .i{margin-right:3px}
 .tmnone{display:flex;align-items:center;gap:8px;background:var(--soft);border-radius:10px;padding:10px;margin:8px 0;font-size:13.5px}.tmnone .i{color:var(--ok)}
+
+/* 不照做對照：手機改成卡片（2026-11-23） */
+@media(max-width:640px){#stSkipT thead{display:none}#stSkipT,#stSkipT tbody{display:block;min-width:0;width:100%}#stSkipT td,#stSkipT th{white-space:normal}#stSkipT tr{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;border:1px solid var(--line);border-radius:8px;padding:8px;margin:6px 0}#stSkipT tr.nt{display:block;border:0;padding:0 4px;margin:-2px 0 6px}#stSkipT td{display:flex;justify-content:space-between;gap:6px;border:0;padding:1px 0;text-align:right}#stSkipT td::before{content:attr(data-l);color:var(--mut);font-weight:400}#stSkipT td:first-child,#stSkipT td:last-child{grid-column:1/-1}#stSkipT td:last-child{display:block;text-align:left}#stSkipT td:last-child::before{margin-right:6px}}
 </style></head><body>
 <div class="hdr"><h2>投資帳本 <small style="font-size:12px;font-weight:600;color:var(--mut)">資產・策略・信貸</small></h2><div class="hdrr"><button id="thB" class="icb" type="button" onclick="thTog()" aria-label="切換亮色／暗色"></button><div class="seg"><button id="uiS" onclick="setUi('simple')">簡易</button><button id="uiP" onclick="setUi('pro')">專業</button></div></div></div>
 <div class="seg pro wsw"><button id="wsAS" onclick="setWs('as')">📊 資產</button><button id="wsST" onclick="setWs('st')">🧭 策略<span id="stBadge"></span></button><button id="wsLN" onclick="setWs('loan')">💰 信貸</button></div>
@@ -345,7 +348,11 @@ details>summary{transition:color .15s}
  <div id="st_lib"><div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center" id="stTplW"></div>
   <div class="h" style="margin:4px 0">小修正與新版本 <span class="ib" role="button" tabindex="0" data-tn="小修正與新版本" data-tt="改了內容後，小地方可以「儲存為小修正」；邏輯或規則改變請「建立新版本」並寫原因，舊版本會保留，原本的論點仍跟隨舊版本。">ⓘ</span></div><div id="stLib"></div></div></div>
  <div id="st_perf"><div class="p" id="stPerfTop"></div><div class="p"><b>依策略</b> <span id="stPerfTip"></span><div class="w"><table id="stPerfT" class="stt"></table></div></div>
-  <div class="p"><b>依論點</b> <span class="ib" role="button" tabindex="0" data-tn="依論點" data-tt="持有未滿 6 個月顯示期間報酬（未年化）。點一列可打開該論點。">ⓘ</span><div class="w"><table id="stThT" class="stt"></table></div></div></div>
+  <div class="p"><b>依論點</b> <span class="ib" role="button" tabindex="0" data-tn="依論點" data-tt="持有未滿 6 個月顯示期間報酬（未年化）。點一列可打開該論點。">ⓘ</span><div class="w"><table id="stThT" class="stt"></table></div></div>
+  <div class="p" id="stSkipP"><b>不照做對照</b> <span class="ib" role="button" tabindex="0" data-tn="不照做對照" data-tt="每一次出場訊號或停損寫了「不照做」，和照規則在訊號日收盤賣出相比，現在差多少。
+照規則＝訊號日收盤賣出的報酬（相對策略均價）；不照做＝現價（已賣出的用賣出價）的報酬。
+停損每天都要重新確認：同一檔、同一條規則連續的不照做合併成一筆，訊號日取第一天。
+這是檢討用的對照，不改任何判斷。">ⓘ</span><div class="w"><table id="stSkipT" class="stt"></table></div></div></div>
 </div>
 
 <div class="p"><div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="expMenu()">⬇️ 匯出設定檔</button><label style="flex-direction:row;align-items:center;gap:4px;font-size:13px;border:1px solid var(--line2);border-radius:6px;padding:4px 8px;background:var(--soft2);cursor:pointer">⬆️ 匯入 JSON<input type="file" accept=".json,application/json" onchange="imp(this)" style="display:none"></label><button onclick="showGd()">📖 使用說明</button><button onclick="resetD()">↺ 重置</button><button class="pro" onclick="msOpen()">🗓️ 月結</button><button class="pro" id="usAddB" onclick="usStart()">🇺🇸 ＋新增美股帳戶</button><button id="bsBtn" onclick="bsOpen()">📡 晨報同步</button></div>
@@ -514,7 +521,7 @@ details>summary{transition:color .15s}
 <li><b>A／B／C、划算門檻、vs 0050</b>：見「💰 信貸」與「📊 資產」。<b>年化報酬（XIRR）</b>考慮出入金時間點；未滿 6 個月顯示期間報酬。</li>
 <li><b>真實淨資產</b>＝（股票＋現金）−剩餘本金−累計已繳月付−開辦費（口袋付）−淨入金−外部費用。</li>
 <li><b>限制</b>：試算用固定報酬率，不代表未來；壓力情境是簡化模型；補充保費、股利稅以簡化方式估算（債券 ETF 配息的稅務屬性不同，建議每年用扣繳憑單校正）；盤中沒有即時價格；自動檢核只看公開資料、僅供參考，「千張大戶連 N 週上升」要累積 N+1 週的資料，「月營收創新高」是和近 3 年比較，「外資單日賣超前 5 大」是和資料庫裡已有的交易日比較。</li>
-<li>本工具僅供試算，非投資或稅務建議。</li></ul></details>
+<li><b>買進前的硬性檢查</b>（2026-11-23）：①策略有「暫停加碼」時，跌破第 1 批買價 −N% 會列在【不買】並判 ⛔；②停損價高於現價時寫「停損已觸發、還沒執行」，風險看未實現損益；③停損離現價不到 3% 時，建議股數改用策略預設停損（沒填用 15%）計算並提醒，評估、記交易、問 AI 用同一套股數，都受個股、主題、壓力虧損上限限制；④壓力虧損超過剩下的虧損額度時，所有買進 ⛔，到 75% 會提醒；信貸虧損用量到「停止加碼」門檻時停止加碼（S04 用原有資金除外）；⑤「近 3 個月法人 EPS 預估」只拿同一來源的前後兩筆比（有 FactSet 就用 FactSet），查不到就是 ⏳，月營收只當參考。</li><li><b>不照做對照</b>（策略 → 績效最下面）：每一次「不照做」和照規則在訊號日收盤賣出相比，現在差多少；停損連續幾天的不照做合併成一筆。</li><li>本工具僅供試算，非投資或稅務建議。</li></ul></details>
 <div class="h" style="margin-top:8px">介面設計參考 <a href="https://github.com/heydamir/unslop" target="_blank" rel="noopener">unslop</a>（Damir Sokolovsky，CC BY 4.0）；圖示來自 <a href="https://lucide.dev" target="_blank" rel="noopener">Lucide</a>（ISC 授權）。</div>
 </div>
 
@@ -524,30 +531,30 @@ details>summary{transition:color .15s}
 <div class="asfab asw" id="usFab"><button class="pri" onclick="usUpd()">＋更新部位</button><button onclick="usAsk()">🤖 問 AI</button></div>
 <div class="asfab asw" id="twFab"><button class="pri" onclick="asTradeOpen()">＋記交易</button><button onclick="evOpen()">🔍 評估</button><button onclick="aiOpen()">🤖 AI 討論</button></div>
 <div id="asOv" class="ov" onclick="if(event.target==this)asClose()"><div class="ovb" id="asOvB"></div></div>
-<script src="data/etf-ref.js?v=20261123a"></script>
-<script src="data/stocks.js?v=20261123a"></script>
-<script src="js/theme.js?v=20261123a"></script>
-<script src="js/icons.js?v=20261123a"></script>
-<script src="js/tip.js?v=20261123a"></script>
-<script src="js/engine.js?v=20261123a"></script>
-<script src="js/ui.js?v=20261123a"></script>
-<script src="js/strategy-engine.js?v=20261123a"></script>
-<script src="js/asset-engine.js?v=20261123a"></script>
-<script src="js/us-engine.js?v=20261123a"></script>
-<script src="js/prices.js?v=20261123a"></script>
-<script src="js/check.js?v=20261123a"></script>
-<script src="js/outlook.js?v=20261123a"></script>
-<script src="js/strategy-ui.js?v=20261123a"></script>
-<script src="js/order.js?v=20261123a"></script>
-<script src="js/asset-ui.js?v=20261123a"></script>
-<script src="js/us-ui.js?v=20261123a"></script>
-<script src="js/eval.js?v=20261123a"></script>
-<script src="js/ai-import.js?v=20261123a"></script>
-<script src="js/ai-ask.js?v=20261123a"></script>
-<script src="js/back.js?v=20261123a"></script>
-<script src="js/watch.js?v=20261123a"></script>
-<script src="js/season.js?v=20261123a"></script>
-<script src="js/month.js?v=20261123a"></script>
-<script src="js/brief-sync.js?v=20261123a"></script>
-<script src="js/main.js?v=20261123a"></script>
+<script src="data/etf-ref.js?v=20261123b"></script>
+<script src="data/stocks.js?v=20261123b"></script>
+<script src="js/theme.js?v=20261123b"></script>
+<script src="js/icons.js?v=20261123b"></script>
+<script src="js/tip.js?v=20261123b"></script>
+<script src="js/engine.js?v=20261123b"></script>
+<script src="js/ui.js?v=20261123b"></script>
+<script src="js/strategy-engine.js?v=20261123b"></script>
+<script src="js/asset-engine.js?v=20261123b"></script>
+<script src="js/us-engine.js?v=20261123b"></script>
+<script src="js/prices.js?v=20261123b"></script>
+<script src="js/check.js?v=20261123b"></script>
+<script src="js/outlook.js?v=20261123b"></script>
+<script src="js/strategy-ui.js?v=20261123b"></script>
+<script src="js/order.js?v=20261123b"></script>
+<script src="js/asset-ui.js?v=20261123b"></script>
+<script src="js/us-ui.js?v=20261123b"></script>
+<script src="js/eval.js?v=20261123b"></script>
+<script src="js/ai-import.js?v=20261123b"></script>
+<script src="js/ai-ask.js?v=20261123b"></script>
+<script src="js/back.js?v=20261123b"></script>
+<script src="js/watch.js?v=20261123b"></script>
+<script src="js/season.js?v=20261123b"></script>
+<script src="js/month.js?v=20261123b"></script>
+<script src="js/brief-sync.js?v=20261123b"></script>
+<script src="js/main.js?v=20261123b"></script>
 </body></html>

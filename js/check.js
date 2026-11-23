@@ -90,8 +90,8 @@ const CK_ATOMS=[
  [/^加權指數站(?:回|上)季線$/,x=>(m,k)=>{const t=k&&k.taiex;if(!t||t.m60==null)return NA('加權指數資料不足');return R_(t.c>t.m60,`加權指數 ${f2(t.c)}，季線 ${f2(t.m60)}`)}],
  [/^千張大戶持股比例?近1週沒有下降$/,x=>m=>{const b=(m.bh||[]).filter(v=>v!=null);if(b.length<2)return NA(`股權分散表每週累積，需要 2 週（目前 ${b.length} 週）`);const[a,c]=b.slice(-2);return R_(c>=a,`千張大戶 ${a}% → ${c}%`)}],
  // ---------- 財報、估值、股利（證交所、櫃買中心、公開資訊觀測站）
- [/^毛利率沒有連(\d+)季下滑$/,x=>m=>{const n=+x[1],g=(m.gm||[]).filter(v=>v!=null);if(g.length<n+1)return NA('季報資料不足');const L=g.slice(-n-1),down=L.every((v,i)=>!i||v<L[i-1]);return R_(!down,`近 ${n+1} 季毛利率 ${L.map(v=>v+'%').join(' → ')}`)}],
- [/^毛利率持平或上升$/,x=>m=>{const g=(m.gm||[]).filter(v=>v!=null);if(g.length<2)return NA('季報資料不足');const[a,b]=g.slice(-2);return R_(b>=a-0.5,`毛利率 ${a}% → ${b}%`)}],
+ [/^毛利率沒有連(\d+)季下滑$/,x=>m=>{const n=+x[1],g=(m.gm||[]).filter(v=>v!=null);if(g.length<n+1)return NA('季報資料不足');const L=g.slice(-n-1),down=L.every((v,i)=>!i||v<L[i-1]);return R_(!down,`近 ${n+1} 季毛利率 ${ckGmTxt(m,L)}`)}],
+ [/^毛利率持平或上升$/,x=>m=>{const g=(m.gm||[]).filter(v=>v!=null);if(g.length<2)return NA('季報資料不足');const[a,b]=g.slice(-2);return R_(b>=a-0.5,`毛利率 ${ckGmTxt(m,[a,b])}`)}],
  [/^近4季EPS合計>0$/,x=>m=>m.eps4==null?NA('財報資料不足'):R_(m.eps4>0,`近 4 季 EPS ${f2(m.eps4)} 元`)],
  [/^近3年EPS穩定$/,x=>m=>{const y=m.epsY;if(!y||y.length<3||y.some(v=>v==null))return NA('年度 EPS 資料不足');const ok=y.every((v,i)=>v>0&&(!i||v>=y[i-1]*0.7));return R_(ok,`近 3 年 EPS ${y.map(f2).join('、')} 元（每年都賺錢，且沒有一年比前一年少 3 成以上）`)}],
  [/^近3年平均配息率>(\d+)%$/,x=>m=>m.pay3==null?NA('股利資料不足'):R_(m.pay3>+x[1],`近 3 年平均配息率 ${f1(m.pay3)}%`)],
@@ -111,11 +111,14 @@ const CK_ATOMS=[
  // ---------- 前瞻資料（法人預估、法說指引、主題指標；資料超過 120 天顯示 ❔）
  [/^法人預估明年EPS年增≥(\d+)%$/,x=>m=>{const o=ckOut(CKX.c),y0=+TODAY.slice(0,4),a=o.lat(y0),b=o.lat(y0+1);if(a==null||b==null)return NA(o.old(y0)||o.old(y0+1)?`EPS 預估超過 4 個月，請更新（${y0}、${y0+1} 年）`:`前瞻資料沒有 ${y0}、${y0+1} 年的 EPS 預估`,'eps');if(a<=0)return NA(`${y0} 年 EPS 預估 ≤ 0`);
   const g=(b/a-1)*100;return R_(g>=+x[1],`${y0+1} 年 EPS 預估 ${f2(b)} ÷ ${y0} 年 ${f2(a)}，年增 ${f1(g)}%（${o.srcL(y0+1)}）`)}],
- [/^近3個月法人EPS預估(持平或上修|沒有下修)$/,x=>m=>{const o=ckOut(CKX.c),y=+TODAY.slice(0,4)+1,now=o.med(y,0,45),old=o.med(y,60,150);
-  if(now!=null&&old!=null){const d=(now/old-1)*100;return R_(d>=-2,`${y} 年 EPS 預估 ${f2(old)} → ${f2(now)}（${pc(d)}）`)}
-  const r=m.ry;if(!r||r.length<6||r.some(v=>v==null))return NA(o.med(y,0,45)==null?'前瞻資料沒有最近的 EPS 預估，月營收資料也不足':'還沒有 3 個月前的預估紀錄，月營收資料也不足',o.med(y,0,45)==null?'eps':'');const a=(r[0]+r[1]+r[2])/3,b=(r[3]+r[4]+r[5])/3;
-  const dN=o.dIn(y,0,45),dO=o.dIn(y,60,150),cut=ckMD(ckAddD(TODAY,-45)),why=dN?`（⏳ 還沒有 3 個月前的預估：${ckMD(dN)} 那筆約 ${ckMD(ckAddD(dN,60))} 起可以拿來比較，先用月營收判斷）`:dO?`（有 ${ckMD(dO)} 的預估，還缺 ${cut} 之後的新預估才能比較，先用月營收判斷）`:'（還沒有法人 EPS 預估，先用月營收判斷）';
-  return Object.assign(R_(b>=a,`近 3 個月營收年增率平均 ${f1(b)}%，前 3 個月 ${f1(a)}%`,why),{hint:dN?'wait':dO?'new':'none',hd:dO||'',proxy:1})}],
+ // 2026-11-23：只拿同一來源的前後兩筆比（有 FactSet 就以 FactSet 為準，沒有才看各家券商，任何一家下修超過 2% 就不算持平）
+ // 沒有可以比較的預估 → ⏳（不再用月營收代替判斷；月營收只寫在說明裡當參考）
+ [/^近3個月法人EPS預估(持平或上修|沒有下修)$/,x=>m=>{const y=+TODAY.slice(0,4)+1,P=epsPairs(CKX.c,y,[60,150],45),r=m.ry;
+  const ref=r&&r.length>=6&&r.every(v=>v!=null)?`參考（不當判斷）：近 3 個月營收年增率平均 ${f1((r[3]+r[4]+r[5])/3)}%，前 3 個月 ${f1((r[0]+r[1]+r[2])/3)}%`:'';
+  if(P.V.length){const bad=P.V.filter(o=>o.d<-2);return R_(!bad.length,`${y} 年：`+P.V.map(o=>o.t).join('；'))}
+  const anyNow=P.G.some(g=>g.now&&dDays(g.now.d,TODAY)<=45),why=anyNow?`${y} 年只有最近的預估（${P.G.filter(g=>g.now).map(g=>`${g.lb} ${f2(g.now.v)}，${ckMD(g.now.d)}`).join('；')}），同一來源還沒有 3 個月前的預估可以比較`:P.G.length?`${y} 年沒有 45 天內的新預估（最新：${P.G.filter(g=>g.L.length).map(g=>`${g.lb} ${ckMD(g.L[g.L.length-1].d)}`).join('、')}）`:`查不到 ${y} 年的法人 EPS 預估`;
+  const dN=P.G.map(g=>g.now&&dDays(g.now.d,TODAY)<=45?g.now.d:'').filter(Boolean).sort().pop()||'';
+  return Object.assign(NA(why+(ref?'｜'+ref:''),anyNow?'':'eps'),{hint:anyNow?'wait':P.G.length?'new':'none',hd:dN})}],
  // 出場：法人 EPS 預估下修 > N%（2026-11-11，基準 C：比 3 個月前、也比論點起算時，任何一個超過門檻就成立）
  [/^法人(?:明年)?EPS預估(?:下修|下調)>(\d+(?:\.\d+)?)%$/,x=>m=>exEpsRev(CKX.c,+x[1],CKX.start||'')],
  [/^最近一次法說(?:的)?營收與毛利率展望不低於持平$/,x=>m=>{const g=ckOut(CKX.c).guide;if(!g||!g.d)return NA('前瞻資料沒有法說指引','guide');if(!g.rev||!g.gm)return NA('法說指引缺營收或毛利率的方向','guide');if(dDays(g.d,TODAY)>120)return NA(`法說指引是 ${g.d} 的，超過 4 個月，請更新`,'guide');
@@ -146,9 +149,10 @@ function ckOut(c){const o=(S.outlook||{})[cU(c)]||{},E=ckEpsAdj(c,o.eps||[]);con
  const med=(y,a,b)=>{const L=pick(y,a,b).sort((p,q)=>p-q);if(!L.length)return null;const k=L.length>>1;return L.length%2?L[k]:(L[k-1]+L[k])/2};
  const src=y=>{const L=E.filter(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)<=120);return L.length?L.map(e=>e.src||'未註明').slice(0,3).join('、')+(L.length>3?' 等 '+L.length+' 家':'')+'，'+L.map(e=>e.d).sort().pop():''};
  // 最近一批：120 天內最新的日期往前 45 天內的紀錄（避免新舊預估混在一起算中位數）
- const latL=y=>{const L=E.filter(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)<=120);if(!L.length)return[];const dm=L.map(e=>e.d).sort().pop();return L.filter(e=>dDays(e.d,dm)<=45)};
+ // 2026-11-23：有 FactSet 就只用 FactSet 最新一筆（不和單一券商混在一起取中位數）
+ const latL=y=>{let L=E.filter(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)<=120);if(!L.length)return[];const F=L.filter(e=>/factset/.test(epsSrcK(e.src)));if(F.length){const d=F.map(e=>e.d).sort().pop();return F.filter(e=>e.d==d)}const dm=L.map(e=>e.d).sort().pop();return L.filter(e=>dDays(e.d,dm)<=45)};
  const lat=y=>{const L=latL(y).map(e=>+e.v).filter(isFinite).sort((p,q)=>p-q);if(!L.length)return null;const k=L.length>>1;return L.length%2?L[k]:(L[k-1]+L[k])/2};
- const srcL=y=>{const L=latL(y);return L.length?[...new Set(L.map(e=>e.src||'未註明'))].slice(0,3).join('、')+(L.length>3?' 等 '+L.length+' 筆':'')+'，'+L.map(e=>e.d).sort().pop():''};
+ const srcL=y=>{const L=latL(y);return L.length?[...new Set(L.map(e=>String(e.src||'未註明').split(/[（(]/)[0].trim()))].join('、')+'，'+L.map(e=>e.d).sort().pop():''};
  const old=y=>E.some(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)>120);
  const dIn=(y,a,b)=>E.filter(e=>+e.y==y&&e.d&&dDays(e.d,TODAY)>=a&&dDays(e.d,TODAY)<=b).map(e=>e.d).sort().pop()||'';
  return{med,src,lat,srcL,old,dIn,guide:o.guide||null}}
@@ -156,19 +160,31 @@ function ckOut(c){const o=(S.outlook||{})[cU(c)]||{},E=ckEpsAdj(c,o.eps||[]);con
 //   基準 1：3 個月前（60～150 天前的紀錄）；基準 2：論點起算時（起算日以前最新的一批；起算前沒有就用起算後第一批）
 //   新舊兩批各只有一個來源、而且不是同一家 → 那一組不比（❔）；最新一批在起算日以前 → 起算前就已知（⏸）
 const epsSrcK=s=>String(s||'未註明').split(/[（(]/)[0].replace(/\s+/g,'').toLowerCase();
+// 2026-11-23：同一來源分組。有 FactSet（而且有最近的預估）就只用 FactSet；沒有才用各家券商
+function epsSrcG(c,y){const E=ckEpsAdj(c,(((S.outlook||{})[cU(c)]||{}).eps||[]).filter(e=>e&&e.d&&isFinite(+e.v)&&+e.y==y)),G={};
+ for(const e of E){const k=epsSrcK(e.src);(G[k]=G[k]||{k,lb:String(e.src||'未註明').split(/[（(]/)[0].trim(),L:[]}).L.push(Object.assign({},e,{v:+e.v}))}
+ const all=Object.values(G);for(const g of all)g.L.sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);return all}
+// 每個來源：最新一筆（nowMax 天內）和舊的一筆（age[0]～age[1] 天前）；只用 FactSet 或只用券商
+function epsPairs(c,y,age,nowMax){const all=epsSrcG(c,y),pick=g=>g.L.filter(e=>dDays(e.d,TODAY)<=(nowMax||120)).pop()||null;
+ for(const g of all){g.now=pick(g);g.old=g.now?g.L.filter(e=>{const a=dDays(e.d,TODAY);return a>=age[0]&&a<=age[1]&&e.d<g.now.d}).pop()||null:null}
+ const fs=all.filter(g=>/factset/.test(g.k)&&g.now),G=fs.length?fs:all.filter(g=>g.now),V=[];
+ for(const g of G)if(g.now&&g.old){const d=(g.now.v/g.old.v-1)*100;V.push({g,d,t:`${g.lb} ${f2(g.old.v)}（${ckMD(g.old.d)}）→ ${f2(g.now.v)}（${ckMD(g.now.d)}）${pc(d)}`})}
+ return{G:G.length?G:all,V,fs:!!fs.length}}
 function epsBatch(L){if(!L.length)return null;const dm=L.map(e=>e.d).sort().pop(),B=L.filter(e=>dDays(e.d,dm)<=45),v=B.map(e=>+e.v).filter(isFinite).sort((p,q)=>p-q);if(!v.length)return null;const k=v.length>>1;
  return{v:v.length%2?v[k]:(v[k-1]+v[k])/2,d:dm,src:[...new Set(B.map(e=>epsSrcK(e.src)))],lb:[...new Set(B.map(e=>String(e.src||'未註明').split(/[（(]/)[0].trim()))].slice(0,2).join('、')}}
-function exEpsRev(c,th,start){const E=ckEpsAdj(c,(((S.outlook||{})[cU(c)]||{}).eps||[]).filter(e=>e&&e.d&&isFinite(+e.v))),y=+TODAY.slice(0,4)+1,Y=E.filter(e=>+e.y==y);
- const nowB=epsBatch(Y.filter(e=>dDays(e.d,TODAY)<=120));if(!nowB)return NA(Y.length?`${y} 年 EPS 預估超過 4 個月，請更新`:`前瞻資料沒有 ${y} 年的 EPS 預估`,'eps');
- const oldB=epsBatch(Y.filter(e=>{const a=dDays(e.d,TODAY);return a>=60&&a<=150}));
- let stB=null;if(start){stB=epsBatch(Y.filter(e=>e.d<=start));if(!stB){const A=Y.filter(e=>e.d>start).sort((p,q)=>p.d<q.d?-1:1);if(A.length){const d0=A[0].d;stB=epsBatch(A.filter(e=>dDays(d0,e.d)<=45));if(stB)stB.after=1}}}
- const cmp=(b,lb)=>{if(!b)return null;if(b.d===nowB.d)return{lb,same:1,t:`${lb} ${f2(b.v)}（${ckMD(b.d)}，就是最新一批）`};
-  if(b.src.length==1&&nowB.src.length==1&&b.src[0]!=nowB.src[0])return{lb,unk:1,t:`${lb} ${f2(b.v)}（${b.lb}）和最新 ${f2(nowB.v)}（${nowB.lb}）來源不同，不比較`};
-  const d=(nowB.v/b.v-1)*100;return{lb,d,t:`${lb} ${f2(b.v)}（${ckMD(b.d)}${b.after?'，起算後第一批':''}）→ 最新 ${f2(nowB.v)}（${ckMD(nowB.d)}）${pc(d)}`}};
- const C=[cmp(oldB,'3 個月前'),cmp(stB,'起算時')].filter(Boolean),V=C.filter(o=>o.d!=null),why=`${y} 年：${C.length?C.map(o=>o.t).join('；'):'最新 '+f2(nowB.v)+'（'+ckMD(nowB.d)+'）'}；門檻下修 ${th}%（${nowB.lb}）`;
- if(!V.length){if(C.some(o=>o.unk))return Object.assign(R_(null,why,'新舊預估來源不同，無法判斷有沒有下修'),{});if(C.some(o=>o.same)){const age=dDays(nowB.d,TODAY);return Object.assign(NA(`${y} 年只有 ${ckMD(nowB.d)} 一批預估（${nowB.lb}，${f2(nowB.v)}），沒有新預估可以比較，${age>=60?`已經 ${age} 天沒有新預估，請補`:'等之後有新預估再比較'}`,age>=60?'eps':null),{why})}return NA(`還沒有可以比較的舊預估（${ckMD(nowB.d)} 那筆約 ${ckMD(ckAddD(nowB.d,60))} 起可以和之後的新預估比較）`)}
- const hit=V.some(o=>o.d<-th),r=R_(hit,why);
- if(hit&&start&&nowB.d<=start){EXPRE=true;return Object.assign({},r,{v:false,pre:1,why:`${why}｜⏸ 最新一批預估在論點起算（${ckMD(start)}）以前就有了，不算成立；之後有新預估再判斷`})}
+// 2026-11-23：只比同一來源的前後兩筆（有 FactSet 就以 FactSet 為準；沒有才看各家券商，任何一家下修超過門檻就成立），並寫出來源
+function exEpsRev(c,th,start){const y=+TODAY.slice(0,4)+1,all=epsSrcG(c,y);if(!all.length)return NA(`前瞻資料沒有 ${y} 年的 EPS 預估`,'eps');
+ for(const g of all){g.now=g.L.filter(e=>dDays(e.d,TODAY)<=120).pop()||null}
+ const fs=all.filter(g=>/factset/.test(g.k)&&g.now),G=fs.length?fs:all.filter(g=>g.now);if(!G.length)return NA(`${y} 年 EPS 預估超過 4 個月，請更新`,'eps');
+ const C=[],V=[];
+ for(const g of G){const n=g.now,old=g.L.filter(e=>{const a=dDays(e.d,TODAY);return a>=60&&a<=150&&e.d<n.d}).pop()||null;
+  let st=null,af=0;if(start){st=g.L.filter(e=>e.d<=start).pop()||null;if(!st){st=g.L.find(e=>e.d>start)||null;af=1}}
+  const P=[];const one=(b,lb)=>{if(!b)return;if(b.d===n.d){P.push(`${lb} ${f2(b.v)}（${ckMD(b.d)}，就是最新一筆）`);return}const d=(n.v/b.v-1)*100;V.push({g,d,n});P.push(`${lb} ${f2(b.v)}（${ckMD(b.d)}${af&&lb=='起算時'?'，起算後第一筆':''}）→ 最新 ${f2(n.v)}（${ckMD(n.d)}）${pc(d)}`)};
+  one(old,'3 個月前');one(st,'起算時');C.push(`${g.lb}：${P.length?P.join('；'):`只有 ${ckMD(n.d)} 一筆 ${f2(n.v)}`}`)}
+ const why=`${y} 年（同一來源前後比）：${C.join('｜')}；門檻下修 ${th}%`;
+ if(!V.length){const nd=G.map(g=>g.now.d).sort().pop(),age=dDays(nd,TODAY);return Object.assign(NA(`${y} 年同一來源還沒有可以比較的舊預估，${age>=60?`已經 ${age} 天沒有新預估，請補`:'等之後有新預估再比較'}`,age>=60?'eps':null),{why})}
+ const H=V.filter(o=>o.d<-th),r=R_(H.length>0,why);
+ if(H.length&&start&&H.every(o=>o.n.d<=start)){EXPRE=true;return Object.assign({},r,{v:false,pre:1,why:`${why}｜⏸ 最新的預估在論點起算（${ckMD(start)}）以前就有了，不算成立；之後有新預估再判斷`})}
  return r}
 const ckAddD=(d,n)=>{const t=new Date(d+'T00:00:00Z');t.setUTCDate(t.getUTCDate()+n);return t.toISOString().slice(0,10)};
 const CKC={};
@@ -198,7 +214,12 @@ function ckRun(P,m,k){if(!P)return null;if(typeof P=='function'){const o=P(m,k);
   if(ok&&!u){any=true}else if(ok&&u)unk=true}
  const v=any?true:(unk||man)?null:false;return Object.assign({v,why:whys.join('；'),miss:miss.join('；')+(man&&!any?(mt.length?`${miss.length?'；':''}要自己判斷：${mt.join('、')}`:'（有一部分要自己判斷）'):'')},v==null&&fx.size?{fix:[...fx]}:{})}
 // 策略的每一組條件，加上自動判斷結果
-function ckGroups(st,c){return stConds(st).map(g=>({sec:g.sec,need:g.need,rule:g.rule,items:g.items.map(t=>({t,r:ckEval(c,t,st)}))}))}
+// T：這檔持有中的論點（沒給就自己找同策略的）；有「暫停加碼」時加進【不買】當一條自動判斷（2026-11-23）
+function ckGroups(st,c,T){const G=stConds(st).map(g=>({sec:g.sec,need:g.need,rule:g.rule,items:g.items.map(t=>({t,r:ckEval(c,t,st)}))}));
+ try{if(T===undefined&&typeof S!='undefined'&&st)T=(S.theses||[]).find(x=>x.status=='hold'&&x.sid==st.id&&cU(x.code)==cU(c))||null;
+  const h=T&&typeof stHaltChk=='function'?stHaltChk(S,T,st):null;
+  if(h){let g=G.find(x=>x.need=='none');if(!g){g={sec:'不買',need:'none',rule:'',items:[]};G.push(g)}g.items.push({t:h.t,r:{v:h.v,why:h.why},halt:1})}}catch(e){}
+ return G}
 // 條件文字：〔基〕〔技〕〔籌〕〔盤〕顯示成小標籤
 const CK_TG={'基':'b','技':'t','籌':'c','盤':'m'};
 const ckT=t=>esc(t).replace(/〔(基|技|籌|盤)〕/g,(_,k)=>`<span class="ctg ctg${CK_TG[k]}">${k}</span>`);
@@ -246,6 +267,13 @@ window.ckFix={
  guide:(el,c,f,v)=>{const w=el.closest('.ckfx'),d=w.querySelector('.gd').value||TODAY,src=w.querySelector('.gs').value.trim();S.outlook=S.outlook||{};const o=S.outlook[c]=S.outlook[c]||{},g=o.guide=o.guide||{};if(g.d!=d){g.rev=g.rev&&g.d==d?g.rev:'';g.gm=g.gm&&g.d==d?g.gm:''}g[f]=v;g.d=d;if(src)g.src=src;ckFixRe()}};
 
 // ---------- 待補資料清單（資產頁）：✏️ 要補資料＋🔄 要更新；只列策略用得到的
+// 季別（2026-11-23）：檢核資料的 gmQ＝毛利率最新一季（民國年-季，例如 115-3），顯示成 26Q3
+// 財報期限（3/31 年報、5/15 Q1、8/14 Q2、11/14 Q3）過後還不是那一季＝新一季資料未取得
+const ckQL=k=>{if(!k)return'';const[a,b]=String(k).split('-');return String((+a+1911)%100).padStart(2,'0')+'Q'+b};
+function ckFinExp(){const y=+TODAY.slice(0,4),L=[];for(const yy of[y-1,y])L.push([yy+'-03-31',(yy-1)+'-4'],[yy+'-05-15',yy+'-1'],[yy+'-08-14',yy+'-2'],[yy+'-11-14',yy+'-3']);const s=L.filter(([d])=>d<=TODAY).pop();if(!s)return null;const[a,b]=s[1].split('-');return(+a-1911)+'-'+b}
+function ckQBack(k,n){let[a,b]=String(k).split('-').map(Number);const L=[];for(let i=0;i<n;i++){L.unshift(ckQL(a+'-'+b));b--;if(!b){b=4;a--}}return L}
+const ckGmStale=m=>{if(!m||!m.gmQ)return'';const e=ckFinExp();if(!e)return'';const q=x=>{const[a,b]=String(x).split('-').map(Number);return a*10+b};return q(m.gmQ)<q(e)?`新一季資料未取得（應有 ${ckQL(e)}，最新是 ${ckQL(m.gmQ)}）`:''};
+const ckGmTxt=(m,L)=>{const lb=m&&m.gmQ?ckQBack(m.gmQ,L.length):null,st=ckGmStale(m);return L.map((v,i)=>(lb?lb[i]+' ':'')+v+'%').join(' → ')+(st?`｜⚠️ ${st}`:'')};
 // 財報季：每季財報期限前約一個月開始公布；資料日期早於這一季開始、而期限已過＝要更新
 function ckSeason(d){const y=+TODAY.slice(0,4),L=[];for(const yy of[y-1,y])L.push([yy+'-01-15',yy+'-03-31'],[yy+'-04-15',yy+'-05-15'],[yy+'-07-15',yy+'-08-14'],[yy+'-10-15',yy+'-11-14']);const s=L.filter(([a,b])=>d<a&&b<=TODAY).pop();return s?s[1]:''}
 function ckStaleWhy(c,d){if(!d)return'';if(dDays(d,TODAY)>120)return`是 ${ckMD(d)} 的，超過 4 個月`;const s=ckSeason(d);if(s)return`是 ${ckMD(d)} 的，${ckMD(s)} 財報期限過後還沒更新`;
@@ -258,7 +286,8 @@ function ckTodo(){if(!CK)return[];const L=[],key=new Set(),push=o=>{const k=o.k+
      else if(f=='eps'&&(((S.outlook||{})[c]||{}).eps||[]).length&&!(S.outlook[c].eps).some(e=>e.d&&dDays(e.d,TODAY)<=120)){const d=((S.outlook||{})[c].eps).map(e=>e.d).filter(Boolean).sort().pop();push({k:'old',f:'eps',c,n:c+'oldeps',w:ckStaleWhy(c,d)||`是 ${ckMD(d)} 的，請更新`})}
      else push({k:'fix',f,c:c,n:c+f})}
     else if(i.r.hint=='new')push({k:'soft',f:'eps',c,n:c+'soft',w:`有 ${ckMD(i.r.hd)} 的預估；要一筆 ${ckMD(ckAddD(TODAY,-45))} 之後的新預估，才能比較有沒有下修`});
-    else if(i.r.hint=='none')push({k:'soft',f:'eps',c,n:c+'soft',w:'補上法人 EPS 預估，就不用再用月營收代替判斷'})}}
+    else if(i.r.hint=='none')push({k:'soft',f:'eps',c,n:c+'soft',w:'補上法人 EPS 預估，判斷才會有結果'})}}
+  {const st2=ckGmStale(ckM0(c));if(st2&&/毛利率/.test(JSON.stringify(stConds(st))))push({k:'old',f:'fin',c,n:c+'fin',w:st2+'；資料排程會自動補抓'})}
   const o=(S.outlook||{})[c]||{};
   if(use.eps&&(o.eps||[]).length){const d=o.eps.map(e=>e.d).filter(Boolean).sort().pop(),w=ckStaleWhy(c,d);if(w&&!key.has('fix|'+c+'eps')&&!key.has('old|'+c+'oldeps'))push({k:'old',f:'eps',c,n:c+'oldeps',w})}
   if(use.guide&&o.guide&&o.guide.d){const w=ckStaleWhy(c,o.guide.d);if(w&&!key.has('fix|'+c+'guide'))push({k:'old',f:'guide',c,n:c+'oldguide',w})}
@@ -269,6 +298,7 @@ function ckTodoHtml(){const L=ckTodo();if(!L.length)return'';const nm=c=>esc(c+'
   if(o.f.startsWith('attr:')&&o.f!='attr:theme'){const k=o.f.slice(5);return`<div class=ckto>✏️ ${nm(o.c)}：${CK_ATTR[k]}？<button onclick="ckFix.attr('${o.c}','${k}',1)">是</button><button onclick="ckFix.attr('${o.c}','${k}',0)">否</button></div>`}
   const lb={'attr:theme':'所屬主題',eps:'法人 EPS 預估（'+TODAY.slice(0,4)+'、'+(+TODAY.slice(0,4)+1)+'）',guide:'最近一次法說指引'}[o.f]||o.f;
   if(o.k=='soft')return`<div class=ckto>💡 ${nm(o.c)}：${esc(o.w)} <button onclick="ckGo('${o.c}','eps',1)">填寫</button></div>`;
+  if(o.f=='fin')return`<div class=ckto>⏳ ${nm(o.c)}：季報 ${esc(o.w)}</div>`;
   return`<div class=ckto>${o.k=='old'?'🔄':'✏️'} ${nm(o.c)}：${lb}${o.k=='old'?' '+esc(o.w):''} <button onclick="ckGo('${o.c}','${o.f}',${o.k=='old'?1:0})">${o.k=='old'?'更新':'填寫'}</button></div>`};
  const n=L.filter(o=>o.k!='soft').length;
  return`<details class="stal asfx" ${ls('lcfx')=='0'?'':'open'} ontoggle="ls('lcfx',this.open?'1':'0')"><summary><b>✏️ 待補資料（${n}）</b></summary>${L.map(row).join('')}
@@ -305,22 +335,24 @@ function ckRefresh(){try{if(typeof stCalc=='function')stCalc();if(typeof asCalc=
 // 依策略的結論：可以買或加碼／還差幾項／不買條件成立／已達上限／加碼間隔還沒到
 // 自動判斷的看 ✅❌❔；要自己判斷的看有沒有按「確認符合」；「依序加碼」看下一批的條件
 function ckVerdict(T){const st=stStrat(S,T.sid);if(!st||!CK||T.status=='exit')return null;const c=cU(T.code),M=new Set(T.met||[]),done=ckDone(T).n;
+ const RG=typeof stRiskGate=='function'?stRiskGate(S,st.id):{};
  let need=0,unk=0,man=0,bl='',fin=0;const nb=[];
  let wt=0;const one=i=>i.r?(i.r.v===true?1:i.r.v===false?0:ckFixable(i.r)?-1:-3):(M.has(i.t)?1:-2);
- for(const g of ckGroups(st,c)){
-  if(g.need=='none'){for(const i of g.items)if(i.r&&i.r.v===true)nb.push(i.t.replace(/〔.〕/g,''));continue}
+ for(const g of ckGroups(st,c,T)){
+  if(g.need=='none'){for(const i of g.items)if(i.r&&i.r.v===true)nb.push(i.halt?'暫停加碼：'+i.r.why:i.t.replace(/〔.〕/g,''));continue}
   if(/依序/.test(g.rule||'')){if(done>=g.items.length){fin=g.items.length;continue}bl=`第 ${done+1} 批`;const s=one(g.items[done]);if(s==0)need++;else if(s==-1)unk++;else if(s==-2)man++;else if(s==-3)wt++;continue}
   const n=g.need=='all'?g.items.length:(+g.need||0);if(!n)continue;const L=g.items.map(one),ok=L.filter(x=>x==1).length;if(ok>=n)continue;
   let lack=n-ok;const u=L.filter(x=>x==-1).length,m=L.filter(x=>x==-2).length,w=L.filter(x=>x==-3).length;const a=Math.min(lack,m);man+=a;lack-=a;const b=Math.min(lack,u);unk+=b;lack-=b;const ww=Math.min(lack,w);wt+=ww;lack-=ww;need+=lack}
  const verb=T.status=='plan'?'買':'加碼',E=stExposure(S),p=E.tot>0?(E.by[c]||0)/E.tot*100:0,cap=stCapStock(S,c);
  if(nb.length)return{t:'⛔ 不買：'+nb[0],cls:'bad'};
  if(fin&&!bl)return{t:`${fin} 批都買完了，不再加碼`,cls:'h'};
- const pre=bl?bl+'：':'',G=typeof stAddGate=='function'?stAddGate(S,T,st):null,hl=G&&G.halt?`⏸ 暫停加碼（${G.halt}）`:'';
+ if(RG.block)return{t:'⛔ '+RG.block,cls:'bad'};
+ const pre=bl?bl+'：':'',G=typeof stAddGate=='function'?stAddGate(S,T,st):null,hl='';
  const parts=[need?`還差 ${need} 項`:'',unk?`${unk} 項要補資料 ✏️`:'',man?`${man} 項要自己確認`:'',wt?`${wt} 項等資料累積`:''].filter(Boolean);
  if(parts.length)return{t:(hl?hl+'；':'')+pre+parts.join('、'),cls:hl?'wn':need?'h':'wn'};
  if(G&&G.wait)return{t:`${pre}條件符合，但${G.wait}`,cls:'wn'};
  if(p>=cap)return{t:`${pre}條件符合，但已達個股上限 ${cap}%`,cls:'wn'};
- return{t:`✅ ${pre}條件符合，可以${verb}${hl?'（注意：'+G.halt+'）':''}`,cls:'ok'}}
+ return{t:`✅ ${pre}條件符合，可以${verb}${RG.warn?'（'+RG.warn+'）':''}`,cls:'ok'}}
 
 // ---------- 出場條件：策略「何時賣」逐條自動判斷
 // 規則一行一條「1. 標籤：條件，動作」或「1. 條件：動作」，可以用「；」分成好幾段；條件用和買進相同的判斷
@@ -331,7 +363,7 @@ CK_ATOMS.push(
  [/^(?:從)?(?:持有期間)?(?:的)?最高(?:點|收盤)?回落(\d+(?:\.\d+)?)%(?:時)?$/,x=>m=>{const p=CKX.peak;if(p==null)return NA('要在論點裡判斷（需要持有期間的收盤價）');const th=p*(1-x[1]/100);return R_(m.c<=th,`持有期間最高收盤 ${f2(p)}，回落 ${x[1]}% ＝ ${f2(th)}，收盤 ${f2(m.c)}（${pc((m.c/p-1)*100)}）`)}],
  [/^本益比(?:回)?到(?:近)?5年(?:本益比)?區間(?:的)?上緣$/,x=>m=>m.pe==null?NA('本益比資料不足（可能虧損）'):m.peHi5==null?NA('本益比區間上緣的資料下次更新檢核資料後才有'):R_(m.pe>=m.peHi5,`本益比 ${f1(m.pe)} 倍，近 5 年上緣（第 80 百分位）${f1(m.peHi5)} 倍`)],
  [/^本益比(?:降到|<)(\d+(?:\.\d+)?)倍?以下?$/,x=>m=>m.pe==null?NA('本益比資料不足（可能虧損）'):R_(m.pe>0&&m.pe<+x[1],`本益比 ${f1(m.pe)} 倍`)],
- [/^毛利率連(\d+)季下滑$/,x=>m=>{const n=+x[1],g=(m.gm||[]).filter(v=>v!=null);if(g.length<n+1)return NA('季報資料不足');const L=g.slice(-n-1);return exPre(R_(L.every((v,i)=>!i||v<L[i-1]),`近 ${n+1} 季毛利率 ${L.map(v=>v+'%').join(' → ')}`),'gm',m)}],
+ [/^毛利率連(\d+)季下滑$/,x=>m=>{const n=+x[1],g=(m.gm||[]).filter(v=>v!=null);if(g.length<n+1)return NA('季報資料不足');const L=g.slice(-n-1);return exPre(R_(L.every((v,i)=>!i||v<L[i-1]),`近 ${n+1} 季毛利率 ${ckGmTxt(m,L)}`),'gm',m)}],
  [/^月營收年增率?轉負連(\d+)個月$|^(?:月營收)?年增率連(\d+)個月(?:<0%?|為負|轉負)$/,x=>m=>{const n=+(x[1]||x[2]),y=(m.ry||[]).filter(v=>v!=null);if(y.length<n)return NA('月營收資料不足');const L=y.slice(-n);return exPre(R_(L.every(v=>v<0),`年增率 ${L.map(v=>v+'%').join(' → ')}`),'ry',m)}],
  [/^月營收年增率(?:轉負|<0%?)$/,x=>m=>{const y=(m.ry||[]).filter(v=>v!=null);if(!y.length)return NA('月營收資料不足');const v=y[y.length-1];return R_(v<0,`最新年增率 ${v}%`)}],
  [/^回到前高$/,x=>m=>{const h=CKX.hi0??m.hi250;if(h==null)return NA('資料不足');return R_(m.c>=h,`收盤 ${f2(m.c)}，${CKX.hi0!=null?'進場前 52 週最高':'近一年最高'}收盤 ${f2(h)}`)}],

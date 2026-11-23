@@ -107,6 +107,43 @@ function stAddGate(S,T,st){if(!st||T.status!='hold')return null;const B=(S.trade
  if(!o.wait&&pp&&(st.addPx=='down'||st.addPx=='up')&&px!=null&&last.px){const dn=st.addPx=='down',th=last.px*(dn?1-pp/100:1+pp/100);if(dn?px>th:px<th)o.wait=`要比${lb=='起算日'?'起算價':'上一批買價'} ${last.px} ${dn?'低':'高'} ${pp}% 以上（${dn?'≤':'≥'} ${th.toFixed(1)}），現價 ${px}`}
  if(hp&&px!=null&&first&&first.px){const th=first.px*(1-hp/100);if(px<th)o.halt=`跌破${first.lb=='起算價'?'起算價':'第 1 批買價'} ${first.px} −${hp}%（${th.toFixed(1)}）`}
  return o.wait||o.halt?o:null}
+// 暫停加碼（2026-11-23）：跌破第 1 批買價 −N%（策略「暫停加碼」欄）→ 當成【不買】的一條自動判斷
+// 回傳 {t 條件文字, v 成立與否, why 說明, th 門檻}；不是持有中的論點或策略沒填＝null
+function stHaltChk(S,T,st){if(!st||!T||T.status!='hold')return null;const hp=num(st.addHalt);if(!hp)return null;
+ const B=(S.trades||[]).filter(x=>x.thesisId==T.id&&x.k=='buy'&&x.dt&&num(x.px)!=null).sort((a,b)=>a.dt<b.dt?-1:a.dt>b.dt?1:0),bs=stBase(S,T);
+ const AK=(d,v)=>typeof ckAdjF=='function'?+(v*ckAdjF(T.code,d)).toFixed(2):v,first=B.length?{px:AK(B[0].dt,num(B[0].px)),lb:'第 1 批買價'}:bs&&bs.px!=null?{px:bs.px,lb:'起算價'}:null;
+ const t=`〔技〕跌破${first?first.lb:'第 1 批買價'} −${hp}% 暫停加碼（加碼規則）`;if(!first||!first.px)return{t,v:null,why:'還沒有第 1 批買價'};
+ const px=num((S.px||{})[cU(T.code)]),th=first.px*(1-hp/100),thT=(Math.round(th*10)/10).toLocaleString();
+ if(px==null)return{t,v:null,why:`門檻 ${thT}（${first.lb} ${first.px.toLocaleString()} −${hp}%），沒有現價`,th};
+ return{t,v:px<th,why:`現價 ${px.toLocaleString()}，${first.lb} ${first.px.toLocaleString()} −${hp}% ＝ ${thT}`,th}}
+// 停損和現價（2026-11-23）：停損 ≥ 現價＝停損已觸發、還沒賣；不能寫成「距現價 +22.5%」
+const stStopBroken=(stop,px)=>stop!=null&&px!=null&&stop>=px;
+function stStopTxt(stop,px,short){if(stop==null||px==null)return'';if(stStopBroken(stop,px))return short?`停損已觸發（低於停損 ${((1-px/stop)*100).toFixed(1)}%）`:`停損 ${stop} 已觸發、還沒執行（現價比停損低 ${((1-px/stop)*100).toFixed(1)}%）`;return`離停損 ${((stop/px-1)*100).toFixed(1)}%`}
+// 風險上限（2026-11-23）：壓力虧損超過剩下的虧損額度 → 所有買進 ⛔；75% 以上提醒；信貸虧損用量到「停止加碼」門檻 → 停止加碼（S04 用原有資金除外）
+// 回傳 {block:'不能買的原因', warn:'提醒'}；算不出來（還沒填結算現金等）＝{}
+let ST_RG=null;
+function stRiskGate(S,sid){const now=Date.now();if(!ST_RG||now-ST_RG.t>800){let H=null;try{H=typeof asHeatCap=='function'?asHeatCap(S):null}catch(e){}ST_RG={t:now,H}}
+ const H=ST_RG.H,o={};if(!H||H.tot==null||H.cap==null)return o;const r=H.cap>0?H.tot/H.cap:Infinity,W=v=>(v/1e4).toFixed(2);
+ if(H.tot>H.cap)o.block=`超過風險上限：壓力虧損 ${W(H.tot)} 萬，大於剩下的虧損額度 ${W(H.cap)} 萬`;
+ const l1=(S.rules||[]).find(x=>x.k=='loss1'),use=H.L?num(H.L.used):null;
+ if(!o.block&&l1&&l1.on&&use!=null&&use>=num(l1.th)){if(sid=='S04')o.warn=`信貸虧損用量 ${use.toFixed(1)}%（≥ ${l1.th}%）：停止加碼，S04 只能用原有資金`;else o.block=`停止加碼：信貸虧損用量 ${use.toFixed(1)}%（≥ ${l1.th}%）`}
+ if(!o.block&&!o.warn&&r>=0.75)o.warn=`接近風險上限：壓力虧損 ${W(H.tot)}／剩下額度 ${W(H.cap)} 萬（${Math.round(r*100)}%），緩衝剩 ${W(H.cap-H.tot)} 萬`;
+ return o}
+// 買進股數（2026-11-23，評估、記交易、問 AI 共用）：每筆風險算的股數 × 比例，再受個股、主題、壓力虧損剩餘額度限制
+// 停損離現價不到 3% 時，股數改用策略預設停損（沒填用 15%）算，避免停損太近讓股數暴增
+const ST_MIN_STOP=3,ST_DEF_STOP=15;
+function stBuyQty(S,c,st,px,stop,frac){c=cU(c);px=num(px);if(!px||!st)return null;const E=stExposure(S);if(!(E.tot>0))return null;
+ let gap=stop!=null&&stop<px?(1-stop/px)*100:null,warn='';const def=num(st.stopPct)||ST_DEF_STOP;
+ if(gap==null){gap=def;warn=stop!=null&&stop>=px?`停損 ${stop} 不在現價之下，股數用預設停損 ${def}% 算`:''}
+ else if(gap<ST_MIN_STOP){warn=`停損只離現價 ${gap.toFixed(1)}%，太近：股數改用預設停損 ${def}% 算`;gap=def}
+ const rk=num(st.riskPct);if(!rk)return{q:null,warn:warn||'策略沒填每筆風險，算不出股數'};
+ const base=E.tot*rk/100,q0=Math.floor(Math.floor(base/(px*gap/100))*(frac==null?1:frac));
+ const g=stGrpOf(S,c)[0],L=[['每筆風險'+(frac!=null&&frac<1?' × 第 1 批比例':''),q0],['個股上限',Math.floor(Math.max(0,stCapStock(S,c)/100*E.tot-(E.by[c]||0))/px)]];
+ if(g)L.push([`主題「${g}」上限`,Math.floor(Math.max(0,stCapGroup(S,g)/100*E.tot-(E.grp[g]||0))/px)]);
+ let H=null;try{H=typeof asHeatCap=='function'?asHeatCap(S):null}catch(e){}const room=H&&H.cap!=null&&H.tot!=null?H.cap-H.tot:null;
+ if(room!=null&&H.q)L.push(['壓力虧損剩餘',Math.floor(Math.max(0,room)/((px*gap/100)*H.q))]);
+ const mn=L.reduce((a,b)=>b[1]<a[1]?b:a),rg=stRiskGate(S,st.id);
+ return{q:rg.block?0:mn[1],by:rg.block?rg.block:mn[0],q0,gap,warn,block:rg.block||'',rwarn:rg.warn||'',H,room,g,E}}
 // 起算日的收盤價抓到後寫進論點，之後就固定
 function stBaseFix(S){let ch=0;for(const T of S.theses||[]){const B=stBase(S,T);if(!B||B.src!='收盤'||num(T.basePx)===B.px)continue;T.basePx=B.px;T.baseAuto=B.d+'|'+B.px;T.baseD=T.baseD||B.d;ch++}return ch}
 
