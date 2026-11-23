@@ -29,13 +29,11 @@ function evCheck(c,st){c=cU(c);const G=ckGroups(st,c),out={c,st,G,sel:null,lack:
 // 現價：存的價格和網頁最新收盤取比較新的（pxNow），都沒有時用檢核資料的收盤
 const evPx=c=>{try{const P=pxNow(c);return P?P.v:null}catch(e){return null}};
 // 第 1 批買進試算
+// 第 1 批買進試算（2026-11-23 改用共用的 stBuyQty：停損太近用預設停損算、受個股／主題／壓力虧損上限限制、風險上限擋下）
 function evBuy(c,st){const px=evPx(c);if(px==null)return null;const sc=typeof stStopCalc=='function'?stStopCalc(st,c,px):null,stop=sc&&sc.v!=null?sc.v:null;
- const E=stExposure(S),pl=stPlanDef(st),f1=pl&&pl.length?(+pl[0].pct||100)/100:1,hint=stop!=null&&stop<px?asSizeHint(S,px,(1-stop/px)*100,st.riskPct):null;
- const g=stGrpOf(S,c)[0],H=typeof asHeatCap=='function'?asHeatCap(S):null,room=H&&H.cap!=null&&H.tot!=null?H.cap-H.tot:null;
- // 第 1 批 = 每筆風險算出的股數 × 第 1 批比例，再受個股上限、主題上限、壓力虧損剩餘額度限制（和「明天要做的事」同一套）
- let q=hint?Math.floor(hint.q*f1):null,by='每筆風險 × 第 1 批比例';if(q!=null){const L=[[by,q],['個股上限',Math.floor(Math.max(0,stCapStock(S,c)/100*E.tot-(E.by[c]||0))/px)]];if(g)L.push([`主題「${g}」上限`,Math.floor(Math.max(0,stCapGroup(S,g)/100*E.tot-(E.grp[g]||0))/px)]);if(room!=null&&H.q)L.push(['壓力虧損剩餘',Math.floor(Math.max(0,room)/((px-stop)*H.q))]);const mn=L.reduce((a,b)=>b[1]<a[1]?b:a);q=mn[1];by=mn[0]}
- const add=q?q*px:0;
- return{px,stop,stopT:sc&&sc.t,q,by,qAll:hint&&hint.q,f1,batches:pl?pl.length:1,pct0:E.tot>0?(E.by[c]||0)/E.tot*100:0,pct1:E.tot>0?((E.by[c]||0)+add)/E.tot*100:0,cap:stCapStock(S,c),g,g0:g&&E.tot>0?(E.grp[g]||0)/E.tot*100:null,g1:g&&E.tot>0?((E.grp[g]||0)+add)/E.tot*100:null,gc:g?stCapGroup(S,g):null,dH:H&&H.q!=null&&q&&stop!=null?q*(px-stop)*H.q:null,room}}
+ const E=stExposure(S),pl=stPlanDef(st),f1=pl&&pl.length?(+pl[0].pct||100)/100:1,z=stBuyQty(S,c,st,px,stop,f1),all=stBuyQty(S,c,st,px,stop,1);
+ const q=z?z.q:null,by=z?z.by:'',g=stGrpOf(S,c)[0],H=z?z.H:null,room=z?z.room:null,add=q?q*px:0,rg=z?z.gap:null;
+ return{px,stop,stopT:sc&&sc.t,q,by,warn:z?z.warn:'',block:z?z.block:'',rwarn:z?z.rwarn:'',qAll:all&&all.q0,f1,batches:pl?pl.length:1,pct0:E.tot>0?(E.by[c]||0)/E.tot*100:0,pct1:E.tot>0?((E.by[c]||0)+add)/E.tot*100:0,cap:stCapStock(S,c),g,g0:g&&E.tot>0?(E.grp[g]||0)/E.tot*100:null,g1:g&&E.tot>0?((E.grp[g]||0)+add)/E.tot*100:null,gc:g?stCapGroup(S,g):null,dH:H&&H.q!=null&&q&&rg!=null?q*(px*rg/100)*H.q:null,room}}
 const evOn=()=>(S.strategies||[]).filter(s=>+s.on).sort((a,b)=>evRank(a.id)-evRank(b.id)||(a.id<b.id?-1:1));
 // 策略矩陣：每個策略【選什麼】的狀態
 function evMatrix(c){return evOn().map(st=>{const r=evCheck(c,st);return{st,r,fit:!!r.sel&&r.sel.bad==0}})}
@@ -56,9 +54,9 @@ window.evRunScan=()=>{const st=stStrat(S,EV.sid);if(!st)return;$('evScan').inner
 // 一檔的完整檢核卡
 function evCard(c,st){const r=evCheck(c,st),b=evBuy(c,st),ic={ok:'✅',wait:'⏳',bad:'⛔'}[r.v],T0=asThesisOf(S,c);
  const grp=r.G.map(g=>`<div class=sub>【${esc(g.sec)}】${g.need=='none'?'（任一項成立就不買）':''}</div>${g.L.map((i,k)=>`<div class=ckl>${/依序/.test(g.rule||'')&&k>0?'<span class=h>':''}${evIc(g.need=='none'?(i.s==1?0:i.s==0?1:i.s):i.s)} ${typeof ckT=='function'?ckT(i.t):esc(i.t)}${i.r&&(i.r.why||i.r.miss)?`<div class=h>${esc(i.r.why||'')}${i.r.miss?' '+esc(i.r.miss):''}</div>`:''}${/依序/.test(g.rule||'')&&k>0?'</span>':''}</div>`).join('')}`).join('');
- const by=b?`<div class=sub>第 1 批買進試算（收盤確認、隔天開盤執行）</div><div class=tmr>參考價 ${f2(b.px)}｜停損 ${b.stop!=null?f2(b.stop)+'（'+esc(b.stopT||'')+'）':'—'}｜${b.q?`第 1 批 <b>${b.q.toLocaleString()} 股</b>（約 ${W2(b.q*b.px)} 萬；受限於${esc(b.by)}${b.batches>1?`；${b.batches} 批全部約 ${b.qAll.toLocaleString()} 股`:''}）`:'算不出建議股數'}</div>${b.q?`<div class=tmr>買進後占主動 ${b.pct0.toFixed(1)}% → ${b.pct1.toFixed(1)}%（上限 ${b.cap}%）${b.g?`；主題「${esc(b.g)}」${b.g0.toFixed(1)}% → ${b.g1.toFixed(1)}%（上限 ${b.gc}%）`:''}${b.dH!=null?`；壓力虧損 +${W2(b.dH)} 萬（剩下 ${b.room!=null?W2(b.room):'—'} 萬）`:''}</div>`:''}`:'<div class=h>沒有現價，算不出買進試算</div>';
- const go=r.v=='ok'&&b&&b.q>0&&!T0?`<button class=pri onclick="asClose();asTradeOpen({k:'buy',c:'${c}',ac:'a',sid:'${st.id}',q:${b.q}})">＋記交易（第 1 批 ${b.q.toLocaleString()} 股）</button>`:'';
- return`<div class=asth><b>${esc(c)} ${esc(nameOf(c))}</b> ${T0?`<span class="thc on">已有 ${esc(T0.id)}（${esc(T0.sid||'')}）</span>`:''}${(CK&&CK.s&&CK.s[c])?'':' <span class=wn>不在檢核資料裡：條件都是「資料不足」，不能當成通過</span>'}
+ const by=b?`<div class=sub>第 1 批買進試算（收盤確認、隔天開盤執行）</div>${b.block?`<div class=bad>⛔ ${esc(b.block)}</div>`:''}${b.warn?`<div class=wn>⚠️ ${esc(b.warn)}</div>`:''}${b.rwarn?`<div class=wn>⚠️ ${esc(b.rwarn)}</div>`:''}<div class=tmr>參考價 ${f2(b.px)}｜停損 ${b.stop!=null?f2(b.stop)+'（'+esc(b.stopT||'')+'）':'—'}｜${b.q?`第 1 批 <b>${b.q.toLocaleString()} 股</b>（約 ${W2(b.q*b.px)} 萬；受限於${esc(b.by)}${b.batches>1?`；${b.batches} 批全部約 ${b.qAll.toLocaleString()} 股`:''}）`:'算不出建議股數'}</div>${b.q?`<div class=tmr>買進後占主動 ${b.pct0.toFixed(1)}% → ${b.pct1.toFixed(1)}%（上限 ${b.cap}%）${b.g?`；主題「${esc(b.g)}」${b.g0.toFixed(1)}% → ${b.g1.toFixed(1)}%（上限 ${b.gc}%）`:''}${b.dH!=null?`；壓力虧損 +${W2(b.dH)} 萬（剩下 ${b.room!=null?W2(b.room):'—'} 萬）`:''}</div>`:''}`:'<div class=h>沒有現價，算不出買進試算</div>';
+ const go=r.v=='ok'&&b&&b.q>0&&!b.block&&!T0?`<button class=pri onclick="asClose();asTradeOpen({k:'buy',c:'${c}',ac:'a',sid:'${st.id}',q:${b.q}})">＋記交易（第 1 批 ${b.q.toLocaleString()} 股）</button>`:'';
+ return`<div class=asth><b>${esc(c)} ${esc(nameOf(c))}</b> <button class=lk onclick="grpAsk('${c}')" title="所屬主題：族群上限、主題占比用">🏷 ${esc(stGrpOf(S,c)[0])}</button> ${T0?`<span class="thc on">已有 ${esc(T0.id)}（${esc(T0.sid||'')}）</span>`:''}${(CK&&CK.s&&CK.s[c])?'':' <span class=wn>不在檢核資料裡：條件都是「資料不足」，不能當成通過</span>'}
   <div class="${r.v=='ok'?'ok':r.v=='bad'?'wn':'h'}" style="margin:4px 0"><b>${ic} ${r.v=='ok'?'可以買':r.v=='bad'?'現在不買':'只差資料'}</b>：${esc(r.why)}</div>
   ${by}<details><summary>完整條件（${esc(st.id)}）</summary>${grp}</details><div class=asbtn>${go}<button onclick="evAsk('${c}')">🤖 ${EV_ASK[r.v]}</button>${typeof wlBtn=='function'?wlBtn(c,st.id):''}</div>${r.v!='ok'?`<div class=h>策略還在測試；判斷不是 ✅ 也可以問 AI。AI 回覆後建立的論點會標「規則外觀察」，績效另外算。</div>`:''}<div id="evAi_${c}"></div></div>`}
 function evRender(){const L=evOn(),c0=EV.codes[0];let h=`<div class=ovh><button onclick="asClose()">✕</button><div><b>🔍 評估</b></div></div>
@@ -87,7 +85,7 @@ window.evAsk=c=>{const cs=c?[cU(c)]:EV.codes.slice();if(!cs.length||!EV.sid)retu
 function aaEvPick(){const L=evOn();return`<div class=sub>股票與策略</div>${AA.codes.length?`<div>${AA.codes.map(c=>esc(c+' '+nameOf(c))).join('、')}</div>`:'<div class=wn>先到資產頁底下「🔍 評估」選股票，再按「問 AI」。</div>'}
  <select onchange="aaSet('sid',this.value)">${L.map(s=>`<option value="${s.id}" ${AA.sid==s.id?'selected':''}>${esc(s.id+' '+s.name)}（${esc(evGrN(s.id))}）</option>`).join('')}</select>`}
 // 第 1 批買進試算（文字版）
-function aaEvLine(c,st){const b=evBuy(c,st);if(!b||!b.q)return'';return`第 1 批買進試算（App 算的）：參考價 ${f2(b.px)}、停損 ${b.stop!=null?f2(b.stop)+'（'+b.stopT+'）':'—'}、第 1 批 ${AA.amt?b.q.toLocaleString()+' 股（受限於'+b.by+'）':'（股數不附）'}；買進後這檔占主動 ${b.pct0.toFixed(1)}% → ${b.pct1.toFixed(1)}%（上限 ${b.cap}%）${b.g?`；主題「${b.g}」${b.g0.toFixed(1)}% → ${b.g1.toFixed(1)}%（上限 ${b.gc}%）`:''}`}
+function aaEvLine(c,st){const b=evBuy(c,st);if(b&&b.block)return`第 1 批買進試算（App 算的）：⛔ ${b.block}，現在不能買`;if(!b||!b.q)return'';return`第 1 批買進試算（App 算的）：參考價 ${f2(b.px)}、停損 ${b.stop!=null?f2(b.stop)+'（'+b.stopT+'）':'—'}、第 1 批 ${AA.amt?b.q.toLocaleString()+' 股（受限於'+b.by+'）':'（股數不附）'}；買進後這檔占主動 ${b.pct0.toFixed(1)}% → ${b.pct1.toFixed(1)}%（上限 ${b.cap}%）${b.g?`；主題「${b.g}」${b.g0.toFixed(1)}% → ${b.g1.toFixed(1)}%（上限 ${b.gc}%）`:''}${b.warn?`；⚠️ ${b.warn}`:''}${b.rwarn?`；⚠️ ${b.rwarn}`:''}`}
 function aaEvAsk(ex){const st=stStrat(S,AA.sid),C=aaCodes();if(!st)return'【要你做的事】（先選策略）';if(!C.length)return'【要你做的事】（先到「🔍 評估」選股票）';
  const R=C.map(c=>({c,r:evCheck(c,st)})),by=k=>R.filter(x=>x.r.v==k),cl=t=>String(t).replace(/〔.〕/g,''),nm=x=>`${x.c} ${nameOf(x.c)}`;
  const L=[`【App 的判斷】（${st.id} ${st.name} v${st.ver}；證據等級：${evGrN(st.id)}。策略還在測試，判斷不是 100%）`];

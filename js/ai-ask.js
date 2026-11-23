@@ -42,7 +42,8 @@ function aaStock(c){const T=aaThOf(c),st=T?stStrat(S,T.sid):(AA.sid?stStrat(S,AA
  const p=T?stPerf(S,T):null,avg=p&&p.q>0?p.cost/p.q:null,stop=T?num(T.stop):null;
  L.push(`■ ${c} ${nameOf(c)}${!T&&st?`｜還沒有論點，打算用 ${st.id} ${st.name} v${st.ver} 買進`:''}${T?`｜${T.id}｜${st?st.id+' '+st.name+' v'+(T.sver||st.ver):stSidN(T)+(stIsU(T)?`（沒有策略出場規則：只有停損 ${T.stop||'—'} 和重新評估日 ${T.reviewD||'還沒填'}）`:'')}｜${T.convFrom?`由 ${T.convFrom.id} 轉換，${T.convFrom.d} 起算`:+T.useInit===1?'撥款前持股，'+(T.baseD||T.created)+' 歸入策略'+(stBkPost(S,T)?`，之後加碼 ${stBkPost(S,T)} 筆（補記不算策略績效）`:''):'起算 '+(T.baseD||(p&&p.first)||T.created)}${T.status=='plan'?'｜規劃中（還沒買）':''}`:'｜沒有論點'}`);
  const pos=[];if(E.tot>0&&E.by[c])pos.push(`占主動資本 ${(E.by[c]/E.tot*100).toFixed(1)}%`);if(px!=null){const pd=PN.d||'',sl=pxStale(pd);pos.push(`現價 ${f2(px)}（${pd?ckMD(pd)+' ':''}${PN.auto?'收盤':'自己填的'}${sl?`；⚠️ 不是最新，最近交易日是 ${ckMD(sl)}`:''}）`)}if(avg!=null){pos.push(`策略均價 ${f2(avg)}`);if(px!=null)pos.push(`起算後損益 ${aaPct((px/avg-1)*100)}`)}
- if(stop!=null&&px!=null){pos.push(`停損 ${f2(stop)}（距現價 ${aaPct((stop/px-1)*100)}）`);if(E.tot>0&&qty)pos.push(`停損風險占主動資本 ${(qty*Math.max(0,px-stop)/E.tot*100).toFixed(1)}%${st&&num(st.riskPct)!=null?'（策略每筆 '+st.riskPct+'%）':''}`)}
+ if(stop!=null&&px!=null){if(stStopBroken(stop,px)){pos.push(`停損 ${f2(stop)}：已觸發、還沒執行（現價比停損低 ${((1-px/stop)*100).toFixed(1)}%）`);if(qty)pos.push(`停損風險：損失已經發生，看未實現損益${avg!=null?`（起算後 ${aaPct((px/avg-1)*100)}）`:''}`)}
+  else{pos.push(`停損 ${f2(stop)}（距現價 ${aaPct((stop/px-1)*100)}）`);if(E.tot>0&&qty)pos.push(`停損風險占主動資本 ${(qty*(px-stop)/E.tot*100).toFixed(1)}%${st&&num(st.riskPct)!=null?'（策略每筆 '+st.riskPct+'%）':''}`)}}
  const rm=T&&p&&typeof stRmul=='function'?stRmul(T,p.ret):null;if(rm!=null)pos.push(`${rm>=0?'+':''}${rm.toFixed(2)}R`);
  if(AA.amt&&qty)pos.push(`股數 ${qty.toLocaleString()}｜市值 ${W2(mv)} 萬`);
  if(pos.length)L.push(pos.join('｜'));
@@ -73,9 +74,11 @@ function aaStock(c){const T=aaThOf(c),st=T?stStrat(S,T.sid):(AA.sid?stStrat(S,AA
 // 買進試算：用表單的股數（從記交易表單來）或建議股數，算買進後的占比、主題占比、壓力虧損變化
 function aaBuyLine(c,T,st){const PN=pxNow(c),px=PN?PN.v:null;if(px==null)return'';const E=stExposure(S);if(!(E.tot>0))return'';
  const sc=typeof stStopCalc=='function'?stStopCalc(st,c,px):null,stop=num(T&&T.stop)??(sc&&sc.v!=null?sc.v:(num(st.stopPct)?px*(1-num(st.stopPct)/100):null));
- const fq=AT_DRAFT&&cU(AT_DRAFT.c)==c?num(AT_DRAFT.q):null,sh=stop!=null&&stop<px?asSizeHint(S,px,(1-stop/px)*100,st.riskPct):null,q=fq??(sh?sh.q:null);if(!q)return'';
- const add=q*px,cap=stCapStock(S,c),g=stGrpOf(S,c)[0],gv=g?(E.grp[g]||0):0,gc=g?stCapGroup(S,g):null,H=typeof asHeatCap=='function'?asHeatCap(S):null,dH=H&&H.q!=null&&stop!=null?q*(px-stop)*H.q:null;
- return`買進試算（${fq!=null?'表單上的':'建議'} ${q.toLocaleString()} 股 × ${f2(px)}${stop!=null?`，停損 ${f2(stop)}`:''}）：買進後這檔占主動 ${((E.by[c]||0)/E.tot*100).toFixed(1)}% → ${(((E.by[c]||0)+add)/E.tot*100).toFixed(1)}%（上限 ${cap}%）${g?`；主題「${g}」${(gv/E.tot*100).toFixed(1)}% → ${((gv+add)/E.tot*100).toFixed(1)}%（上限 ${gc}%）`:''}${dH!=null?`；壓力虧損 +${W2(dH)} 萬（目前 ${W2(H.tot)} 萬，剩下額度 ${W2(H.cap)} 萬）`:''}`}
+ // 2026-11-23：和評估、記交易用同一套股數（停損太近用預設停損、受個股／主題／壓力虧損上限、風險上限擋下）
+ const z=stBuyQty(S,c,st,px,stop,1),fq=AT_DRAFT&&cU(AT_DRAFT.c)==c?num(AT_DRAFT.q):null;
+ if(z&&z.block&&fq==null)return`買進試算：⛔ ${z.block}，現在不能買`;const q=fq??(z?z.q:null);if(!q)return'';
+ const add=q*px,cap=stCapStock(S,c),g=stGrpOf(S,c)[0],gv=g?(E.grp[g]||0):0,gc=g?stCapGroup(S,g):null,H=z&&z.H,dH=H&&H.q!=null&&z.gap!=null?q*(px*z.gap/100)*H.q:null;
+ return`買進試算（${fq!=null?'表單上的':'建議'} ${q.toLocaleString()} 股 × ${f2(px)}${stop!=null?`，停損 ${f2(stop)}`:''}${fq==null&&z?`，受限於${z.by}`:''}）：買進後這檔占主動 ${((E.by[c]||0)/E.tot*100).toFixed(1)}% → ${(((E.by[c]||0)+add)/E.tot*100).toFixed(1)}%（上限 ${cap}%）${g?`；主題「${g}」${(gv/E.tot*100).toFixed(1)}% → ${((gv+add)/E.tot*100).toFixed(1)}%（上限 ${gc}%）`:''}${dH!=null?`；壓力虧損 +${W2(dH)} 萬（目前 ${W2(H.tot)} 萬，剩下額度 ${W2(H.cap)} 萬）`:''}${z&&z.warn?`；⚠️ ${z.warn}`:''}${z&&z.block?`；⛔ ${z.block}`:z&&z.rwarn?`；⚠️ ${z.rwarn}`:''}`}
 // 月底復盤：這個月每一筆「不照做」「不適用」的原因
 function aaMonthSkips(){const d0=ckAddD(TODAY,-31),L=[];for(const T of S.theses||[])for(const x of T.exLog||[]){if(!x.d||x.d<d0||(x.k!='skip'&&x.k!='na'))continue;L.push(`- ${x.d} ${T.id} ${cU(T.code)} ${nameOf(T.code)}「${x.lb||x.key}」${EX_KN[x.k]||x.k}：${String(x.n||'（沒寫原因）').replace(/\n+/g,' ').slice(0,300)}`)}return L}
 function aaPortfolio(){const L=['【組合】'],E=stExposure(S);const by={};for(const T of S.theses||[]){if(T.status!='hold')continue;(by[T.sid]=by[T.sid]||[]).push(T.id+' '+cU(T.code))}
@@ -217,7 +220,7 @@ function aiJudge(){const J={},px=c=>{const P=pxNow(c);return P?P.v:null};
  for(const T of S.theses||[]){if(T.status=='exit')continue;const nm=`${T.id} ${cU(T.code)} ${nameOf(T.code)}`;
   try{const v=ckVerdict(T);if(v)J['v|'+T.id]={lb:`${nm}：判斷`,v:v.t}}catch(e){}
   if(T.status=='hold')try{for(const x of exEval(T)){const a=exAckOf(T,x.key),r=x.r;J['x|'+T.id+'|'+x.key]={lb:`${nm}：出場「${x.lb}」`,v:a&&a.k=='na'?'🚫 不適用':!r?'❔':r.v===true?'🔴 成立':r.pre?'⏸ 起算前已知':r.v===false?'✓ 沒有成立':'⏳ 資料不足'}}}catch(e){}
-  const st=num(T.stop),p=px(T.code);if(T.status=='hold'&&st!=null&&p)J['s|'+T.id]={lb:`${nm}：離停損`,v:((st/p-1)*100).toFixed(1)+'%'}}
+  const st=num(T.stop),p=px(T.code);if(T.status=='hold'&&st!=null&&p)J['s|'+T.id]={lb:`${nm}：離停損`,v:stStopBroken(st,p)?'已觸發、還沒賣':((st/p-1)*100).toFixed(1)+'%'}}
  try{for(const a of stAlerts(S))J['a|'+a.t]={lb:'提醒',v:a.t,al:1}}catch(e){}
  try{const H=asHeatCap(S);if(H.tot!=null)J['h']={lb:'壓力虧損',v:`${W2(H.tot)} 萬／剩下的額度 ${W2(H.cap)} 萬`}}catch(e){}
  return J}

@@ -13,6 +13,11 @@ window.wlAdd=(c,sid)=>{c=cU(c);if(!c||!sid||wlHas(c,sid))return;if(wlAll().lengt
  const px=typeof evPx=='function'?evPx(c):null;S.watch=wlAll().concat([{c,sid,d:TODAY,px0:px!=null?px:null,note:''}]);save();toast(`已加入觀察名單：${c} ${nameOf(c)}（${sid}）`,0);wlRe()};
 window.wlDel=(c,sid)=>{S.watch=wlAll().filter(w=>!(w.c==c&&w.sid==sid));save();wlRe()};
 window.wlNote=(c,sid)=>{const w=wlAll().find(x=>x.c==c&&x.sid==sid);if(!w)return;const v=prompt(`${c} ${nameOf(c)}：為什麼想觀察？（一句話，可留空）`,w.note||'');if(v===null)return;w.note=v.trim().slice(0,80);save();wlRe()};
+// 所屬主題（2026-11-23）：還沒持有的股票也能設定（族群上限、主題占比用），存在 S.attr[代號].theme，優先於產業別
+window.grpAsk=c=>{c=cU(c);const a=(S.attr||{})[c]||{},ind=typeof indOf=='function'?indOf(c):'',L=typeof asThemeL=='function'?asThemeL():[];
+ const v=prompt(`${c} ${nameOf(c)} 的所屬主題（族群上限、主題占比用）。留空＝用產業別「${ind||'未分類'}」${L.length?'\n目前有的主題：'+L.join('、'):''}`,a.theme||'');if(v===null)return;
+ S.attr=S.attr||{};const x=S.attr[c]=S.attr[c]||{};x.theme=v.trim();x.d=TODAY;save();toast(v.trim()?`${c} 主題設成「${v.trim()}」`:`${c} 改回用產業別`,0);
+ if($('asOv').style.display=='flex'&&typeof evRender=='function')evRender();else if(typeof asCalc=='function')asCalc()};
 const wlRe=()=>{WLC.k='';if($('asOv').style.display=='flex'&&$('wlBox')&&typeof evRender=='function'){evRender();wlAfter()}else if(typeof asCalc=='function')asCalc()};
 // 每一筆的判斷；結果在檢核資料或名單沒變時沿用
 function wlEval(){if(typeof CK=='undefined'||!CK||!CK.s||typeof evCheck!='function')return null;const k=[CK._t,CK.d,TODAY,JSON.stringify(wlAll()),(S.theses||[]).length,(S.trades||[]).length].join('|');if(WLC.k==k)return WLC.L;
@@ -26,7 +31,7 @@ function wlHtml(){const A=wlAll();if(!A.length)return`<div id=wlBox class=evdrop
   const X=w.sid==WL_X,op=X?`evOpen({codes:['${w.c}'],mode:'stock'})`:`evOpen({codes:['${w.c}'],sid:'${w.sid}',mode:'stock'})`,dr=w.draft||{};
   return`<div class=tmr><a href="#" onclick="${op};return false"><b>${ic[x.v]} ${esc(w.c)} ${esc(nameOf(w.c))}</b></a>（${esc(wlSidN(w.sid))}）${x.T?` <span class="thc on">已有 ${esc(x.T.id)}</span>`:''}${x.chg!=null?` <span class=h>加入後</span> <b class="${x.chg>=0?'up':'dn'}">${x.chg>=0?'+':''}${x.chg.toFixed(1)}%</b>`:''} <span class=h>${age} 天</span>
    <div class="${x.v=='ok'?'ok':'h'}">${x.v=='ok'?'條件都符合，可以準備買':(X?'💡 ':'')+esc(String(x.why).slice(0,X?140:90))}</div>${dr.risk?`<div class=h>⚠️ 風險：${esc(String(dr.risk).slice(0,90))}</div>`:''}${(dr.pillars||[]).length?`<div class=h>支柱草稿 ${dr.pillars.length} 根${(dr.peers||[]).length?`｜同業 ${esc(dr.peers.join('、'))}`:''}</div>`:''}${dr.src?`<div class=h>來源：${esc(String(dr.src).slice(0,80))}</div>`:''}${w.note?`<div class=h>📝 ${esc(w.note)}</div>`:''}
-   <button onclick="${op}">🔍 ${X?'評估':'看條件'}</button>${x.T?'':`<button onclick="wlPlan('${w.c}','${w.sid}')">📋 轉成規劃中</button>`}<button onclick="wlNote('${w.c}','${w.sid}')">📝</button><button onclick="wlDel('${w.c}','${w.sid}')">移除</button></div>`}).join('')}
+   <button onclick="${op}">🔍 ${X?'評估':'看條件'}</button>${x.T?'':`<button onclick="wlPlan('${w.c}','${w.sid}')">📋 轉成規劃中</button>`}<button onclick="wlNote('${w.c}','${w.sid}')">📝</button><button onclick="grpAsk('${w.c}')" title="所屬主題">🏷 ${esc(stGrpOf(S,w.c)[0])}</button><button onclick="wlDel('${w.c}','${w.sid}')">移除</button></div>`}).join('')}
   <div class=h>依「可以買 → 還差幾項 → 工具自選 → 不買」排序。只是追蹤，不是論點，不算進策略績效。「📋 轉成規劃中」會建立規劃中論點並帶入草稿（買進理由、錯了條件、支柱、同業），打開表單讓你改。</div></div>`}
 // 觀察名單 → 規劃中論點（2026-11-21）：選策略（工具自選的要選一個，或「U 不歸類」）→ 建立論點、帶入草稿 → 從觀察名單移除 → 打開論點表單
 const wlPlanN=()=>(S.theses||[]).filter(T=>T.status=='plan').length,WL_PMAX=()=>typeof EV_PLAN_MAX!='undefined'?EV_PLAN_MAX:5;

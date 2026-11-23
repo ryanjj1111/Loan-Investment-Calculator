@@ -217,7 +217,7 @@ function finOf(c){// 季資料：每季的營收、毛利（累計數相減）
  const Q=[];for(const k of FK){const[y,s]=k.split('-').map(Number);const r=fv(k,c,0),g=fv(k,c,1),e=fv(k,c,2);if(r==null&&e==null)continue;let rq=r,gq=g,eq=e;
   if(s>1){const p=y+'-'+(s-1);const r0=fv(p,c,0),g0=fv(p,c,1),e0=fv(p,c,2);if(!FIN[p]||(r!=null&&r0==null)){rq=gq=null;eq=e0==null?null:eq}else{rq=r!=null&&r0!=null?r-r0:null;gq=g!=null&&g0!=null?g-g0:null;eq=e!=null&&e0!=null?e-e0:null}}
   Q.push({k,y,s,rq,gq,eq,cum:e})}
- const gm=Q.filter(q=>q.rq>0&&q.gq!=null).slice(-4).map(q=>r1(q.gq/q.rq*100));
+ const gQ=Q.filter(q=>q.rq>0&&q.gq!=null).slice(-4),gm=gQ.map(q=>r1(q.gq/q.rq*100)),gmQ=gQ.length?gQ[gQ.length-1].k:null;// gmQ：毛利率最新一季（例如 115-3），App 用來標季別、判斷新一季有沒有抓到（2026-11-23）
  // 近 4 季 EPS：最新一季累計＋去年年報－去年同季累計
  let eps4=null;const L=Q.filter(q=>q.cum!=null).slice(-1)[0];if(L){if(L.s==4)eps4=L.cum;else{const a=fv((L.y-1)+'-4',c,2),b=fv((L.y-1)+'-'+L.s,c,2);if(a!=null&&b!=null)eps4=r2(L.cum+a-b)}}
  const Y4=FK.filter(k=>k.endsWith('-4')).map(k=>+k.split('-')[0]).sort((a,b)=>a-b).slice(-3),epsY=Y4.length==3?Y4.map(y=>fv(y+'-4',c,2)):null;
@@ -226,7 +226,7 @@ function finOf(c){// 季資料：每季的營收、毛利（累計數相減）
   if(s==4){fcf=now;break}const a=FIN[(y-1)+'-4'],b=FIN[(y-1)+'-'+s];const A=a&&a.sb20&&a.sb20[c],B=b&&b.sb20&&b.sb20[c];if(A&&B){fcf=now+cf(A)-cf(B);break}}
  // 近 8 季單季 EPS（出場條件「EPS 連 N 季年減」用）
  const epsQ=Q.slice(-8).map(q=>q.eq==null?null:r2(q.eq)),qk=Q.slice(-8).map(q=>q.k);
- return{gm:gm.length?gm:null,eps4,epsY:epsY&&epsY.every(v=>v!=null)?epsY:null,debt,fcf,Y4,epsQ:epsQ.length>=6&&epsQ.some(v=>v!=null)?epsQ:null,qk}}
+ return{gm:gm.length?gm:null,gmQ,eps4,epsY:epsY&&epsY.every(v=>v!=null)?epsY:null,debt,fcf,Y4,epsQ:epsQ.length>=6&&epsQ.some(v=>v!=null)?epsQ:null,qk}}
 function valOf(c,f){const cur=VL&&VL.s[c];const pe=cur?cur[0]:null,pb=cur?cur[1]:null;
  const P5=VM.slice(-61,-1).map(v=>v.s[c]&&v.s[c][0]).filter(x=>x>0),B10=VM.slice(-121).map(v=>v.s[c]&&v.s[c][1]).filter(x=>x>0);
  const pct=(a,p)=>{a=a.slice().sort((x,y)=>x-y);if(!a.length)return null;const i=(a.length-1)*p,lo=Math.floor(i),hi=Math.ceil(i);return a[lo]+(a[hi]-a[lo])*(i-lo)};
@@ -253,7 +253,7 @@ function perShare(c,fn,fd){if(!(ADJ.ev[c]||[]).some(e=>Math.abs(e[2]-1)>0.02))re
  if(fd.dps3!=null&&fd.dy)fd.dps3=r2_(fd.dy.reduce((a,y)=>a+fd.D[y]*shareK(c,(+y+1912)+'-07-01'),0)/3)}
 // 給網頁的事件（近一年多）：［日期, f, fs］
 const adjOut=c=>{const L=(ADJ.ev[c]||[]).filter(e=>e[0]>=PD[0]).map(e=>[e[0],e[1],e[2]]);return L.length?L:null};
-const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag','lo20','hi20','lo250','dNL','pe','pb','peMed5','pbPct10','dps3','pay3','gm','eps4','epsY','debt','fcf','peHi5','epsQ','jp','adj','pbQ'];
+const F=['c','m20','m60','m120','m20p','m60p','rsi','rsiLo','mh','mhLo','hi60','hi250','n','v','av20','fi','it','mg','ry','rHi','rN','bh','rLag','lo20','hi20','lo250','dNL','pe','pb','peMed5','pbPct10','dps3','pay3','gm','eps4','epsY','debt','fcf','peHi5','epsQ','jp','adj','pbQ','gmQ'];
 const out={};
 for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[],vl=[],cd=[];raw.forEach((x,i)=>{if(x!=null){cl.push(x);vl.push(vv[i]);cd.push(PD[i])}});if(!cl.length||raw[iP]==null)continue;const clRaw=cl.slice();
  // 還原價：每個事件日之前的收盤乘上 f（只用在算指標；data/px 保留原始價）
@@ -272,7 +272,7 @@ for(const c of codes){const raw=pxS(c).slice(0,iP+1),vv=vS(c).slice(0,iP+1),cl=[
   n>1?Math.max(...cl.slice(Math.max(0,n-61),n-1)):null,Math.max(...cl.slice(-250)),n,vl[n-1],vols.length>1&&!shIn(21)?Math.round(avg(vl.slice(Math.max(0,n-21),n-1).filter(x=>x!=null))||0):null,
   fi.some(x=>x!=null)&&!shIn(11)?fi:null,it.some(x=>x!=null)&&!shIn(11)?it:null,mgA.length&&!shIn(21)?[mgV(0),mgV(10),mgV(20)]:null,ry,rHi,rN,bh&&bh.some(x=>x!=null)?bh:null,rLag,
   n>1?Math.min(...cl.slice(Math.max(0,n-21),n-1)):null,n>1?Math.max(...cl.slice(Math.max(0,n-21),n-1)):null,Math.min(...cl.slice(-250)),dNL(cl),
-  fd.pe,fd.pb,fd.peMed5,fd.pbPct10,fd.dps3,fd.pay3,fn.gm,fn.eps4,fn.epsY,fn.debt,fn.fcf,fd.peHi5,fn.epsQ,jumpOf(cl,cd),adjOut(c),fd.pbQ]}
+  fd.pe,fd.pb,fd.peMed5,fd.pbPct10,fd.dps3,fd.pay3,fn.gm,fn.eps4,fn.epsY,fn.debt,fn.fcf,fd.peHi5,fn.epsQ,jumpOf(cl,cd),adjOut(c),fd.pbQ,fn.gmQ]}
 {const iJ=F.indexOf('jp'),J=Object.entries(out).filter(([c,a])=>a[iJ]).map(([c,a])=>c+' '+a[iJ].join(' '));if(J.length)say(`跳動保險：${J.length} 檔近一年有單日漲跌超過 10.5%（價格相關條件標 ❔）：${J.slice(0,20).join('、')}${J.length>20?'…':''}`)}
 const tx=CAL.filter(d=>d<=today).map(d=>MK.taiex[d]),fxD=Object.keys(MK.fx).sort(),fxL=fxD.slice(-250).map(d=>MK.fx[d]),fxT=fxL[fxL.length-1];
 const mkt={d:CAL.filter(d=>d<=today).slice(-1)[0],taiex:{c:tx[tx.length-1],m20:r2(sma(tx,20)),m60:r2(sma(tx,60)),hi250:Math.max(...tx.slice(-250)),n:tx.length},
