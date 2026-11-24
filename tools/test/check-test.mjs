@@ -64,4 +64,14 @@ C.push(evalCk('跳動：52 週高點條件不判斷','〔技〕個股從 52 週�
 C.push(evalCk('跳動：大盤條件照常判斷','〔盤〕大盤從高點回檔 ≥ 10%',{m:J},{v:true}));
 C.push(evalCk('跳動：毛利率條件照常判斷','〔基〕毛利率沒有連 2 季下滑',{m:J},{v:false}));
 C.push(evalCk('沒有跳動：季線條件照常','〔技〕收盤低於季線 20% 以上',{m:Object.assign({},J,{jp:null})},{v:true}));
+// 系統性下跌的三項客觀檢查（2026-11-24）：exSys
+function sysCk(name,o,want){ctx.__o=o;run(`for(const k in CKM)delete CKM[k];PXH={'2026-11-04':{'9999':100,'0050':100}};S={bm:'0050',outlook:{},trades:[],strategies:[{id:'S01',exit:'1. 理由失效：月營收年增率轉負連 2 個月，全部賣出'}],theses:[],px:{'9999':__o.px,'0050':__o.bm}};
+ CK={d:'2026-11-10',f:${JSON.stringify(F)},s:{'9999':${JSON.stringify(F)}.map(k=>({c:__o.px,ry:__o.ry,rLag:0})[k]??null)},rM:'2026-10',mkt:{taiex:{c:__o.tx,hi250:100,m20:90,m60:95}}};
+ __r=exSys({id:'T1',code:'9999',sid:'S01',status:'hold',created:'2026-11-04'})`);
+ const r=ctx.__r,got=r?r.sys:undefined,ok=got===want;console.log(`${ok?'✓':'✗'} ${name}${ok?'':`：預期 ${want}，得到 ${got}｜${r&&r.txt}`}`);return ok}
+C.push(sysCk('大盤 −12%、個股 −15% vs 0050 −12%、理由失效沒成立 → 符合',{tx:88,px:85,bm:88,ry:[5,3,1,2,1,3]},true));
+C.push(sysCk('個股 −30% 比 0050 −12% × 1.5 多 → 不符合',{tx:88,px:70,bm:88,ry:[5,3,1,2,1,3]},false));
+C.push(sysCk('理由失效成立 → 不符合',{tx:88,px:85,bm:88,ry:[5,3,1,2,-1,-3]},false));
+C.push(sysCk('0050 反彈 +3%、個股 +1%：落後 2 點在容許內 → 符合',{tx:88,px:101,bm:103,ry:[5,3,1,2,1,3]},true));
+C.push(sysCk('大盤只跌 5% → 不符合',{tx:95,px:94,bm:95,ry:[5,3,1,2,1,3]},false));
 const bad=C.filter(x=>!x).length;console.log(`\n${C.length-bad}／${C.length} 通過`);if(bad)process.exit(1);
