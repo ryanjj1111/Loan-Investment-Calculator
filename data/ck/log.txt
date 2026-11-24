@@ -1,47 +1,11 @@
 交易日：2025-10-01～2026-11-24，共 277 天
 每日資料：0 次請求
-  HTTP 307 https://www.twse.com.tw/rwd/zh/reducation/TWTAUU?response=json&startDate=20261001&endDate=20261031
-  HTTP 307 https://www.twse.com.tw/rwd/zh/reducation/TWTAUU?response=json&startDate=20261001&endDate=20261031
-還原事件 tse-r|2026-10：抓不到
-  HTTP 307 https://www.twse.com.tw/rwd/zh/change/TWTB8U?response=json&startDate=20261001&endDate=20261031
-  HTTP 307 https://www.twse.com.tw/rwd/zh/change/TWTB8U?response=json&startDate=20261001&endDate=20261031
-還原事件 tse-p|2026-10：抓不到
-  HTTP 307 https://www.twse.com.tw/rwd/zh/split/TWTCAU?response=json&startDate=20261001&endDate=20261031
-  HTTP 307 https://www.twse.com.tw/rwd/zh/split/TWTCAU?response=json&startDate=20261001&endDate=20261031
-還原事件 tse-e|2026-10：抓不到
-  HTTP 307 https://www.twse.com.tw/rwd/zh/exRight/TWT49U?response=json&startDate=20261101&endDate=20261130
-  HTTP 307 https://www.twse.com.tw/rwd/zh/exRight/TWT49U?response=json&startDate=20261101&endDate=20261130
-還原事件 tse-x|2026-11：抓不到
-  HTTP 307 https://www.twse.com.tw/rwd/zh/reducation/TWTAUU?response=json&startDate=20261101&endDate=20261130
-  HTTP 307 https://www.twse.com.tw/rwd/zh/reducation/TWTAUU?response=json&startDate=20261101&endDate=20261130
-還原事件 tse-r|2026-11：抓不到
-  HTTP 307 https://www.twse.com.tw/rwd/zh/change/TWTB8U?response=json&startDate=20261101&endDate=20261130
-  HTTP 307 https://www.twse.com.tw/rwd/zh/change/TWTB8U?response=json&startDate=20261101&endDate=20261130
-還原事件 tse-p|2026-11：抓不到
-  HTTP 307 https://www.twse.com.tw/rwd/zh/split/TWTCAU?response=json&startDate=20261101&endDate=20261130
-  HTTP 307 https://www.twse.com.tw/rwd/zh/split/TWTCAU?response=json&startDate=20261101&endDate=20261130
-還原事件 tse-e|2026-11：抓不到
-還原事件：12 次請求；這次新增或更新 tse-x 67、otc-x 139、otc-r 15；共 3100 筆、1766 檔
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/sii/t21sc03_115_10_0.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/sii/t21sc03_115_10_0.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/sii/t21sc03_115_10_1.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/sii/t21sc03_115_10_1.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/otc/t21sc03_115_10_0.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/otc/t21sc03_115_10_0.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/otc/t21sc03_115_10_1.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/otc/t21sc03_115_10_1.html
-月營收 2026-10：0 家
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/sii/t21sc03_115_9_0.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/sii/t21sc03_115_9_0.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/sii/t21sc03_115_9_1.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/sii/t21sc03_115_9_1.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/otc/t21sc03_115_9_0.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/otc/t21sc03_115_9_0.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/otc/t21sc03_115_9_1.html
-  HTTP 307 https://mopsov.twse.com.tw/nas/t21/otc/t21sc03_115_9_1.html
-月營收 2026-09：0 家
+還原事件：12 次請求；這次新增或更新 tse-x 123、tse-r 7、tse-p 0、tse-e 1、otc-x 139、otc-r 15；共 3100 筆、1766 檔
+  失敗 https://mopsov.twse.com.tw/nas/t21/sii/t21sc03_115_10_0.html：fetch failed
+月營收 2026-10：1987 家
+月營收 2026-09：1987 家
 股權分散表 2026-11-20：3356 檔
 估值：0 次請求，已有 120 個月
 財報：0 次請求
 跳動保險：48 檔近一年有單日漲跌超過 10.5%（價格相關條件標 ❔）：2464 2026-09-02 10.8、2924 2026-08-04 -11.9、3064 2026-05-15 -10.7、3067 2026-03-27 11、3086 2026-04-20 -89、3259 2026-09-04 -11.3、3593 2026-11-18 -11.2、3629 2026-01-12 12.1、3691 2026-10-27 12.6、4747 2026-08-31 -51.6、4991 2025-12-22 11.7、5301 2026-01-15 12.2、5904 2026-08-10 -89、6103 2026-07-08 -12.8、6225 2026-08-18 62.5、6236 2026-09-18 -16、6762 2026-07-07 -10.7、6834 2026-10-02 13.4、7610 2026-07-13 11.2、8444 2026-10-07 -14.3…
-寫入 data/chk.json：2342 檔；收盤 2026-11-24、法人 2026-11-24、融資 2026-11-24、月營收 2023-09～2026-10、股權分散 2026-11-06、2026-11-13、2026-11-20；檔案 967 KB；耗時 196 秒
+寫入 data/chk.json：2342 檔；收盤 2026-11-24、法人 2026-11-24、融資 2026-11-24、月營收 2023-09～2026-10、股權分散 2026-11-06、2026-11-13、2026-11-20；檔案 967 KB；耗時 61 秒
