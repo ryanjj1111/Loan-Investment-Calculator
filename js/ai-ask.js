@@ -53,6 +53,7 @@ function aaStock(c){const T=aaThOf(c),st=T?stStrat(S,T.sid):(AA.sid?stStrat(S,AA
    let ms=r0&&r0.miss||'';if(ms&&+T.useInit===1&&/進場前/.test(ms))ms+='（補記的論點沒有買進日，這一部分不判斷）';
    const nt=ic=='✓'?'沒有成立':ic=='⏳'?'資料不足':ic=='⏸'?'起算前就已公布的資料，不算':'';
    L.push(`  ${ic} ${x.lb}：${x.cond}${x.act?' → '+x.act:''}${nt?'｜'+nt:''}${r0&&(r0.why||ms)?`\n     （${[r0.why,ms].filter(Boolean).join('；')}）`:''}${a?`\n     ［我已決定：${EX_KN[a.k]||'已處理'}${a.n?'：'+a.n:''}${a.aiV?'；當時 AI：'+a.aiV:''}，${a.d}］`:''}${AA.th==T.id&&AA.rule==x.key?'\n     ← 這次要討論的訊號':''}`)}}
+  if(q=='exit'&&typeof exSys=='function'){const Y=exSys(T);if(Y)L.push(`系統性下跌客觀檢查（只是資訊，不是規則；三項都 ✓ 才算系統性下跌）：${Y.txt} → ${Y.res}`)}
   if(q=='exit'){const tx=aaExitText(T,st);if(tx)L.push(`策略原文（${st.id} v${T.sver||st.ver}【何時賣】，規則適用與否只能引用這段）：\n${tx.split('\n').map(l=>'  '+l).join('\n')}`)}
   const G=typeof exTrig=='function'?exTrig(T).slice(0,4):[];if(G.length)L.push('收盤觸發價（均線、本益比用 '+ckMD(CK.d)+' 的檢核資料換算）：'+G.map(o=>`收盤 ${o.dir} ${o.ap?'約 ':''}${f2(o.px)}${o.gap!=null?'（距現價 '+aaPct(o.gap)+'）':''} ${o.what}`).join('；'))}
  if(st&&(q=='buy'||q=='review'||q=='free'||q=='eval')&&CK){const G=ckGroups(st,c),M=new Set((T&&T.met)||(AT_DRAFT&&AT_DRAFT.met)||[]),done=T&&T.status=='hold'&&typeof ckDone=='function'?ckDone(T).n:0;L.push(`今日條件檢核（${st.id}${done?`，已買 ${done} 批，加碼只看下一批`:''}）：`);

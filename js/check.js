@@ -396,6 +396,28 @@ function exEval(T){const st=stStrat(S,T.sid);if(!st||!CK)return[];const L=exRule
   // 「或」的條件：找出是哪一段成立，提醒只寫那一段
   if(r&&r.v===true){for(const p of ckN(t).split(/,或者?/)){const P=ckParse(p);if(!P)continue;CKX=X;const o=ckRun(P,m,k);if(o&&o.v===true){hit=o.why;break}}}}}
   return Object.assign({},x,{r,hit})})}
+// 系統性下跌的三項客觀檢查（2026-11-24）：停損、出場條件觸發時顯示，只是資訊，不改任何規則。
+// 「系統性下跌模式」（三項都成立時停損怎麼處理）登記在待回測 v7，年底復盤再決定。
+// ① 加權離 250 日高點 ≤ −10%（〈策略說明與依據〉對系統性下跌的定義）
+// ② 起算後個股落後基準 ETF 不超過「基準跌幅的一半」，最少容許 5 個百分點（基準 −12% → 個股 ≥ −18%，即 1.5 倍；基準 +3% → 個股 ≥ −2%）
+// ③ 理由失效沒有成立
+const EX_SYS={dd:-10,k:0.5,min:5};
+function exSys(T){if(!T)return null;const c=cU(T.code),bm=bmC(S),pxm=S.px||{},pc=v=>(v>=0?'+':'−')+Math.abs(v).toFixed(1)+'%',ic=v=>v===true?'✓':v===false?'✗':'—';
+ const t=typeof CK!='undefined'&&CK&&CK.mkt&&CK.mkt.taiex,g=t&&t.c&&t.hi250?(t.c/t.hi250-1)*100:null;
+ // 起算：補記的論點用起算價；其他用第一批買進（沒有就用建立日）那天的收盤，和基準 ETF 同一天比
+ const at=(cc,dd)=>{if(typeof PXH=='undefined'||!dd)return null;let v=null,bd='';for(const k in PXH)if(k<=dd&&k>bd&&num(PXH[k][cc])!=null){bd=k;v=num(PXH[k][cc])}return v==null?null:v*(typeof ckAdjF=='function'?ckAdjF(cc,bd):1)};
+ const B=typeof stBase=='function'?stBase(S,T):null,p=typeof stPerf=='function'?stPerf(S,T):{},d=B&&B.d||T.baseD||p.first||T.created||'',p0=B&&num(B.px)!=null?num(B.px):at(c,d),px=num(pxm[c]);
+ const b0=at(bm,d),b1=num(pxm[bm]),r=p0&&px!=null?(px/p0-1)*100:null,rb=b0&&b1!=null?(b1/b0-1)*100:null;
+ // 理由失效：自動判斷的有一條成立＝成立；全部自動判斷而且都沒成立（含起算前已知）＝沒成立；有要自己判斷的＝無法確認
+ const st=stStrat(S,T.sid),IL=st&&typeof CK!='undefined'&&CK?exEval(T).filter(x=>/理由失效/.test(x.lb||'')):[];
+ const inv=!IL.length?null:IL.some(x=>x.r&&x.r.v===true)?true:IL.every(x=>x.r&&(x.r.v===false||x.r.pre))?false:null,nd=IL.filter(x=>x.r&&x.r.v==null&&!x.r.pre).length,mn=IL.filter(x=>!x.r).length;
+ const o1=g==null?null:g<=EX_SYS.dd,o2=r==null||rb==null?null:r>=rb-Math.max(EX_SYS.min,rb<0?-rb*EX_SYS.k:0),o3=inv==null?null:!inv,O=[o1,o2,o3];
+ const sys=O.includes(false)?false:O.includes(null)?null:true;
+ const p1=g==null?'大盤：資料不足':`加權離一年高點 ${pc(g)} ${ic(o1)}`,p2=o2==null?`相對 ${bm}：資料不足`:`起算後 個股 ${pc(r)}、${bm} ${pc(rb)} ${ic(o2)}`;
+ const p3=!st?'理由失效：不歸類，看論點寫的錯了的條件 —':inv===true?'理由失效成立 ✗':inv===false?'理由失效沒有成立 ✓':`理由失效：${[nd?'資料不足':'',mn?'要自己判斷':''].filter(Boolean).join('、')||'無法判斷'} —`;
+ return{g,r,rb,inv,o:O,sys,d,txt:`${p1}｜${p2}｜${p3}`,res:sys===true?'符合系統性下跌':sys===false?'不符合系統性下跌':'無法完整判斷'}}
+const EX_SYS_TIP='停損或出場條件觸發時的三項客觀檢查，只是資訊，不改規則：\n① 加權離 250 日高點 ≤ −10%\n② 論點起算後，個股落後基準 ETF 不超過基準跌幅的一半，最少容許 5 個百分點（沒有比大盤跌得多太多；基準 −12% 時個股要 ≥ −18%）\n③ 理由失效沒有成立\n三項都 ✓ 才算「系統性下跌」。按「不照做」時會一起記下，年底用不照做對照表檢討這種情況該怎麼處理。';
+function exSysHtml(T,cls){const X=exSys(T);if(!X)return'';return`<div class=${cls||'r3'}>🧭 客觀檢查：${esc(X.txt)} → <b>${esc(X.res)}</b>${typeof tipI=='function'?tipI(EX_SYS_TIP,'客觀檢查'):''}</div>`}
 // 出場訊號的決定（2026-11-10 起三選一）：exAck[key]＝{d,k,n}
 //   sell＝照規則賣出（記賣出時自動寫入）；na＝這條不適用（一直有效，不算進照規則比例）；skip＝不照做＋原因
 //   舊版的「✓ 已處理」是日期字串，當成 ack。sell、skip、ack 在條件不成立後自動解除；每次決定另外記在 exLog
@@ -403,6 +425,8 @@ const exAckOf=(T,key)=>{const v=(T.exAck||{})[key];return v==null?null:typeof v=
 // pd＝做決定時「明天要做的事」用的資料日（計畫日）；跌破停損的不照做只對這個計畫日有效（每天都要重新確認）
 function exMark(T,key,k,n,d,pd){if(!T)return;T.exAck=T.exAck||{};const x=key=='stop'?EX_STOP:(exRules(stStrat(S,T.sid))||[]).find(z=>z.key==key);if(pd==null&&typeof asDataStat=='function')try{pd=asDataStat().d||''}catch(e){pd=''}
  T.exAck[key]={d:d||TODAY,k,n:n||'',pd:pd||''};T.exLog=T.exLog||[];const L={d:d||TODAY,key,lb:x?x.lb:'',k,n:n||'',pd:pd||''};
+ // 不照做、續抱時把當天的客觀檢查一起記下（2026-11-24）
+ if(k=='skip'){try{const X=exSys(T);if(X){L.sys=X.sys===true?1:X.sys===false?0:null;L.sysT=X.txt}}catch(e){}}
  // 從「問 AI」接著做的決定：把 AI 當時的看法一起記下（之後檢討「照 AI／不照 AI」的結果）
  if(typeof AA_CTX!='undefined'&&AA_CTX&&AA_CTX.from=='exit'&&AA_CTX.th==T.id&&AA_CTX.rule==key){if(AA_CTX.view)L.aiV=T.exAck[key].aiV=AA_CTX.view;if(AA_CTX.ai)L.aiN=AA_CTX.ai;AA_CTX=null}
  T.exLog.push(L)}
@@ -413,7 +437,7 @@ const EX_STOP={key:'stop',lb:'跌破停損',act:'全部賣出',frac:1};
 window.exDecide=(id,key,k,how)=>{const T=stThesis(S,id);if(!T)return;const x=key=='stop'?EX_STOP:(exRules(stStrat(S,T.sid))||[]).find(z=>z.key==key)||{lb:'',act:'',frac:1};
  if(k=='sell'){const c=cU(T.code),h=holdings(S).filter(o=>o.ac=='a'&&cU(o.n)==c).reduce((a,o)=>a+(+o.q||0),0),fr=x.frac;
   if(typeof asTradeOpen!='function')return;asTradeOpen({k:'sell',c,ac:'a'});Object.assign(AT,{q:h&&fr!==0?String(fr==null||fr>=1?h:Math.round(h*fr)):'',rs:EX_RS(x.lb),note:`照規則：${x.lb||'出場條件'}${x.act?' → '+x.act:''}`,sig:id+'|'+key});if(typeof asTh=='function'){asOvOpen(asTradeHtml());asTh();asPrev()}return}
- let n='';if(k=='skip'){n=prompt(how=='keep'?'評估後先續抱的原因（一句話，之後檢討用）：':key=='stop'?'不照做的原因（一句話，之後檢討用）。停損每天都要重新確認：明天收盤還在停損價下面，會再問一次。':'不照做的原因（一句話，之後檢討用）：','');if(n==null)return;n=n.trim();if(!n){alert('請寫一句原因');return}}
+ let n='';if(k=='skip'){const SX=(()=>{try{const X=exSys(T);return X?`客觀檢查：${X.txt.replace(/｜/g,'\n')}\n→ ${X.res}\n\n`:''}catch(e){return''}})();n=prompt(SX+(how=='keep'?'評估後先續抱的原因（一句話，之後檢討用）：':key=='stop'?'不照做的原因（一句話，之後檢討用）。停損每天都要重新確認：明天收盤還在停損價下面，會再問一次。':'不照做的原因（一句話，之後檢討用）：'),'');if(n==null)return;n=n.trim();if(!n){alert('請寫一句原因');return}}
  else if(k=='na'){n=prompt('為什麼這條不適用？（例如「股價在上升段，這條是谷底建倉才用的停損」）','');if(n==null)return;n=n.trim()}
  exMark(T,key,k,n);save();upd();if(typeof asCalc=='function')asCalc();exReStock()};
 const exReStock=()=>{try{if(typeof asCur!='undefined'&&asCur&&!AT&&$('asOv')&&$('asOv').style.display=='flex'){const b=$('asOvB'),h=b.scrollTop;asStock(asCur.c,asCur.ac);$('asOvB').scrollTop=h}}catch(e){}};
@@ -427,7 +451,7 @@ function ckExitHtml(T,st){if(!st||T.status!='hold')return'';const L=exRules(st);
  if(!CK)return`<div class="asck ckc"><b>🚪 出場條件</b><div class=h>${ckErr?'讀不到自動檢核資料。':'資料讀取中…'}</div></div>`;
  const E=exEval(T),X=exCtx(T);
  const p=stPerf(S,T),rm=typeof stRmul=='function'?stRmul(T,p.ret):null;
- return`<div class="asck ckc"><b>🚪 出場條件</b> <span class=h>策略均價 ${X.avg!=null?f2(X.avg):'—'}${X.peak!=null?`｜持有期間最高 ${f2(X.peak)}`:''}${num(T.risk0)?`｜進場停損 ${f2(num(T.stop0))}（每股風險 ${f1(num(T.risk0))}%${T.rec0=='補記'?'，補記':''}）${rm!=null?`，目前 ${rm>=0?'+':''}${rm.toFixed(2)}R`:''}`:''}</span>${tipI('🔴 成立（照規則處理）\n✓ 沒有成立\n⏸ 起算前就已知、等新資料\n⏳ 資料不足\n❔ 要自己判斷','圖示')}${E.map(x=>{const r=x.r,ic=(exAckOf(T,x.key)||{}).k=='na'?'🚫':!r?'❔':r.v===true?'🔴':r.pre?'⏸':r.v===false?'✓':'⏳';
+ return`<div class="asck ckc"><b>🚪 出場條件</b> <span class=h>策略均價 ${X.avg!=null?f2(X.avg):'—'}${X.peak!=null?`｜持有期間最高 ${f2(X.peak)}`:''}${num(T.risk0)?`｜進場停損 ${f2(num(T.stop0))}（每股風險 ${f1(num(T.risk0))}%${T.rec0=='補記'?'，補記':''}）${rm!=null?`，目前 ${rm>=0?'+':''}${rm.toFixed(2)}R`:''}`:''}</span>${tipI('🔴 成立（照規則處理）\n✓ 沒有成立\n⏸ 起算前就已知、等新資料\n⏳ 資料不足\n❔ 要自己判斷','圖示')}${E.some(x=>x.r&&x.r.v===true)||(typeof stStopBroken=='function'&&stStopBroken(num(T.stop),num((S.px||{})[cU(T.code)])))?exSysHtml(T,'h'):''}${E.map(x=>{const r=x.r,ic=(exAckOf(T,x.key)||{}).k=='na'?'🚫':!r?'❔':r.v===true?'🔴':r.pre?'⏸':r.v===false?'✓':'⏳';
   return`<div class=ckl>${ic} ${x.lb?`<b>${esc(x.lb)}</b>：`:''}${ckT(x.cond)}${x.act?` → <b>${esc(x.act)}</b>`:''}${r?`<div class=h>${esc(r.why)}${r.miss?' <i>'+esc(r.miss)+'</i>':''}</div>`:'<div class=h>要自己判斷</div>'}${(()=>{const a=exAckOf(T,x.key);if(a&&a.k=='na')return`<div class=h>🚫 ${ckMD(a.d)} 標為不適用${a.n?'：'+esc(a.n):''}${a.aiV?'｜當時 AI：'+esc(a.aiV):''} <button class=lk onclick="exUndo('${T.id}','${x.key}')">改</button></div>`;if(!(r&&r.v===true))return'';return a?`<div class=h>${ckMD(a.d)} ${EX_KN[a.k]||'已處理'}${a.n?'：'+esc(a.n):''}${a.aiV?'｜當時 AI：'+esc(a.aiV):''}（條件不成立後自動解除） <button class=lk onclick="exUndo('${T.id}','${x.key}')">改</button></div>`:`<div>${exBtns(T.id,x.key)}</div>`})()}</div>`}).join('')}
   ${exTrigHtml(T)}<div class=h style="margin-top:4px">自動判斷只看公開資料與你記的交易，僅供參考，不是投資建議。</div></div>`}
 

@@ -412,10 +412,10 @@ function asTmrHtml(){const R=asTmr();asTmrLog(R);const D=R.D,cm=asTmrCheck(),mis
  // ② 開盤要下的單：賣（照規則）、要自己判斷、買
  const sells=R.act.filter(x=>!x.dec&&x.q>0&&x.fr>0),judge=R.act.filter(x=>!x.dec&&!(x.q>0&&x.fr>0)),done=R.act.filter(x=>x.dec),buys=R.cand.filter(x=>x.q>0);
  const sCard=x=>`<div class=tmc><div class=r1><span><span class="sd sd-s">賣</span>${nm(x.c)} ${asSid(x.T)}${x.prov?' <span class=wn>暫定</span>':''}</span><span>${x.q.toLocaleString()} 股</span></div>
-  <div class=r2><span>${esc(x.lb)}${x.fr<1?` → ${esc(x.act)}`:''}${x.px!=null?`・參考價 ${f2(x.px)}`:''}</span><span>${money(x.amt)}</span></div>${x.why?`<div class=r3>${esc(x.why)}</div>`:''}
+  <div class=r2><span>${esc(x.lb)}${x.fr<1?` → ${esc(x.act)}`:''}${x.px!=null?`・參考價 ${f2(x.px)}`:''}</span><span>${money(x.amt)}</span></div>${x.why?`<div class=r3>${esc(x.why)}</div>`:''}${typeof exSysHtml=='function'?exSysHtml(x.T):''}
   <div class=bt>${dec(x.T,x.key)}<button onclick="exDecide('${x.T.id}','${x.key}','skip')">不照做…</button>${see(x.c)}</div></div>`;
  const jCard=x=>`<div class=tmc><div class=r1><span><span class="sd sd-j">要自己判斷</span>${nm(x.c)} ${asSid(x.T)}${x.prov?' <span class=wn>暫定</span>':''}</span></div>
-  <div class=r2><span>${esc(x.lb)} → ${esc(x.act)}</span></div>${x.why?`<div class=r3>${esc(x.why)}</div>`:''}
+  <div class=r2><span>${esc(x.lb)} → ${esc(x.act)}</span></div>${x.why?`<div class=r3>${esc(x.why)}</div>`:''}${typeof exSysHtml=='function'?exSysHtml(x.T):''}
   <div class=bt>${dec(x.T,x.key,'賣出…')}<button onclick="exDecide('${x.T.id}','${x.key}','skip','keep')">續抱…</button>${see(x.c)}</div></div>`;
  const bCard=x=>`<div class=tmc><div class=r1><span><span class="sd sd-b">買</span>${nm(x.c)} ${asSid(x.T)}</span><span>最多 ${x.q.toLocaleString()} 股</span></div>
   <div class=r2><span>受限於${esc(x.by)}・停損 ${f2(x.stop)}・參考價 ${f2(x.px)}</span><span>${money(x.q*x.px)}</span></div>
