@@ -56,5 +56,6 @@ async function main(){
   try{const ck=JSON.parse(fs.readFileSync('data/chk.json','utf8'));const all=Object.keys(ck.s||{});const hit=all.filter(c=>sorted[c]).length;console.log(`檢核資料 ${all.length} 檔，有環節的 ${hit} 檔（${(hit/all.length*100).toFixed(1)}%）`)}catch(e){}
   for(const c of ['2330','2454','2317','2382'])console.log(`  ${c}：${(sorted[c]||[]).map(x=>{for(const k in chains)if(chains[k].segs[x])return chains[k].n+'/'+chains[k].segs[x].n+(chains[k].segs[x].s?`(${chains[k].segs[x].s})`:'');return x}).join('、')}`);
   fs.mkdirSync('data',{recursive:true});fs.writeFileSync(OUT,JSON.stringify(o));
+  if(process.env.GROUPS_DUMP==='1'){const z=(await import('zlib')).gzipSync(JSON.stringify(o)).toString('base64');console.log('DUMP-BEGIN');for(let i=0;i<z.length;i+=4000)console.log('DUMP '+z.slice(i,i+4000));console.log('DUMP-END')}
   console.log(`已寫入 ${OUT}：${nC} 條產業鏈、${Object.values(chains).reduce((a,x)=>a+Object.keys(x.segs).length,0)} 個環節、${nS} 檔；${(fs.statSync(OUT).size/1024).toFixed(0)} KB`)}
-main();
+await main();

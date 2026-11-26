@@ -24,6 +24,8 @@ jobs:
           node-version: 20
       - name: 抓產業價值鏈
         run: node tools/fetch-groups.mjs
+        env:
+          GROUPS_DUMP: ${{ github.event_name == 'push' && '1' || '' }}
       - name: 存檔
         # 推送 claude/ 分支觸發的是測試實跑：只看結果、不存檔
         if: github.event_name != 'push'
