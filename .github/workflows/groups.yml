@@ -18,8 +18,3 @@ jobs:
           node-version: 20
       - name: 探測
         run: node tools/probe-ic.mjs
-      - uses: actions/upload-artifact@v4
-        with:
-          name: probe
-          path: probe/
-          retention-days: 3
