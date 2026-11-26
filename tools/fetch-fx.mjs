@@ -16,8 +16,11 @@ async function main(){let res,txt;try{res=await fetch(URL_,{headers:{'User-Agent
  const cd=res.headers.get('content-disposition')||'',m=/(\d{4})(\d{2})(\d{2})\d{4}\.csv/.exec(cd),now=tw();console.log('檔名標頭：'+(cd||'（沒有）'));
  // 沒有檔名時用台灣今天；週六、週日退回週五（牌告只在營業日更新）
  let d=m?`${m[1]}-${m[2]}-${m[3]}`:now.slice(0,10);if(!m){const t=new Date(d+'T00:00:00Z'),w=t.getUTCDay();if(w==6||w==0){t.setUTCDate(t.getUTCDate()-(w==6?1:2));d=t.toISOString().slice(0,10)}}
- const o={upd:now.slice(0,16).replace('T',' '),src:'臺灣銀行牌告（美金即期）',d,buy:r.buy,sell:r.sell};
  let old=null;try{old=JSON.parse(fs.readFileSync(OUT,'utf8'))}catch(e){}
- if(old&&old.d==o.d&&old.buy==o.buy&&old.sell==o.sell){console.log('沒有變動',JSON.stringify(old));return}
+ // 每天的中價（買賣平均）留最近 40 筆，晨報算日變化用（2026-11-26）；同一天重抓以最後一次為準
+ const mid=Math.round((r.buy+r.sell)/2*1e4)/1e4,H=new Map(((old&&old.hist)||[]).map(x=>[x[0],x[1]]));if(old&&old.d&&!H.size)H.set(old.d,Math.round((old.buy+old.sell)/2*1e4)/1e4);H.set(d,mid);
+ const hist=[...H].sort((a,b)=>a[0]<b[0]?-1:1).slice(-40);
+ const o={upd:now.slice(0,16).replace('T',' '),src:'臺灣銀行牌告（美金即期）',d,buy:r.buy,sell:r.sell,hist};
+ if(old&&old.d==o.d&&old.buy==o.buy&&old.sell==o.sell&&old.hist){console.log('沒有變動',JSON.stringify({d:old.d,buy:old.buy,sell:old.sell}));return}
  fs.mkdirSync(path.dirname(OUT),{recursive:true});fs.writeFileSync(OUT,JSON.stringify(o)+'\n');console.log('已寫入',JSON.stringify(o))}
 if(process.argv[1]&&path.resolve(process.argv[1])==fileURLToPath(import.meta.url))main();

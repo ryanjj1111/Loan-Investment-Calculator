@@ -1,6 +1,7 @@
 // 投資晨報用的台股市場面資料（公開資料，每個人都一樣，不含任何個人持股）→ data/mkt/tw.json
 //   台指期夜盤（期交所，盤後交易時段）：近月台指期的最後價格、漲跌、交易日
 //   集中市場融資餘額（證交所信用交易統計，億元）：保留最近 40 個交易日，算「近 10 日」變化用
+//   集中市場融券、融資餘額（張）：同一份資料，算券資比與融券 10 日變化（2026-11-26）
 // 用法：node tools/fetch-mkt.mjs
 // 任何一段抓不到就保留上一次的那一段，不寫半套；交易日一律寫出來，晨報用它判斷資料新不新。
 import fs from 'node:fs';
@@ -59,15 +60,23 @@ async function tx(){let r=null;try{r=await txCsv()}catch(e){console.log('CSV 解
  console.log(`台指期夜盤：${r.tradeDate} ${r.contract} ${r.c}（${r.chg>=0?'+':''}${r.chg}，${r.pct}%）來源：${r.src}`);out.tx=r}
 
 // ---------- 集中市場融資餘額（億元）
+// 同一份資料（MI_MARGN，selectType=MS）裡也有融資、融券的張數（2026-11-26）：sh＝[日期, 融券餘額（張）, 融資餘額（張）]，晨報算券資比用
 async function marginDay(d){const j=await get(`https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date=${d.replace(/-/g,'')}&selectType=MS&response=json`);
- if(!j||j.stat!='OK'||ymdIso(j.date)!=d)return null;
- for(const T of j.tables||[])for(const a of T.data||[]){if(/融資金額/.test(String(a[0]))){const F=T.fields||[],ib=F.findIndex(x=>/今日餘額/.test(x));const v=nz(a[ib>0?ib:a.length-1]);if(v!=null)return Math.round(v/1e3)/100}}// 仟元 → 億元
- console.log('MI_MARGN 找不到融資金額：'+JSON.stringify(j.tables?.[0]||{}).slice(0,200));return null}
-async function margin(){const H=new Map((old.margin&&old.margin.hist)||[]);const D=pxDays().slice(-25),need=D.filter(d=>!H.has(d)).slice(-25);
- let n=0;for(const d of need){const v=await marginDay(d);if(v!=null){H.set(d,v);n++}await sleep(2200)}
+ if(!j||j.stat!='OK'||ymdIso(j.date)!=d)return null;let amt=null,sh=null,mz=null;
+ for(const T of j.tables||[]){const F=T.fields||[],ib=F.findIndex(x=>/今日餘額/.test(x));
+  for(const a of T.data||[]){const k=String(a[0]),v=nz(a[ib>0?ib:a.length-1]);if(v==null)continue;
+   if(/融資金額/.test(k))amt=Math.round(v/1e3)/100;// 仟元 → 億元
+   else if(/融券/.test(k)&&/交易單位/.test(k))sh=v;else if(/融資/.test(k)&&/交易單位/.test(k))mz=v}}
+ if(DEBUG)console.log(`  ${d} 融資金額 ${amt} 億、融券 ${sh} 張、融資 ${mz} 張`);
+ if(amt==null)console.log('MI_MARGN 找不到融資金額：'+JSON.stringify(j.tables?.[0]||{}).slice(0,300));
+ return amt==null&&sh==null?null:{amt,sh,mz}}
+async function margin(){const H=new Map((old.margin&&old.margin.hist)||[]),SH=new Map(((old.margin&&old.margin.sh)||[]).map(x=>[x[0],x]));
+ const D=pxDays().slice(-25),need=D.filter(d=>!H.has(d)||!SH.has(d)).slice(-25);
+ let n=0;for(const d of need){const v=await marginDay(d);if(v){if(v.amt!=null)H.set(d,v.amt);if(v.sh!=null&&v.mz!=null)SH.set(d,[d,v.sh,v.mz]);n++}await sleep(2200)}
  const hist=[...H].sort((a,b)=>a[0]<b[0]?-1:1).slice(-40);if(!hist.length){console.log('融資餘額：沒有資料');return}
- out.margin={src:'證交所信用交易統計（集中市場）',unit:'億元',tradeDate:hist[hist.length-1][0],hist};
- console.log(`融資餘額：新增 ${n} 天，最新 ${out.margin.tradeDate} ${hist[hist.length-1][1]} 億`)}
+ const sh=[...SH.values()].sort((a,b)=>a[0]<b[0]?-1:1).slice(-40);
+ out.margin={src:'證交所信用交易統計（集中市場）',unit:'億元',tradeDate:hist[hist.length-1][0],hist,sh,shNote:'sh：[日期, 融券餘額（張）, 融資餘額（張）]'};
+ const L=sh[sh.length-1];console.log(`融資餘額：新增 ${n} 天，最新 ${out.margin.tradeDate} ${hist[hist.length-1][1]} 億${L?`；融券 ${L[0]} ${L[1]} 張、融資 ${L[2]} 張`:''}`)}
 
 await tx();
 await margin();
