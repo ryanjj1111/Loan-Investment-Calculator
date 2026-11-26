@@ -1,0 +1,39 @@
+# 台股族群分類的「環節」層（公開資料，不含任何個人資料）：櫃買中心「產業價值鏈資訊平台」的產業鏈、環節與公司對照，寫進 data/groups.json
+# 平台很少變動，每月更新一次；App 目前不讀，給晨報、週報告、財報彙整用
+name: 族群分類
+on:
+  schedule:
+    - cron: '17 3 2 * *'    # 每月 2 日台灣 11:17
+  workflow_dispatch:
+  push:
+    # main 上改了主題定義（data/themes.json）就重算；claude/ 分支是測試實跑
+    branches: ['main', 'claude/**']
+    paths: ['tools/fetch-groups.mjs', '.github/workflows/groups.yml', 'data/themes.json']
+permissions:
+  contents: write
+concurrency:
+  group: groups-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 抓產業價值鏈
+        # main 上只改主題定義時，不重抓平台、只重算主題
+        run: |
+          if [ "${{ github.event_name }}" = push ] && [ "${{ github.ref }}" = refs/heads/main ] && [ -f data/groups.json ]; then node tools/fetch-groups.mjs --themes; else node tools/fetch-groups.mjs; fi
+      - name: 存檔
+        # 推送 claude/ 分支觸發的是測試實跑：只看結果、不存檔
+        if: github.event_name != 'push' || github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/groups.json
+          git diff --cached --quiet && { echo "沒有變動"; exit 0; }
+          git commit -m "族群分類：產業價值鏈 $(TZ=Asia/Taipei date +%F)"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push -q && exit 0; sleep 5; done; exit 1
