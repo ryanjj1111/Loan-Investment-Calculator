@@ -1,0 +1,20 @@
+# 台股族群分類（公開資料，不含任何個人資料）：櫃買中心「產業價值鏈資訊平台」的產業鏈與公司對照。目前是探測階段。
+name: 族群分類
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths: ['tools/probe-ic.mjs', 'tools/fetch-groups.mjs', '.github/workflows/groups.yml']
+permissions:
+  contents: read
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 探測
+        run: node tools/probe-ic.mjs
