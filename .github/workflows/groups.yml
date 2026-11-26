@@ -6,8 +6,9 @@ on:
     - cron: '17 3 2 * *'    # 每月 2 日台灣 11:17
   workflow_dispatch:
   push:
-    branches: ['claude/**']
-    paths: ['tools/fetch-groups.mjs', '.github/workflows/groups.yml']
+    # main 上改了主題定義（data/themes.json）就重算；claude/ 分支是測試實跑
+    branches: ['main', 'claude/**']
+    paths: ['tools/fetch-groups.mjs', '.github/workflows/groups.yml', 'data/themes.json']
 permissions:
   contents: write
 concurrency:
@@ -23,12 +24,12 @@ jobs:
         with:
           node-version: 20
       - name: 抓產業價值鏈
-        run: node tools/fetch-groups.mjs
-        env:
-          GROUPS_DUMP: ${{ github.event_name == 'push' && '1' || '' }}
+        # main 上只改主題定義時，不重抓平台、只重算主題
+        run: |
+          if [ "${{ github.event_name }}" = push ] && [ "${{ github.ref }}" = refs/heads/main ] && [ -f data/groups.json ]; then node tools/fetch-groups.mjs --themes; else node tools/fetch-groups.mjs; fi
       - name: 存檔
         # 推送 claude/ 分支觸發的是測試實跑：只看結果、不存檔
-        if: github.event_name != 'push'
+        if: github.event_name != 'push' || github.ref == 'refs/heads/main'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

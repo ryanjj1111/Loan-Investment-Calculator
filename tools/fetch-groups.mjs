@@ -6,7 +6,9 @@
 //   stocks：{股票代號: [環節代號, …]}（只收本國上市、上櫃；興櫃、創櫃、外國企業不收）
 //   foreign：{環節代號: [外國企業名稱…]}（平台列的「知名外國企業」，對照美股用）
 // App 目前不讀這份；給晨報、週報告、財報彙整用（使用者 2026-11-26：先不進 App）。
-// 用法：node tools/fetch-groups.mjs（GROUPS_DEBUG=1 印更多）
+// 主題層（2026-11-26）：data/themes.json 定義大約 26 個主題（環節 → 主題），算出每檔屬於哪些主題（mem）和主要主題（prim），也寫進 groups.json。
+// 用法：node tools/fetch-groups.mjs            抓平台並重算主題
+//       node tools/fetch-groups.mjs --themes   不抓平台，只用現有的 groups.json 重算主題（改了 themes.json 之後用）
 import fs from 'fs';
 const OUT='data/groups.json',BASE='https://ic.tpex.org.tw/',DEBUG=process.env.GROUPS_DEBUG==='1';
 const UA={'User-Agent':'Mozilla/5.0 (compatible; groups-fetch)'};const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -32,7 +34,28 @@ function parseChain(html){
   });
   return{segs,stocks,foreign}}
 
+// 主題：環節代號比對（* 前綴、- 排除）
+function segMatch(pats,id){let ok=false;for(const p of pats){const neg=p[0]==='-',q=neg?p.slice(1):p,hit=q.endsWith('*')?id.startsWith(q.slice(0,-1)):id===q;if(hit)ok=!neg}return ok}
+function applyThemes(o){let D;try{D=JSON.parse(fs.readFileSync('data/themes.json','utf8'))}catch(e){console.log('沒有 data/themes.json，主題不算');return}
+  const all=Object.values(o.chains).flatMap(c=>Object.keys(c.segs)),seg2t={};
+  for(const id of all)for(const t of D.themes)if(segMatch(t.segs,id))(seg2t[id]=seg2t[id]||[]).push(t.id);
+  const size={};for(const L of Object.values(o.stocks))for(const x of L)size[x]=(size[x]||0)+1;
+  const buzz=x=>!D.buzzKeep.includes(x)&&D.buzz.some(b=>x.startsWith(b));
+  const mem={},prim={};
+  for(const[c,L]of Object.entries(o.stocks)){const T=new Set();L.forEach(x=>(seg2t[x]||[]).forEach(t=>T.add(t)));if(T.size)mem[c]=[...T].sort();
+    if(D.override[c]){prim[c]=D.override[c];continue}
+    const core=L.filter(x=>!buzz(x)),use=core.length?core:L,v={},sp={};
+    for(const x of use)for(const t of seg2t[x]||[]){v[t]=(v[t]||0)+1;sp[t]=Math.min(sp[t]??1e9,size[x])}
+    const best=Object.keys(v).sort((a,b)=>v[b]-v[a]||sp[a]-sp[b])[0];if(best)prim[c]=best}
+  for(const c of Object.keys(D.override))if(!o.stocks[c]){prim[c]=D.override[c];(mem[c]=mem[c]||[]).includes(D.override[c])||mem[c].push(D.override[c])}
+  o.themes=Object.fromEntries(D.themes.map(t=>[t.id,{n:t.n,big:t.big,segs:all.filter(x=>(seg2t[x]||[]).includes(t.id))}]));o.mem=mem;o.prim=prim;
+  const cnt={};Object.values(prim).forEach(t=>cnt[t]=(cnt[t]||0)+1);
+  const none=all.filter(x=>!seg2t[x]);
+  console.log(`主題 ${D.themes.length} 個；有主要主題的 ${Object.keys(prim).length} 檔；`+D.themes.map(t=>`${t.id}${t.n} ${cnt[t.id]||0}`).join('、'));
+  if(none.length)console.log('沒對應主題的環節：'+none.join(' '))}
+
 async function main(){
+  if(process.argv.includes('--themes')){const o=JSON.parse(fs.readFileSync(OUT,'utf8'));applyThemes(o);fs.writeFileSync(OUT,JSON.stringify(o));console.log(`已重算主題：${OUT}`);return}
   const home=await get(BASE);if(!home){console.log('首頁抓不到，這次不更新');process.exitCode=1;return}
   const names={};for(const m of home.matchAll(/<option value=["']([A-Z0-9]+)["'][^>]*>([^<]+)</g))names[m[1]]=m[2].trim();
   let ics=[...new Set([...home.matchAll(/introduce\.php\?ic=([A-Z0-9]+)/g)].map(m=>m[1]))];
@@ -51,11 +74,11 @@ async function main(){
   const nC=Object.keys(chains).length,nS=Object.keys(stocks).length;
   if(nC<40||nS<1000||(old&&nS<Object.keys(old.stocks||{}).length*0.8)){console.log(`只抓到 ${nC} 條產業鏈、${nS} 檔，可能是網站改版或暫時擋掉，不覆蓋舊檔`);process.exitCode=1;return}
   const sorted=Object.fromEntries(Object.keys(stocks).sort().map(k=>[k,stocks[k].sort()]));
-  const o={upd:new Date(Date.now()+8*36e5).toISOString().slice(0,16).replace('T',' '),src:'櫃買中心 產業價值鏈資訊平台（ic.tpex.org.tw）',note:'chains：產業鏈→環節（s＝上中下游）；stocks：股票代號→所屬環節（本國上市、上櫃）；foreign：環節→平台列的知名外國企業',chains,stocks:sorted,foreign};
+  const o0={upd:new Date(Date.now()+8*36e5).toISOString().slice(0,16).replace('T',' '),src:'櫃買中心 產業價值鏈資訊平台（ic.tpex.org.tw）',note:'chains：產業鏈→環節（s＝上中下游）；stocks：股票代號→所屬環節（本國上市、上櫃）；foreign：環節→平台列的知名外國企業；themes：主題→名稱、大類、環節；mem：股票→所屬主題；prim：股票→主要主題（定義在 data/themes.json）',chains,stocks:sorted,foreign};
+  const o=o0;applyThemes(o);
   // 覆蓋率：和檢核資料的全市場代號比
   try{const ck=JSON.parse(fs.readFileSync('data/chk.json','utf8'));const all=Object.keys(ck.s||{});const hit=all.filter(c=>sorted[c]).length;console.log(`檢核資料 ${all.length} 檔，有環節的 ${hit} 檔（${(hit/all.length*100).toFixed(1)}%）`)}catch(e){}
   for(const c of ['2330','2454','2317','2382'])console.log(`  ${c}：${(sorted[c]||[]).map(x=>{for(const k in chains)if(chains[k].segs[x])return chains[k].n+'/'+chains[k].segs[x].n+(chains[k].segs[x].s?`(${chains[k].segs[x].s})`:'');return x}).join('、')}`);
   fs.mkdirSync('data',{recursive:true});fs.writeFileSync(OUT,JSON.stringify(o));
-  if(process.env.GROUPS_DUMP==='1'){const z=(await import('zlib')).gzipSync(JSON.stringify(o)).toString('base64');console.log('DUMP-BEGIN');for(let i=0;i<z.length;i+=4000)console.log('DUMP '+z.slice(i,i+4000));console.log('DUMP-END')}
   console.log(`已寫入 ${OUT}：${nC} 條產業鏈、${Object.values(chains).reduce((a,x)=>a+Object.keys(x.segs).length,0)} 個環節、${nS} 檔；${(fs.statSync(OUT).size/1024).toFixed(0)} KB`)}
 await main();
