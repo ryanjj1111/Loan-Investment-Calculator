@@ -2,6 +2,7 @@
 //   台指期夜盤（期交所，盤後交易時段）：近月台指期的最後價格、漲跌、交易日
 //   集中市場融資餘額（證交所信用交易統計，億元）：保留最近 40 個交易日，算「近 10 日」變化用
 //   集中市場融券、融資餘額（張）：同一份資料，算券資比與融券 10 日變化（2026-11-26）
+//   台指期未平倉（2026-11-28）：一般交易時段收盤後的全市場未平倉口數，和外資的多空未平倉淨額（口）
 // 用法：node tools/fetch-mkt.mjs
 // 任何一段抓不到就保留上一次的那一段，不寫半套；交易日一律寫出來，晨報用它判斷資料新不新。
 import fs from 'node:fs';
@@ -14,7 +15,7 @@ const rd=f=>{try{return JSON.parse(fs.readFileSync(f,'utf8'))}catch(e){return nu
 async function get(u,opt={},type='json'){for(let k=0;k<3;k++){try{const r=await fetch(u,{...opt,headers:{...UA,...(opt.headers||{})},signal:AbortSignal.timeout(60000)});
  if(r.ok){const b=Buffer.from(await r.arrayBuffer());const t=new TextDecoder(opt.enc||'utf-8').decode(b);return type=='json'?JSON.parse(t):t}console.log(`  HTTP ${r.status} ${u}`)}catch(e){console.log(`  失敗 ${u}：${e.message}`)}await sleep(3000*(k+1))}return null}
 
-const OUT='data/mkt/tw.json',old=rd(OUT)||{},out={...old,upd:stamp(),note:'公開資料。tx：台指期夜盤（盤後交易時段；tradeDate 是期交所的交易日，也就是這場夜盤所屬的下一個交易日，例如週五晚上的夜盤是下週一；chg 相對前一個一般交易時段的結算價）；margin：集中市場融資餘額（億元）。'};
+const OUT='data/mkt/tw.json',old=rd(OUT)||{},out={...old,upd:stamp(),note:'公開資料。tx：台指期夜盤（盤後交易時段；tradeDate 是期交所的交易日，也就是這場夜盤所屬的下一個交易日，例如週五晚上的夜盤是下週一；chg 相對前一個一般交易時段的結算價）；margin：集中市場融資餘額（億元）；oi：台指期未平倉（口，一般交易時段）。'};
 const CAL=rd('data/mkt/holidays.json')||{};
 const twTrading=d=>{const w=new Date(d+'T00:00:00Z').getUTCDay();return w>0&&w<6&&!(CAL.tw||[]).includes(d)};
 // 台股交易日：以 data/px 已經有收盤的日期為準（只用來回補融資，不用來判斷今天開不開）
@@ -78,7 +79,46 @@ async function margin(){const H=new Map((old.margin&&old.margin.hist)||[]),SH=ne
  out.margin={src:'證交所信用交易統計（集中市場）',unit:'億元',tradeDate:hist[hist.length-1][0],hist,sh,shNote:'sh：[日期, 融券餘額（張）, 融資餘額（張）]'};
  const L=sh[sh.length-1];console.log(`融資餘額：新增 ${n} 天，最新 ${out.margin.tradeDate} ${hist[hist.length-1][1]} 億${L?`；融券 ${L[0]} ${L[1]} 張、融資 ${L[2]} 張`:''}`)}
 
+// ---------- 台指期未平倉（2026-11-28）：一般交易時段（日盤）收盤後的數字；夜盤不更新未平倉
+// 全市場：每日行情下載（CSV）一般時段各月份 TX 的「未沖銷契約數」加總（不含價差單）
+// 外資：三大法人區分各期貨契約「外資」那一列的「多空未平倉口數淨額」（正＝淨多單、負＝淨空單）
+// oi＝{tradeDate, total, fi, hist:[[日期, 全市場, 外資淨額]]}，保留 40 天，晨報算和前一天比的增減
+function csvRows(t){return t.trim().split(/\r?\n/).map(x=>x.split(',').map(y=>y.trim().replace(/^"|"$/g,'')))}
+async function oiTotal(a,z){const s=x=>x.toISOString().slice(0,10).replace(/-/g,'/');
+ const t=await get('https://www.taifex.com.tw/cht/3/futDataDown',{method:'POST',body:new URLSearchParams({down_type:'1',commodity_id:'TX',queryStartDate:s(a),queryEndDate:s(z)}),headers:{'Content-Type':'application/x-www-form-urlencoded'},enc:'big5'},'text');
+ if(!t||!/交易日期/.test(t))return {};const L=csvRows(t),H=L[0],ix=n=>H.findIndex(h=>h.includes(n));
+ const iD=ix('交易日期'),iM=ix('到期月份'),iS=ix('交易時段'),iO=ix('未沖銷契約數');if(iO<0){console.log('期貨行情 CSV 沒有未沖銷契約數欄位：'+H.join('、'));return {}}
+ const T={};for(const a of L.slice(1)){if(/盤後/.test(a[iS]||'')||/\//.test(a[iM]||''))continue;const v=nz(a[iO]);if(v==null)continue;const d=ymdIso(a[iD]);T[d]=(T[d]||0)+v}
+ return T}
+// 期交所 OpenAPI「三大法人－區分各期貨契約－依日期」：路徑從說明文件（swagger.json）找，不寫死；回應是 CSV（2026-11-28 實測），也接受 JSON
+// 只有最近一個交易日，所以每天抓一次累積到 hist（網站的區間下載 CSV 2026-11-28 實測只回空白頁，不用）
+async function oiForeign(){const F={};
+ const sw=await get('https://openapi.taifex.com.tw/swagger.json',{headers:{Accept:'application/json'}});const P=Object.keys((sw&&sw.paths)||{});
+ const path=P.find(x=>/MajorInstitutional/i.test(x)&&/Futures?Contract/i.test(x)&&/Date/i.test(x)&&!/Week|Option/i.test(x));
+ if(!path){console.log('期交所 OpenAPI 找不到三大法人各期貨契約的資料');return F}
+ const t=await get('https://openapi.taifex.com.tw/v1'+path.replace(/^\/v1/,''),{},'text');if(!t){console.log('三大法人期貨 OpenAPI 沒有回應');return F}
+ let R=[];if(/^\s*\[/.test(t)){const j=JSON.parse(t);R=j.map(o=>Object.fromEntries(Object.entries(o).map(([k,v])=>[k,String(v)])))}
+ else{const L=csvRows(t.replace(/^﻿/,''));R=L.slice(1).map(r=>Object.fromEntries(L[0].map((h,i)=>[h,r[i]])))}
+ if(!R.length){console.log('三大法人期貨 OpenAPI 沒有資料');return F}
+ const K=Object.keys(R[0]),k=re=>K.find(x=>re.test(x));
+ const kD=k(/^日期$|date/i),kC=k(/商品|contract/i),kW=k(/身份|identity|item/i),kN=k(/多空未平倉口數淨額|open.?interest.*net.*(volume|contracts)/i);
+ if(DEBUG)console.log('三大法人期貨 OpenAPI 欄位：'+K.join('、'));
+ if(!kN||!kW||!kC){console.log('三大法人期貨 OpenAPI 欄位對不上：'+K.join('、'));return F}
+ for(const o of R){if(!/外資|Foreign/i.test(o[kW]||'')||!/^(臺股期貨|台股期貨|TX|TXF)$/i.test((o[kC]||'').trim()))continue;const v=nz(o[kN]);if(v!=null)F[ymdIso(o[kD])]=v}
+ if(!Object.keys(F).length)console.log('三大法人期貨 OpenAPI 找不到臺股期貨的外資那一列：'+[...new Set(R.map(o=>o[kC]))].slice(0,15).join('、'));
+ return F}
+async function oi(){const d=twNow(),a=new Date(d.getTime()-14*864e5);let T={},F={};
+ try{T=await oiTotal(a,d)}catch(e){console.log('全市場未平倉解析失敗：'+e.message)}
+ await sleep(1500);try{F=await oiForeign()}catch(e){console.log('外資未平倉解析失敗：'+e.message)}
+ const H=new Map(((old.oi&&old.oi.hist)||[]).map(x=>[x[0],x]));
+ for(const k of new Set([...Object.keys(T),...Object.keys(F)])){if(!k)continue;const p=H.get(k)||[k,null,null];H.set(k,[k,T[k]??p[1],F[k]??p[2]])}
+ const hist=[...H.values()].filter(x=>x[1]!=null||x[2]!=null).sort((x,y)=>x[0]<y[0]?-1:1).slice(-40);
+ if(!hist.length){console.log('台指期未平倉：抓不到，保留上一次');return}
+ const z=hist[hist.length-1];out.oi={src:'期交所每日行情、三大法人區分各期貨契約（一般交易時段）',unit:'口',tradeDate:z[0],total:z[1],fi:z[2],hist,histNote:'hist：[日期, 全市場台指期未平倉口數, 外資多空未平倉口數淨額]'};
+ console.log(`台指期未平倉：${z[0]} 全市場 ${z[1]} 口、外資淨額 ${z[2]} 口（新增 ${Object.keys(T).length}／${Object.keys(F).length} 天）`)}
+
 await tx();
+await oi();
 await margin();
 fs.mkdirSync('data/mkt',{recursive:true});
 const s=JSON.stringify({...out,upd:undefined}),o=JSON.stringify({...old,upd:undefined});
