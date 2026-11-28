@@ -94,7 +94,7 @@ async function oiForeign(a,z){const s=x=>x.toISOString().slice(0,10).replace(/-/
  // 網站 CSV 的參數名稱試兩種；都不是 CSV 就改用 OpenAPI（只有最近一天）
  let t=null;for(const body of [{queryStartDate:s(a),queryEndDate:s(z),commodityId:'TXF'},{firstDate:s(a),lastDate:s(z),queryStartDate:s(a),queryEndDate:s(z),commodityId:'TXF',commodity_id:'TXF'}]){
   t=await get('https://www.taifex.com.tw/cht/3/futContractsDateDown',{method:'POST',body:new URLSearchParams(body),headers:{'Content-Type':'application/x-www-form-urlencoded'},enc:'big5'},'text');
-  if(t&&/身份別/.test(t))break;if(DEBUG)console.log('三大法人期貨 CSV 不是資料：'+String(t||'').replace(/\s+/g,' ').slice(0,200));t=null;await sleep(1500)}
+  if(t&&/身份別/.test(t))break;if(DEBUG)console.log('三大法人期貨 CSV 不是資料：'+String(t||'').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi,'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,400));t=null;await sleep(1500)}
  const F={};
  if(t){const L=csvRows(t),H=L[0],ix=n=>H.findIndex(h=>h.includes(n));const iD=ix('日期'),iC=ix('商品'),iW=ix('身份別'),iN=H.findIndex(h=>/多空未平倉口數淨額/.test(h));
   if(DEBUG)console.log('三大法人期貨 CSV 欄位：'+H.join('、'));
@@ -106,6 +106,7 @@ async function oiForeign(a,z){const s=x=>x.toISOString().slice(0,10).replace(/-/
  if(DEBUG)console.log('三大法人 OpenAPI 路徑：'+P.filter(x=>/Institutional/i.test(x)).join('、'));
  if(!path){console.log('期交所 OpenAPI 找不到三大法人各期貨契約的資料');return F}
  const j=await get('https://openapi.taifex.com.tw/v1'+path.replace(/^\/v1/,''),{headers:{Accept:'application/json'}});
+ if(DEBUG)console.log('三大法人期貨 OpenAPI 回應：'+JSON.stringify(j).slice(0,600));
  if(!Array.isArray(j)||!j.length){console.log('三大法人期貨 OpenAPI 沒有資料：'+path);return F}
  const K=Object.keys(j[0]);if(DEBUG)console.log('三大法人期貨 OpenAPI 欄位：'+K.join('、')+'\n'+JSON.stringify(j.filter(o=>/臺股期貨|TX/.test(JSON.stringify(o))).slice(0,3)));
  const k=re=>K.find(x=>re.test(x));const kD=k(/date|日期/i),kC=k(/contract|商品/i),kW=k(/item|identity|身份/i),kN=k(/(open.?interest.*net.*volume|未平倉.*口數.*淨額|NetOpenInterest.*Volume)/i);
