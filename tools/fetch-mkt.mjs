@@ -100,8 +100,13 @@ async function oiForeign(a,z){const s=x=>x.toISOString().slice(0,10).replace(/-/
   if(DEBUG)console.log('三大法人期貨 CSV 欄位：'+H.join('、'));
   if(iN>=0)for(const r of L.slice(1)){if(!/外資/.test(r[iW]||'')||(iC>=0&&!/臺股期貨|台股期貨|TX/.test(r[iC]||'')))continue;const v=nz(r[iN]);if(v!=null)F[ymdIso(r[iD])]=v}}
  if(Object.keys(F).length)return F;
- const j=await get('https://openapi.taifex.com.tw/v1/MarketDataOfMajorInstitutionalTradersDetailsOfFuturesContractsBytheDate',{headers:{Accept:'application/json'}});
- if(!Array.isArray(j)||!j.length){console.log('三大法人期貨 OpenAPI 沒有資料');return F}
+ // OpenAPI 的路徑名稱從說明文件（swagger.json）找「三大法人、各期貨契約、依日期」那一個，不寫死
+ const sw=await get('https://openapi.taifex.com.tw/swagger.json',{headers:{Accept:'application/json'}});const P=Object.keys((sw&&sw.paths)||{});
+ const path=P.find(x=>/MajorInstitutional/i.test(x)&&/Futures?Contract/i.test(x)&&/Date/i.test(x)&&!/Week|Option/i.test(x));
+ if(DEBUG)console.log('三大法人 OpenAPI 路徑：'+P.filter(x=>/Institutional/i.test(x)).join('、'));
+ if(!path){console.log('期交所 OpenAPI 找不到三大法人各期貨契約的資料');return F}
+ const j=await get('https://openapi.taifex.com.tw/v1'+path.replace(/^\/v1/,''),{headers:{Accept:'application/json'}});
+ if(!Array.isArray(j)||!j.length){console.log('三大法人期貨 OpenAPI 沒有資料：'+path);return F}
  const K=Object.keys(j[0]);if(DEBUG)console.log('三大法人期貨 OpenAPI 欄位：'+K.join('、')+'\n'+JSON.stringify(j.filter(o=>/臺股期貨|TX/.test(JSON.stringify(o))).slice(0,3)));
  const k=re=>K.find(x=>re.test(x));const kD=k(/date|日期/i),kC=k(/contract|商品/i),kW=k(/item|identity|身份/i),kN=k(/(open.?interest.*net.*volume|未平倉.*口數.*淨額|NetOpenInterest.*Volume)/i);
  if(!kN){console.log('三大法人期貨 OpenAPI 找不到未平倉淨額欄位：'+K.join('、'));return F}
